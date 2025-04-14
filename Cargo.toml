@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "engine",
+    "plugin_api",
+    "plugins/plugin_wifi"
+]
+
+resolver = "2"

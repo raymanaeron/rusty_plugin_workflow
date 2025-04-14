@@ -1,0 +1,10 @@
+[package]
+name = "plugin_wifi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+plugin_api = { path = "../../plugin_api" }
+
+[lib]
+crate-type = ["cdylib"]
