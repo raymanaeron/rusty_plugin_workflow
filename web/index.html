@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rust Plugin UI</title>
+</head>
+<body>
+  <h1>WiFi Plugin Example</h1>
+  <button onclick="scan()">Scan WiFi</button>
+  <pre id="result"></pre>
+
+  <script>
+    async function scan() {
+      const res = await fetch('/api/wifi/scan');
+      const text = await res.text();
+      document.getElementById('result').textContent = text;
+    }
+  </script>
+</body>
+</html>
