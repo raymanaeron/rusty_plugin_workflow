@@ -6,25 +6,19 @@ use axum::{
     routing::get,
     Router,
 };
-use tokio::net::TcpListener;
+use plugin_loader::{load_plugin, LoadedPlugin};
+use plugin_api::{PluginContext};
 
-mod plugin_loader; 
+mod plugin_loader;
 
-use plugin_loader::load_plugin;
-use plugin_api::{PluginApi, PluginContext};
-
+#[derive(Clone)]
 struct AppState {
-    plugin: Arc<PluginApi>,
+    plugin: Arc<LoadedPlugin>,
 }
 
 #[tokio::main]
 async fn main() {
-
     let plugin = load_plugin("plugin_wifi.dll").expect("Failed to load plugin");
-
-    //let plugin = load_plugin("plugins/plugin_wifi/target/debug/plugin_wifi.dll")
-    // .expect("Failed to load plugin");
-
 
     // Create context with static config
     let config_str = std::ffi::CString::new("scan=true").unwrap();
@@ -32,23 +26,23 @@ async fn main() {
         config: config_str.as_ptr(),
     };
 
+    // Run the plugin
     (plugin.api.run)(&context);
 
-    let state = AppState {
-        plugin: plugin.api.clone(),
-    };
+    // Wrap plugin in AppState
+    let state = Arc::new(AppState {
+        plugin: Arc::new(plugin),
+    });
 
     let app = Router::new()
-        .route("/api/wifi/scan", get(scan_wifi))
         .route("/", get(index))
-        .with_state(Arc::new(state));
+        .route("/api/wifi/scan", get(scan_wifi))
+        .with_state(state);
 
-    let addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
-    let listener = TcpListener::bind(addr).await.unwrap();
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    println!("Starting Axum server on http://{}", addr);
 
-    println!("Listening on http://{}", addr);
-
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app).await.unwrap();
 }
 
 async fn index() -> Html<&'static str> {
@@ -56,7 +50,7 @@ async fn index() -> Html<&'static str> {
 }
 
 async fn scan_wifi(State(state): State<Arc<AppState>>) -> Html<String> {
-    let name_cstr = unsafe { std::ffi::CStr::from_ptr((state.plugin.name)()) };
+    let name_cstr = unsafe { std::ffi::CStr::from_ptr((state.plugin.api.name)()) };
     let plugin_name = name_cstr.to_string_lossy();
 
     let result = format!("WiFi scan executed by plugin: {}", plugin_name);
