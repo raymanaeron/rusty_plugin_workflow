@@ -49,16 +49,69 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
 
     println!("[plugin_wifi] Raw scan output:\n{}", raw_output);
 
-    let networks = vec![
-        NetworkInfo {
-            ssid: CString::new("DummyNet").unwrap().into_raw(),
-            bssid: CString::new("00:00:00:00:00:00").unwrap().into_raw(),
-            signal: -50,
-            channel: 1,
-            security: CString::new("WPA2").unwrap().into_raw(),
-            frequency: 2.437,
+    let mut networks = Vec::new();
+
+    if cfg!(target_os = "linux") {
+        // Each line: SSID:BSSID:SIGNAL:CHAN:SECURITY:FREQ
+        for line in raw_output.lines() {
+            let fields: Vec<&str> = line.split(':').collect();
+            if fields.len() < 6 {
+                continue;
+            }
+
+            let ssid = CString::new(fields[0]).unwrap_or_default().into_raw();
+            let bssid = CString::new(fields[1]).unwrap_or_default().into_raw();
+            let signal = fields[2].parse::<i32>().unwrap_or(0);
+            let channel = fields[3].parse::<i32>().unwrap_or(0);
+            let security = CString::new(fields[4]).unwrap_or_default().into_raw();
+            let frequency = fields[5].parse::<f32>().unwrap_or(0.0);
+
+            networks.push(NetworkInfo {
+                ssid,
+                bssid,
+                signal,
+                channel,
+                security,
+                frequency,
+            });
         }
-    ];
+    } else if cfg!(target_os = "windows") {
+        let mut current_ssid = String::new();
+        let mut current_signal = 0;
+        let mut current_security = String::new();
+
+        for line in raw_output.lines() {
+            let line = line.trim();
+            if line.starts_with("SSID") && line.contains(":") {
+                let parts: Vec<&str> = line.splitn(2, ':').collect();
+                current_ssid = parts[1].trim().to_string();
+            } else if line.starts_with("Signal") {
+                if let Some(percent_str) = line.split(':').nth(1) {
+                    current_signal = percent_str.trim().trim_end_matches('%').parse::<i32>().unwrap_or(0);
+                }
+            } else if line.starts_with("Authentication") {
+                if let Some(sec) = line.split(':').nth(1) {
+                    current_security = sec.trim().to_string();
+                }
+            } else if line.starts_with("BSSID") {
+                if let Some(bssid_str) = line.split(':').nth(1) {
+                    let bssid = bssid_str.trim().to_string();
+                    let ssid = CString::new(current_ssid.clone()).unwrap_or_default().into_raw();
+                    let bssid = CString::new(bssid).unwrap_or_default().into_raw();
+                    let security = CString::new(current_security.clone()).unwrap_or_default().into_raw();
+
+                    networks.push(NetworkInfo {
+                        ssid,
+                        bssid,
+                        signal: current_signal,
+                        channel: 0,        // Channel parsing optional, skipped here
+                        security,
+                        frequency: 0.0,    // Windows netsh does not give frequency
+                    });
+                }
+            }
+        }
+    }
 
     let count = networks.len();
     unsafe {
