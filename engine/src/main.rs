@@ -2,10 +2,10 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     extract::State,
-    response::Html,
     routing::get,
     Router,
 };
+
 use plugin_loader::{load_plugin, LoadedPlugin};
 use plugin_api::{PluginContext};
 
@@ -14,6 +14,7 @@ use serde::Serialize;
 use plugin_api::NetworkInfo;
 use std::ffi::CStr;
 use libloading::Symbol;
+use tower_http::services::ServeDir;
 
 mod plugin_loader;
 
@@ -40,19 +41,21 @@ async fn main() {
         plugin: Arc::new(plugin),
     });
 
+     // Define /api routes
+     let api_routes = Router::new()
+     .route("/wifi/scan", get(scan_wifi))
+     .with_state(state.clone());
+
+    // Define web + API app
     let app = Router::new()
-        .route("/", get(index))
-        .route("/api/wifi/scan", get(scan_wifi))
-        .with_state(state);
+        .nest("/api", api_routes) // api routes under /api/*
+        .fallback_service(ServeDir::new("web")); // serve static files for all other routes like /
+        // .route("/index.html", get(index)); // optional route override
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("Starting Axum server on http://{}", addr);
 
     axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app).await.unwrap();
-}
-
-async fn index() -> Html<&'static str> {
-    Html("<h1>Hello from Engine Web Server</h1>")
 }
 
 #[derive(Serialize)]

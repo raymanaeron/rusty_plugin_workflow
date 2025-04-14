@@ -1,19 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Rust Plugin UI</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="styles.css" />
+    <title>Device Setup</title>
 </head>
 <body>
-  <h1>WiFi Plugin Example</h1>
-  <button onclick="scan()">Scan WiFi</button>
-  <pre id="result"></pre>
+    <h1>Device Setup</h1>
+    <div id="app"></div>
 
-  <script>
-    async function scan() {
-      const res = await fetch('/api/wifi/scan');
-      const text = await res.text();
-      document.getElementById('result').textContent = text;
-    }
-  </script>
+    <!-- Correct usage with ES modules -->
+    <script type="module" src="app.js"></script>
 </body>
 </html>

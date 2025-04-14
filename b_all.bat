@@ -15,4 +15,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Copying web folder to engine output directory...
+xcopy /E /I /Y web target\debug\web
+
+if errorlevel 1 (
+    echo Failed to copy web folder.
+    exit /b 1
+)
+
 echo All builds successful.
