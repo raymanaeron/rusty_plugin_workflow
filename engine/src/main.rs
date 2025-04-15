@@ -12,7 +12,7 @@ async fn main() {
     let registry = Arc::new(PluginRegistry::new());
 
     // Load the plugin
-    let (plugin, _lib) = load_plugin("plugins/plugin_wifi/target/debug/plugin_wifi.dll")
+    let (plugin, _lib) = load_plugin("plugin_wifi.dll")
         .expect("Failed to load plugin");
 
     // Run plugin with config
