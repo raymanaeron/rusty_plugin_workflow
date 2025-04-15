@@ -7,11 +7,11 @@ use axum::{
 };
 
 use plugin_loader::{load_plugin, LoadedPlugin};
-use plugin_api::{PluginContext};
+use plugin_core::{PluginContext};
 
 use axum::Json;
 use serde::Serialize;
-use plugin_api::NetworkInfo;
+use plugin_core::NetworkInfo;
 use std::ffi::CStr;
 use libloading::Symbol;
 use tower_http::services::ServeDir;

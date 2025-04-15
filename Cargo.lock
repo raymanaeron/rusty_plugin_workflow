@@ -42,6 +42,7 @@ checksum = "edca88bc138befd0323b20752846e6587272d3b03b0343c8ea28a6f819e6e71f"
 dependencies = [
  "async-trait",
  "axum-core",
+ "axum-macros",
  "bytes",
  "futures-util",
  "http",
@@ -62,7 +63,7 @@ dependencies = [
  "serde_urlencoded",
  "sync_wrapper",
  "tokio",
- "tower",
+ "tower 0.5.2",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -87,6 +88,17 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "axum-macros"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57d123550fa8d071b7255cb0cc04dc302baa6c8c4a79f55701552684d8399bce"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -128,7 +140,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "libloading",
- "plugin_api",
+ "plugin_core",
  "serde",
  "serde_json",
  "tokio",
@@ -425,18 +437,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
-name = "plugin_api"
+name = "plugin_core"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "libc",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
 name = "plugin_wifi"
 version = "0.1.0"
 dependencies = [
- "plugin_api",
+ "async-trait",
+ "axum",
+ "plugin_core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower 0.4.13",
 ]
 
 [[package]]
@@ -626,6 +646,17 @@ dependencies = [
  "futures-sink",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "tower"
+version = "0.4.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8fa9be0de6cf49e536ce1851f987bd21a43b771b09473c3549a6c853db37c1c"
+dependencies = [
+ "tower-layer",
+ "tower-service",
+ "tracing",
 ]
 
 [[package]]

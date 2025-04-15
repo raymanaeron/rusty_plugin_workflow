@@ -1,13 +1,59 @@
 // plugins/plugin_wifi/src/lib.rs
 
-use plugin_api::{PluginApi, PluginContext, NetworkInfo};
+use plugin_core::{Plugin, PluginContext, NetworkInfo};
 use std::ffi::CString;
+use std::ffi::CStr;
 use std::os::raw::c_char;
+use std::sync::Mutex;
+use axum::{Router, routing::get, Json};
 
+// This is the plugin's static content folder
+static ROUTER: Mutex<Option<Box<Router>>> = Mutex::new(None);
+
+/// We need this structure to serialize the data on axum route handler
+#[derive(serde::Serialize)]
+struct NetworkInfoJson {
+    ssid: String,
+    bssid: String,
+    signal: i32,
+    channel: i32,
+    security: String,
+    frequency: f32,
+}
+
+// This is for the NetworkInfo struct
+fn to_json(net: &NetworkInfo) -> NetworkInfoJson {
+    NetworkInfoJson {
+        ssid: unsafe { CStr::from_ptr(net.ssid).to_string_lossy().into_owned() },
+        bssid: unsafe { CStr::from_ptr(net.bssid).to_string_lossy().into_owned() },
+        signal: net.signal,
+        channel: net.channel,
+        security: unsafe { CStr::from_ptr(net.security).to_string_lossy().into_owned() },
+        frequency: net.frequency,
+    }
+}
+
+// This is the route handler for the /scan endpoint
+async fn scan_handler() -> Json<Vec<NetworkInfoJson>> {
+    unsafe {
+        let mut count: usize = 0;
+        let result_ptr = scan(&mut count as *mut usize);
+        if result_ptr.is_null() || count == 0 {
+            return Json(vec![]);
+        }
+
+        let results: &[NetworkInfo] = std::slice::from_raw_parts(result_ptr, count);
+        let json_results = results.iter().map(to_json).collect();
+        Json(json_results)
+    }
+}
+
+// This function returns the name of the plugin
 extern "C" fn name() -> *const c_char {
     CString::new("WiFi Plugin").unwrap().into_raw()
 }
 
+// This function is called when the plugin is loaded
 extern "C" fn run(ctx: *const PluginContext) {
     if ctx.is_null() {
         eprintln!("PluginContext is null");
@@ -18,6 +64,23 @@ extern "C" fn run(ctx: *const PluginContext) {
         let config_cstr = std::ffi::CStr::from_ptr((*ctx).config);
         println!("WiFi Plugin running with config: {}", config_cstr.to_string_lossy());
     }
+}
+
+// This function creates the API route for the plugin
+extern "C" fn get_api_route() -> *mut Router {
+    let router = Router::new().route("/scan", get(scan_handler));
+    let boxed = Box::new(router);
+
+    // Lock the mutex to safely access the static
+    let mut router_lock = ROUTER.lock().unwrap();
+    *router_lock = Some(boxed);
+
+    router_lock.as_mut().unwrap().as_mut() as *mut Router
+}
+
+// This function returns the static content folder path
+extern "C" fn get_static_content_route() -> *const c_char {
+    CString::new("plugins/plugin_wifi/web").unwrap().into_raw()
 }
 
 #[no_mangle]
@@ -124,11 +187,12 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     Box::into_raw(boxed) as *mut NetworkInfo
 }
 
-
 #[no_mangle]
-pub extern "C" fn create_plugin() -> *const PluginApi {
-    &PluginApi {
+pub extern "C" fn create_plugin() -> *const Plugin {
+    &Plugin {
         name,
         run,
+        get_api_route,
+        get_static_content_route
     }
 }

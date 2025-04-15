@@ -1,16 +1,16 @@
 use std::sync::Arc;
 use libloading::{Library, Symbol};
-use plugin_api::PluginApi;
+use plugin_core::Plugin;
 
 pub struct LoadedPlugin {
     pub _lib: Library,
-    pub api: Arc<PluginApi>,
+    pub api: Arc<Plugin>,
 }
 
 pub fn load_plugin(path: &str) -> Result<LoadedPlugin, String> {
     unsafe {
         let lib = Library::new(path).map_err(|e| format!("Failed to load plugin: {}", e))?;
-        let constructor: Symbol<unsafe extern "C" fn() -> *const PluginApi> =
+        let constructor: Symbol<unsafe extern "C" fn() -> *const Plugin> =
             lib.get(b"create_plugin").map_err(|e| format!("Symbol error: {}", e))?;
 
         let raw = constructor();
