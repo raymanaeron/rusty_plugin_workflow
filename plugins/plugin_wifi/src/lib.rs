@@ -1,38 +1,20 @@
 // plugins/plugin_wifi/src/lib.rs
-
-use plugin_core::{Plugin, PluginContext, NetworkInfo};
+mod network_info;
+use network_info::{NetworkInfo, to_json};
+use plugin_core::{Plugin, PluginContext};
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::Mutex;
-use axum::{Router, routing::get, Json};
+// use axum::{Router, Json};
+use plugin_core::{ApiRequest, ApiHeader, ApiResponse, HttpMethod, Resource};
+use std::ptr;
+// use std::marker::PhantomData;
 
 // This is the plugin's static content folder
-static ROUTER: Mutex<Option<Box<Router>>> = Mutex::new(None);
+// static ROUTER: Mutex<Option<Box<Router>>> = Mutex::new(None);
 
-/// We need this structure to serialize the data on axum route handler
-#[derive(serde::Serialize)]
-struct NetworkInfoJson {
-    ssid: String,
-    bssid: String,
-    signal: i32,
-    channel: i32,
-    security: String,
-    frequency: f32,
-}
-
-// This is for the NetworkInfo struct
-fn to_json(net: &NetworkInfo) -> NetworkInfoJson {
-    NetworkInfoJson {
-        ssid: unsafe { CStr::from_ptr(net.ssid).to_string_lossy().into_owned() },
-        bssid: unsafe { CStr::from_ptr(net.bssid).to_string_lossy().into_owned() },
-        signal: net.signal,
-        channel: net.channel,
-        security: unsafe { CStr::from_ptr(net.security).to_string_lossy().into_owned() },
-        frequency: net.frequency,
-    }
-}
-
+/*
 // This is the route handler for the /scan endpoint
 async fn scan_handler() -> Json<Vec<NetworkInfoJson>> {
     unsafe {
@@ -47,10 +29,11 @@ async fn scan_handler() -> Json<Vec<NetworkInfoJson>> {
         Json(json_results)
     }
 }
+*/
 
 // This function returns the name of the plugin
 extern "C" fn name() -> *const c_char {
-    CString::new("WiFi Plugin").unwrap().into_raw()
+    CString::new("wifi").unwrap().into_raw()
 }
 
 // This function is called when the plugin is loaded
@@ -66,6 +49,7 @@ extern "C" fn run(ctx: *const PluginContext) {
     }
 }
 
+/*
 // This function creates the API route for the plugin
 extern "C" fn get_api_route() -> *mut Router {
     let router = Router::new().route("/scan", get(scan_handler));
@@ -77,9 +61,10 @@ extern "C" fn get_api_route() -> *mut Router {
 
     router_lock.as_mut().unwrap().as_mut() as *mut Router
 }
+*/
 
 // This function returns the static content folder path
-extern "C" fn get_static_content_route() -> *const c_char {
+extern "C" fn get_static_content_path() -> *const c_char {
     CString::new("plugins/plugin_wifi/web").unwrap().into_raw()
 }
 
@@ -187,12 +172,192 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     Box::into_raw(boxed) as *mut NetworkInfo
 }
 
+extern "C" fn method_not_allowed(method: HttpMethod, resource: *const c_char) -> *const c_char {
+    let method_str = match method {
+        HttpMethod::Get => "GET",
+        HttpMethod::Post => "POST",
+        HttpMethod::Put => "PUT",
+        HttpMethod::Delete => "DELETE",
+    };
+
+    let res_str = unsafe {
+        if resource.is_null() {
+            "<unknown>"
+        } else {
+            std::ffi::CStr::from_ptr(resource).to_str().unwrap_or("<invalid>")
+        }
+    };
+
+    let msg = format!("Method {} not allowed on {}", method_str, res_str);
+    CString::new(msg).unwrap().into_raw()
+}
+
+#[no_mangle]
+pub extern "C" fn get_api_resources(count: *mut usize) -> *const Resource {
+    // Static backing for the "network" path
+    // static mut NETWORK_PATH: Option<CString> = None;
+    static NETWORK_PATH: Mutex<Option<CString>> = Mutex::new(None);
+
+    // Static array holding the single supported method
+    static SUPPORTED_METHODS: [HttpMethod; 1] = [HttpMethod::Get];
+
+    // Static boxed array of one Resource
+    // tatic mut RESOURCE_LIST: Option<Box<[Resource]>> = None;
+    static RESOURCE_LIST: Mutex<Option<Box<[Resource]>>> = Mutex::new(None);
+
+    let mut network_path_lock = NETWORK_PATH.lock().unwrap();
+    let mut resource_list_lock = RESOURCE_LIST.lock().unwrap();
+
+    *network_path_lock = Some(CString::new("network").unwrap());
+
+    *resource_list_lock = Some(Box::new([Resource::new(
+        network_path_lock.as_ref().unwrap().as_ptr(),
+        SUPPORTED_METHODS.as_ptr(),
+    )]));
+
+    if !count.is_null() {
+        unsafe {
+            *count = resource_list_lock.as_ref().unwrap().len();
+        }
+    }
+
+    resource_list_lock.as_ref().unwrap().as_ptr()
+}
+
+#[no_mangle]
+pub extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
+    if req.is_null() {
+        return ptr::null_mut();
+    }
+
+    unsafe {
+        let request = &*req;
+        let path = if request.path.is_null() {
+            "<null>"
+        } else {
+            CStr::from_ptr(request.path).to_str().unwrap_or("<invalid>")
+        };
+
+        match request.method {
+            HttpMethod::Get => {
+                if path == "network" {
+                    // Call scan() directly
+                    let mut count: usize = 0;
+                    let result_ptr = scan(&mut count as *mut usize);
+
+                    let response_json = if result_ptr.is_null() || count == 0 {
+                        "[]".to_string()
+                    } else {
+                        let results = std::slice::from_raw_parts(result_ptr, count);
+                        let json_objects: Vec<_> = results.iter().map(to_json).collect();
+                        serde_json::to_string(&json_objects).unwrap_or("[]".to_string())
+                    };
+
+                    let body_bytes = response_json.into_bytes();
+                    let len = body_bytes.len();
+                    let ptr = Box::into_raw(body_bytes.into_boxed_slice()) as *const u8;
+
+                    let content_type = CString::new("application/json").unwrap().into_raw();
+
+                    let response = Box::new(ApiResponse {
+                        headers: ptr::null(),
+                        header_count: 0,
+                        content_type,
+                        status: 200,
+                        body_ptr: ptr,
+                        body_len: len,
+                    });
+
+                    return Box::into_raw(response);
+                }
+            }
+
+            HttpMethod::Post | HttpMethod::Put | HttpMethod::Delete => {
+                let err_ptr = method_not_allowed(request.method, request.path);
+
+                let body = CStr::from_ptr(err_ptr).to_bytes().to_vec();
+                let len = body.len();
+                let ptr = Box::into_raw(body.into_boxed_slice()) as *const u8;
+
+                let content_type = CString::new("text/plain").unwrap().into_raw();
+
+                let response = Box::new(ApiResponse {
+                    headers: ptr::null(),
+                    header_count: 0,
+                    content_type,
+                    status: 405,
+                    body_ptr: ptr,
+                    body_len: len,
+                });
+
+                return Box::into_raw(response);
+            }
+        }
+
+        // No matching path
+        let msg = CString::new("Not Found").unwrap();
+        let body = msg.as_bytes().to_vec();
+        let len = body.len();
+        let ptr = Box::into_raw(body.into_boxed_slice()) as *const u8;
+        let content_type = CString::new("text/plain").unwrap().into_raw();
+
+        let response = Box::new(ApiResponse {
+            headers: ptr::null(),
+            header_count: 0,
+            content_type,
+            status: 404,
+            body_ptr: ptr,
+            body_len: len,
+        });
+
+        Box::into_raw(response)
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn cleanup(response: *mut ApiResponse) {
+    if response.is_null() {
+        return;
+    }
+
+    unsafe {
+        let resp = Box::from_raw(response);
+
+        // Free body_ptr (Box<[u8]>)
+        if !resp.body_ptr.is_null() && resp.body_len > 0 {
+            let body_slice = std::slice::from_raw_parts_mut(resp.body_ptr as *mut u8, resp.body_len);
+            let _ = Box::from_raw(body_slice as *mut [u8]);
+        }
+
+        // Free content_type CString
+        if !resp.content_type.is_null() {
+            let _ = CString::from_raw(resp.content_type as *mut c_char);
+        }
+
+        // Free headers if present (future-proofing)
+        if !resp.headers.is_null() && resp.header_count > 0 {
+            let headers_slice = std::slice::from_raw_parts_mut(resp.headers as *mut ApiHeader, resp.header_count);
+            for header in &mut *headers_slice {
+                if !header.key.is_null() {
+                    let _ = CString::from_raw(header.key as *mut c_char);
+                }
+                if !header.value.is_null() {
+                    let _ = CString::from_raw(header.value as *mut c_char);
+                }
+            }
+            let _ = Box::from_raw(headers_slice as *mut [ApiHeader]);
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn create_plugin() -> *const Plugin {
     &Plugin {
         name,
         run,
-        get_api_route,
-        get_static_content_route
+        get_static_content_path,
+        get_api_resources,
+        handle_request,
+        cleanup,
     }
 }

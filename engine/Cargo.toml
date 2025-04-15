@@ -4,10 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.7", features = ["http1", "tokio"] }
-tokio = { version = "1.36", features = ["full"] }
-tower-http = { version = "0.5", features = ["fs"] }
 libloading = "0.8"
+tokio = { version = "1.37", features = ["full"] }
+axum = { version = "0.7.9" }
+tower = { version = "0.4", features = ["make"] }
+tower-http = { version = "0.5", features = ["fs"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 plugin_core = { path = "../plugin_core" }
+engine_core = { path = "../engine_core" }

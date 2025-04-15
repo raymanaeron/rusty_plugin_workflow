@@ -1,0 +1,10 @@
+[package]
+name = "engine_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libloading = "0.8"
+axum = { version = "0.7", features = ["http1", "tokio"] }
+plugin_core = { path = "../plugin_core" }
+http = "1"

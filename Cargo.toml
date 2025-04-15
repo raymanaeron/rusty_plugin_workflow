@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "engine",
+    "engine", "engine_core",
     "plugin_core",
     "plugins/plugin_wifi"
 ]
@@ -15,3 +15,4 @@ serde_json = "1"
 tower = "0.4"
 async-trait = "0.1"
 plugin_core = { path = "../plugin_core" }
+engine_core = { path = "../engine_core"}
