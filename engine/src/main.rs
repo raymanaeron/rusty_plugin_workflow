@@ -31,7 +31,10 @@ async fn main() {
     // Mount each plugin's routes
     for plugin in registry.all() {
         let api_path = format!("/{}/api/*path", plugin.name);
+        println!("Api Path : {}", api_path);
+        
         let web_path = format!("/{}/web", plugin.name);
+        println!("Web Path : {}", web_path);
 
         app = app
             .route(&api_path, any(dispatch_plugin_api))
