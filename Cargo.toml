@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "engine", "engine_core",
-    "plugin_core",
+    "plugin_core", "plugins/plugin_terms",
     "plugins/plugin_wifi"
 ]
 resolver = "2"

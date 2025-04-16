@@ -19,6 +19,7 @@ echo Copying root web folder to engine output directory...
 xcopy /E /I /Y webapp target\debug\webapp
 
 echo Copying plugins web folder to engine output directory...
+xcopy /E /I /Y plugins\plugin_terms\web target\debug\terms\web
 xcopy /E /I /Y plugins\plugin_wifi\web target\debug\wifi\web
 
 if errorlevel 1 (

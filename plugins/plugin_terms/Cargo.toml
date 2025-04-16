@@ -1,0 +1,16 @@
+[package]
+name = "plugin_terms"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+plugin_core = { path = "../../plugin_core" }
+axum = { version = "0.7", features = ["macros", "http1", "tokio"] }
+tokio = { version = "1.36", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tower = "0.4"
+async-trait = "0.1"
+
+[lib]
+crate-type = ["cdylib"]

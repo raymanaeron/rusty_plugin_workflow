@@ -158,27 +158,6 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     Box::into_raw(boxed) as *mut NetworkInfo
 }
 
-/*
-extern "C" fn method_not_allowed(method: HttpMethod, resource: *const c_char) -> *const c_char {
-    let method_str = match method {
-        HttpMethod::Get => "GET",
-        HttpMethod::Post => "POST",
-        HttpMethod::Put => "PUT",
-        HttpMethod::Delete => "DELETE",
-    };
-
-    let res_str = unsafe {
-        if resource.is_null() {
-            "<unknown>"
-        } else {
-            std::ffi::CStr::from_ptr(resource).to_str().unwrap_or("<invalid>")
-        }
-    };
-
-    let msg = format!("Method {} not allowed on {}", method_str, res_str);
-    CString::new(msg).unwrap().into_raw()
-}*/
-
 #[no_mangle]
 pub extern "C" fn get_api_resources(count: *mut usize) -> *const Resource {
     // Static backing for the "network" path
