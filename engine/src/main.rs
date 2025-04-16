@@ -45,7 +45,7 @@ async fn main() {
     }
 
     // Optional fallback
-    app = app.fallback_service(ServeDir::new("web"));
+    app = app.fallback_service(ServeDir::new("webapp"));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("Listening at http://{}", addr);

@@ -1,0 +1,78 @@
+/* webapp/styles.css */
+
+/* Make the entire shell look polished and centered */
+body {
+    font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+    background-color: #f8f9fa;
+  }
+  
+  /* Title bar (top) */
+  .container-fluid.bg-white.border-bottom {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  /* Footer bar (bottom) */
+  .container-fluid.border-top.bg-white {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+  
+  /* Main content area */
+  #content {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
+    padding: 2rem;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* Buttons */
+  button {
+    min-width: 100px;
+  }
+  
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  /* Responsive tweaks */
+  @media (max-width: 576px) {
+    #content {
+      padding: 1rem;
+    }
+  
+    h4 {
+      font-size: 1.25rem;
+    }
+  
+    button {
+      width: 100%;
+      margin-bottom: 0.5rem;
+    }
+  }
+  
+  /* Plugin-specific content styling (optional common layout helpers) */
+  .plugin-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .plugin-title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+  }
+  
+  .plugin-label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+  
+  .plugin-input {
+    margin-bottom: 1rem;
+  }
+  

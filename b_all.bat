@@ -16,10 +16,10 @@ if errorlevel 1 (
 )
 
 echo Copying root web folder to engine output directory...
-xcopy /E /I /Y web target\debug\web
+xcopy /E /I /Y webapp target\debug\webapp
 
-echo Copying web folder to engine output directory...
-xcopy /E /I /Y plugins\plugin_wifi\web target\debug\web
+echo Copying webapp folder to engine output directory...
+xcopy /E /I /Y plugins\plugin_wifi\web target\debug\wifi\web
 
 if errorlevel 1 (
     echo Failed to copy web folder.
