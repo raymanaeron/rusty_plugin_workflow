@@ -9,8 +9,8 @@ use std::ffi::CString;
 
 use axum::{
     routing::get,
-    http::{StatusCode, HeaderValue},
-    response::{IntoResponse, Response},
+    http::StatusCode,
+    response::Response,
     body::Body,
 };
 use std::fs;
