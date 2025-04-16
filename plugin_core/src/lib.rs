@@ -1,19 +1,21 @@
 pub mod api_request;
 pub mod api_response;
 pub mod api_header;
-pub mod error_response;
-pub mod success_response;
 pub mod http_method;
 pub mod plugin_context;
 pub mod plugin;
 pub mod resource;
+pub mod helper_functions;
 
 pub use api_request::ApiRequest;
 pub use api_response::ApiResponse;
 pub use api_header::ApiHeader;
-pub use error_response::error_response;
-pub use success_response::success_response;
 pub use http_method::HttpMethod;
 pub use plugin_context::PluginContext;
 pub use plugin::Plugin;
 pub use resource::Resource;
+
+pub use helper_functions::error_response;
+pub use helper_functions::success_response;
+pub use helper_functions::method_not_allowed;
+pub use helper_functions::cleanup_response;

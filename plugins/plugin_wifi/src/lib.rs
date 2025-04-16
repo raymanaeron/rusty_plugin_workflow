@@ -5,8 +5,8 @@ use std::ffi::CString;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::Mutex;
-use plugin_core::{ApiRequest, ApiHeader, ApiResponse, HttpMethod, Resource, Plugin, PluginContext};
-
+use plugin_core::{ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginContext};
+use plugin_core::{method_not_allowed, cleanup_response};
 use std::ptr;
 
 // This function returns the name of the plugin
@@ -158,6 +158,7 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     Box::into_raw(boxed) as *mut NetworkInfo
 }
 
+/*
 extern "C" fn method_not_allowed(method: HttpMethod, resource: *const c_char) -> *const c_char {
     let method_str = match method {
         HttpMethod::Get => "GET",
@@ -176,7 +177,7 @@ extern "C" fn method_not_allowed(method: HttpMethod, resource: *const c_char) ->
 
     let msg = format!("Method {} not allowed on {}", method_str, res_str);
     CString::new(msg).unwrap().into_raw()
-}
+}*/
 
 #[no_mangle]
 pub extern "C" fn get_api_resources(count: *mut usize) -> *const Resource {
@@ -324,39 +325,8 @@ pub extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 }
 
 #[no_mangle]
-pub extern "C" fn cleanup(response: *mut ApiResponse) {
-    if response.is_null() {
-        return;
-    }
-
-    unsafe {
-        let resp = Box::from_raw(response);
-
-        // Free body_ptr (Box<[u8]>)
-        if !resp.body_ptr.is_null() && resp.body_len > 0 {
-            let body_slice = std::slice::from_raw_parts_mut(resp.body_ptr as *mut u8, resp.body_len);
-            let _ = Box::from_raw(body_slice as *mut [u8]);
-        }
-
-        // Free content_type CString
-        if !resp.content_type.is_null() {
-            let _ = CString::from_raw(resp.content_type as *mut c_char);
-        }
-
-        // Free headers if present (future-proofing)
-        if !resp.headers.is_null() && resp.header_count > 0 {
-            let headers_slice = std::slice::from_raw_parts_mut(resp.headers as *mut ApiHeader, resp.header_count);
-            for header in &mut *headers_slice {
-                if !header.key.is_null() {
-                    let _ = CString::from_raw(header.key as *mut c_char);
-                }
-                if !header.value.is_null() {
-                    let _ = CString::from_raw(header.value as *mut c_char);
-                }
-            }
-            let _ = Box::from_raw(headers_slice as *mut [ApiHeader]);
-        }
-    }
+pub extern "C" fn cleanup(resp: *mut ApiResponse) {
+    cleanup_response(resp);
 }
 
 #[no_mangle]
