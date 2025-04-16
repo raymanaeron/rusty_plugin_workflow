@@ -1,12 +1,12 @@
 // plugins/plugin_wifi/src/lib.rs
 mod network_info;
 use network_info::{NetworkInfo, to_json};
-use plugin_core::{Plugin, PluginContext};
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::Mutex;
-use plugin_core::{ApiRequest, ApiHeader, ApiResponse, HttpMethod, Resource};
+use plugin_core::{ApiRequest, ApiHeader, ApiResponse, HttpMethod, Resource, Plugin, PluginContext};
+
 use std::ptr;
 
 // This function returns the name of the plugin
@@ -25,6 +25,28 @@ extern "C" fn run(ctx: *const PluginContext) {
         let config_cstr = std::ffi::CStr::from_ptr((*ctx).config);
         println!("WiFi Plugin running with config: {}", config_cstr.to_string_lossy());
     }
+}
+
+fn connect_to_network(ssid: &str, password: &str) -> *mut ApiResponse {
+    println!("Connecting to SSID: {}, Password: {}", ssid, password);
+
+    let message = format!(r#"{{ "message": "Connected to {}" }}"#, ssid);
+    let body = message.into_bytes();
+    let body_len = body.len();
+    let body_ptr = Box::into_raw(body.into_boxed_slice()) as *const u8;
+
+    let content_type = CString::new("application/json").unwrap();
+    
+    let response = Box::new(ApiResponse {
+        status: 200,
+        headers: ptr::null(),     // optional
+        header_count: 0,
+        body_ptr,
+        body_len,
+        content_type: content_type.into_raw(),
+    });
+
+    Box::into_raw(response)
 }
 
 // This function returns the static content folder path
@@ -238,7 +260,28 @@ pub extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                 }
             }
 
-            HttpMethod::Post | HttpMethod::Put | HttpMethod::Delete => {
+            // Handle POST requests
+            HttpMethod::Post => {
+                if path == "network" {
+                    let body_slice = 
+                        std::slice::from_raw_parts(request.body_ptr, request.body_len);
+                    
+                    let body_str = std::str::from_utf8(body_slice).unwrap_or("");
+                    let parsed: Result<serde_json::Value, _> = serde_json::from_str(body_str);
+        
+                    if let Ok(json) = parsed {
+                        let ssid = json.get("ssid").and_then(|v| v.as_str()).unwrap_or("");
+                        let password = json.get("password").and_then(|v| v.as_str()).unwrap_or("");
+        
+                        return connect_to_network(ssid, password);
+                    } else {
+                        return plugin_core::error_response(400, "Invalid JSON payload");
+                    }
+                }
+            }
+
+            // All other methods
+            _ => {
                 let err_ptr = method_not_allowed(request.method, request.path);
 
                 let body = CStr::from_ptr(err_ptr).to_bytes().to_vec();
