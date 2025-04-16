@@ -29,7 +29,7 @@ extern "C" fn run(ctx: *const PluginContext) {
 
 // This function returns the static content folder path
 extern "C" fn get_static_content_path() -> *const c_char {
-    CString::new("web").unwrap().into_raw()
+    CString::new("wifi/web").unwrap().into_raw()
 }
 
 #[no_mangle]
