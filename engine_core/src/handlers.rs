@@ -11,8 +11,8 @@ use std::ffi::{CString, CStr};
 use plugin_core::{ApiRequest, HttpMethod};
 
 pub async fn dispatch_plugin_api(
-    State(registry): State<Arc<PluginRegistry>>,
-    Path((plugin_name, resource_path)): Path<(String, String)>,
+    State((registry, plugin_name)): State<(Arc<PluginRegistry>, String)>,
+    Path(resource_path): Path<String>,
     method: Method,
     headers: HeaderMap,
     body: Bytes,

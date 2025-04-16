@@ -36,9 +36,12 @@ async fn main() {
         let web_path = format!("/{}/web", plugin.name);
         println!("Web Path : {}", web_path);
 
+        let plugin_state = (registry.clone(), plugin.name.clone());
+
         app = app
-            .route(&api_path, any(dispatch_plugin_api))
+            .route(&api_path, any(dispatch_plugin_api).with_state(plugin_state))
             .nest_service(&web_path, ServeDir::new(&plugin.static_path));
+
     }
 
     // Optional fallback
@@ -49,7 +52,8 @@ async fn main() {
 
     // Use make_service_with_connect_info to bind the stateful router to axum::serve
     let listener = TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app.with_state(registry).into_make_service_with_connect_info::<SocketAddr>())
-        .await
-        .unwrap();
+
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+    .await
+    .unwrap();
 }

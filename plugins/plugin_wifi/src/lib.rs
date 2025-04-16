@@ -6,30 +6,8 @@ use std::ffi::CString;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::Mutex;
-// use axum::{Router, Json};
 use plugin_core::{ApiRequest, ApiHeader, ApiResponse, HttpMethod, Resource};
 use std::ptr;
-// use std::marker::PhantomData;
-
-// This is the plugin's static content folder
-// static ROUTER: Mutex<Option<Box<Router>>> = Mutex::new(None);
-
-/*
-// This is the route handler for the /scan endpoint
-async fn scan_handler() -> Json<Vec<NetworkInfoJson>> {
-    unsafe {
-        let mut count: usize = 0;
-        let result_ptr = scan(&mut count as *mut usize);
-        if result_ptr.is_null() || count == 0 {
-            return Json(vec![]);
-        }
-
-        let results: &[NetworkInfo] = std::slice::from_raw_parts(result_ptr, count);
-        let json_results = results.iter().map(to_json).collect();
-        Json(json_results)
-    }
-}
-*/
 
 // This function returns the name of the plugin
 extern "C" fn name() -> *const c_char {
@@ -49,23 +27,9 @@ extern "C" fn run(ctx: *const PluginContext) {
     }
 }
 
-/*
-// This function creates the API route for the plugin
-extern "C" fn get_api_route() -> *mut Router {
-    let router = Router::new().route("/scan", get(scan_handler));
-    let boxed = Box::new(router);
-
-    // Lock the mutex to safely access the static
-    let mut router_lock = ROUTER.lock().unwrap();
-    *router_lock = Some(boxed);
-
-    router_lock.as_mut().unwrap().as_mut() as *mut Router
-}
-*/
-
 // This function returns the static content folder path
 extern "C" fn get_static_content_path() -> *const c_char {
-    CString::new("plugins/plugin_wifi/web").unwrap().into_raw()
+    CString::new("web").unwrap().into_raw()
 }
 
 #[no_mangle]
