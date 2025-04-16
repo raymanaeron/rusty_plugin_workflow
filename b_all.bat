@@ -43,10 +43,21 @@ xcopy /E /I /Y webapp %TARGET%\webapp
 
 echo Copying plugins web folder to engine output directory...
 xcopy /E /I /Y plugins\plugin_terms\web %TARGET%\terms\web
-xcopy /E /I /Y plugins\plugin_wifi\web %TARGET%\wifi\web
-
 if errorlevel 1 (
-    echo Failed to copy web folders.
+    echo Failed to copy plugin_terms web folder.
+    exit /b 1
+)
+
+xcopy /E /I /Y plugins\plugin_wifi\web %TARGET%\wifi\web
+if errorlevel 1 (
+    echo Failed to copy plugin_wifi web folder.
+    exit /b 1
+)
+
+echo Copying the logger_config.json file to the engine output directory...
+copy app_config.toml %TARGET%\app_config.toml
+if errorlevel 1 (
+    echo Failed to copy app_config.toml.
     exit /b 1
 )
 
