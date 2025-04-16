@@ -163,7 +163,9 @@ pub extern "C" fn get_api_resources(count: *mut usize) -> *const Resource {
     static NETWORK_PATH: Mutex<Option<CString>> = Mutex::new(None);
 
     // Static array holding the single supported method
-    static SUPPORTED_METHODS: [HttpMethod; 1] = [HttpMethod::Get];
+    // static SUPPORTED_METHODS: [HttpMethod; 1] = [HttpMethod::Get];
+    // Support both GET and POST now
+    static SUPPORTED_METHODS: [HttpMethod; 2] = [HttpMethod::Get, HttpMethod::Post];
 
     // Static boxed array of one Resource
     // tatic mut RESOURCE_LIST: Option<Box<[Resource]>> = None;

@@ -2,6 +2,11 @@
 import { routeTo } from './router.js';
 
 document.addEventListener("DOMContentLoaded", () => {
+  // redirect block before initial route load
+  if (location.pathname === "/" || location.pathname === "/index.html") {
+    history.replaceState({}, "", "/wifi/web");
+  }
+
   // Handle forward/back nav
   window.addEventListener("popstate", () => {
     routeTo(location.pathname);

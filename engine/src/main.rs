@@ -7,6 +7,29 @@ use tower_http::services::ServeDir;
 use plugin_core::PluginContext;
 use std::ffi::CString;
 
+use axum::{
+    routing::get,
+    http::{StatusCode, HeaderValue},
+    response::{IntoResponse, Response},
+    body::Body,
+};
+use std::fs;
+
+
+async fn fallback_handler() -> Response {
+    match fs::read_to_string("webapp/index.html") {
+        Ok(contents) => Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "text/html")
+            .body(Body::from(contents))
+            .unwrap(),
+        Err(_) => Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(Body::from("Failed to load fallback page"))
+            .unwrap(),
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let registry = Arc::new(PluginRegistry::new());
@@ -44,9 +67,12 @@ async fn main() {
 
     }
 
-    // Optional fallback
-    app = app.fallback_service(ServeDir::new("webapp"));
+    // Mount static shell assets from /webapp (for /app.js, /styles.css, etc.)
+    app = app.nest_service("/", ServeDir::new("webapp"));
 
+    // Fallback: for any unknown route like /wifi/web, return index.html
+    app = app.fallback(get(fallback_handler));
+    
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("Listening at http://{}", addr);
 
