@@ -159,38 +159,34 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
 }
 
 #[no_mangle]
-pub extern "C" fn get_api_resources(count: *mut usize) -> *const Resource {
-    // Static backing for the "network" path
-    // static mut NETWORK_PATH: Option<CString> = None;
-    static NETWORK_PATH: Mutex<Option<CString>> = Mutex::new(None);
+pub extern "C" fn get_api_resources() -> &'static [Resource] {
+    use std::sync::Once;
 
-    // Static array holding the single supported method
-    // static SUPPORTED_METHODS: [HttpMethod; 1] = [HttpMethod::Get];
-    // Support both GET and POST now
-    static SUPPORTED_METHODS: [HttpMethod; 2] = [HttpMethod::Get, HttpMethod::Post];
+    static INIT: Once = Once::new();
+    static mut RESOURCES: Option<&'static [Resource]> = None;
 
-    // Static boxed array of one Resource
-    // tatic mut RESOURCE_LIST: Option<Box<[Resource]>> = None;
-    static RESOURCE_LIST: Mutex<Option<Box<[Resource]>>> = Mutex::new(None);
+    INIT.call_once(|| {
+        // Leak the CString so it lives forever
+        let path = CString::new("network").unwrap();
+        let path_ptr = Box::leak(path.into_boxed_c_str()).as_ptr();
 
-    let mut network_path_lock = NETWORK_PATH.lock().unwrap();
-    let mut resource_list_lock = RESOURCE_LIST.lock().unwrap();
+        // Use static so methods also live forever
+        static METHODS: [HttpMethod; 2] = [HttpMethod::Get, HttpMethod::Post];
+        let methods_ptr = METHODS.as_ptr();
 
-    *network_path_lock = Some(CString::new("network").unwrap());
+        let resources = vec![
+            Resource::new(path_ptr, methods_ptr),
+        ];
 
-    *resource_list_lock = Some(Box::new([Resource::new(
-        network_path_lock.as_ref().unwrap().as_ptr(),
-        SUPPORTED_METHODS.as_ptr(),
-    )]));
-
-    if !count.is_null() {
+        // Leak boxed vec into static slice
         unsafe {
-            *count = resource_list_lock.as_ref().unwrap().len();
+            RESOURCES = Some(Box::leak(resources.into_boxed_slice()));
         }
-    }
+    });
 
-    resource_list_lock.as_ref().unwrap().as_ptr()
+    unsafe { RESOURCES.unwrap() }
 }
+
 
 #[no_mangle]
 pub extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {

@@ -38,6 +38,7 @@ extern "C" fn get_static_content_path() -> *const c_char {
     CString::new("terms/web").unwrap().into_raw()
 }
 
+/*
 #[no_mangle]
 pub extern "C" fn get_api_resources(count: *mut usize) -> *const Resource {
     static PATH: Mutex<Option<CString>> = Mutex::new(None);
@@ -61,6 +62,33 @@ pub extern "C" fn get_api_resources(count: *mut usize) -> *const Resource {
     }
 
     list_lock.as_ref().unwrap().as_ptr()
+}*/
+
+#[no_mangle]
+pub extern "C" fn get_api_resources() -> &'static [Resource] {
+    static INIT: std::sync::Once = std::sync::Once::new();
+    static mut RESOURCES: Option<&'static [Resource]> = None;
+
+    INIT.call_once(|| {
+        // Leak the CString to get a static C pointer
+        let path = CString::new("userterms").unwrap();
+        let path_ptr = Box::leak(path.into_boxed_c_str()).as_ptr();
+
+        // Leak the method array to get a static pointer
+        static METHODS: [HttpMethod; 2] = [HttpMethod::Get, HttpMethod::Post];
+        let methods_ptr = METHODS.as_ptr();
+
+        let resources = vec![
+            Resource::new(path_ptr, methods_ptr),
+        ];
+
+        // Leak the Vec into a static slice
+        unsafe {
+            RESOURCES = Some(Box::leak(resources.into_boxed_slice()));
+        }
+    });
+
+    unsafe { RESOURCES.unwrap() }
 }
 
 #[no_mangle]

@@ -46,17 +46,13 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         let static_path = path_cstr.to_string_lossy().into_owned();
 
         // Call plugin.get_api_resources() and copy to static slice
-        let mut count: usize = 0;
-        let resource_ptr = (plugin.get_api_resources)(&mut count as *mut usize);
-        if resource_ptr.is_null() || count == 0 {
+        let resource_slice = (plugin.get_api_resources)();
+        if resource_slice.is_empty() {
             return Err(format!("Plugin {} returned no resources", name));
         }
-
-        let resource_slice = std::slice::from_raw_parts(resource_ptr, count);
-
-        // Copy resources into a static buffer
-        let copied_resources: Box<[Resource]> = resource_slice.into();
-        STATIC_RESOURCES = Some(Box::leak(copied_resources)); // Store in static variable
+        
+        STATIC_RESOURCES = Some(resource_slice);
+        
 
         // Construct and return the PluginBinding
         let binding = PluginBinding {

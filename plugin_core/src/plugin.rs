@@ -33,7 +33,8 @@ pub struct Plugin {
     ///
     /// # Returns
     /// - Pointer to an array of `Resource` items. Must remain valid during plugin lifetime.
-    pub get_api_resources: extern "C" fn(count: *mut usize) -> *const Resource,
+    //pub get_api_resources: extern "C" fn(count: *mut usize) -> *const Resource,
+    pub get_api_resources: extern "C" fn() -> &'static [Resource],
 
     /// Handles an HTTP-style request dispatched to this plugin.
     /// The engine constructs an `ApiRequest` and passes it to the plugin.
