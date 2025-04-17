@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use std::ptr;
 use plugin_core::{ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginContext};
 use plugin_core::{method_not_allowed, cleanup_response, error_response};
-use logger::{LoggerLoader, LogLevel};
+// use logger::{LoggerLoader, LogLevel};
 
 #[ctor::ctor]
 fn on_load() {
@@ -15,12 +15,12 @@ fn on_load() {
 fn process_user_term_acceptance(accepted: bool) {
     if accepted {
         println!("[plugin_terms] user accepted the terms");
-        let logger = LoggerLoader::get_logger();
-        logger.log(LogLevel::Info, "user accepted the terms");
+        //let logger = LoggerLoader::get_logger();
+        //logger.log(LogLevel::Info, "user accepted the terms");
     } else {
         println!("[plugin_terms] user declined the terms");
-        let logger = LoggerLoader::get_logger();
-        logger.log(LogLevel::Warn, "user declined the terms");
+        //let logger = LoggerLoader::get_logger();
+        //logger.log(LogLevel::Warn, "user declined the terms");
     }
 }
 
@@ -45,32 +45,6 @@ extern "C" fn run(ctx: *const PluginContext) {
 extern "C" fn get_static_content_path() -> *const c_char {
     CString::new("terms/web").unwrap().into_raw()
 }
-
-/*
-#[no_mangle]
-pub extern "C" fn get_api_resources(count: *mut usize) -> *const Resource {
-    static PATH: Mutex<Option<CString>> = Mutex::new(None);
-    static METHODS: [HttpMethod; 2] = [HttpMethod::Get, HttpMethod::Post];
-    static RESOURCE_LIST: Mutex<Option<Box<[Resource]>>> = Mutex::new(None);
-
-    let mut path_lock = PATH.lock().unwrap();
-    let mut list_lock = RESOURCE_LIST.lock().unwrap();
-
-    *path_lock = Some(CString::new("userterms").unwrap());
-
-    *list_lock = Some(Box::new([Resource::new(
-        path_lock.as_ref().unwrap().as_ptr(),
-        METHODS.as_ptr(),
-    )]));
-
-    if !count.is_null() {
-        unsafe {
-            *count = list_lock.as_ref().unwrap().len();
-        }
-    }
-
-    list_lock.as_ref().unwrap().as_ptr()
-}*/
 
 #[no_mangle]
 pub extern "C" fn get_api_resources() -> &'static [Resource] {
