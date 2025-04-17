@@ -42,24 +42,35 @@ async fn main() {
     // Create a plugin registry
     let registry = Arc::new(PluginRegistry::new());
 
-    logger.log(LogLevel::Info, "Loading the wifi plugin");
-
-    // Load the plugin
-    let (plugin, _lib) = load_plugin("plugin_wifi.dll")
+    // Load the terms plugin
+    logger.log(LogLevel::Info, "Loading the terms plugin");
+    let (terms_plugin, _terms_lib) = load_plugin("plugin_terms.dll")
         .expect("Failed to load plugin");
 
-        logger.log(LogLevel::Info, "Running the wifi plugin with a parameter");
-    // Run plugin with a parameter
-    let config = CString::new("scan=true").unwrap();
-    let ctx = PluginContext {
-        config: config.as_ptr(),
+    logger.log(LogLevel::Info, "Running the terms plugin with a parameter");
+    let terms_config = CString::new("accepted=false").unwrap();
+    let terms_ctx = PluginContext {
+        config: terms_config.as_ptr(),
     };
-    (plugin.run)(&ctx);
+    (terms_plugin.run)(&terms_ctx);
+
+    logger.log(LogLevel::Info, "Registering terms plugin");
+    registry.register(terms_plugin);
+
+    // Load the wifi plugin
+    logger.log(LogLevel::Info, "Loading the wifi plugin");
+    let (wifi_plugin, _wifi_lib) = load_plugin("plugin_wifi.dll")
+        .expect("Failed to load plugin");
+
+    logger.log(LogLevel::Info, "Running the wifi plugin with a parameter");
+    let wifi_config = CString::new("scan=true").unwrap();
+    let wifi_ctx = PluginContext {
+        config: wifi_config.as_ptr(),
+    };
+    (wifi_plugin.run)(&wifi_ctx);
 
     logger.log(LogLevel::Info, "Registering wifi plugin");
-
-    // Register plugin
-    registry.register(plugin);
+    registry.register(wifi_plugin);
 
     // Build base router without state
     let mut app = Router::new();

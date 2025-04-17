@@ -1,4 +1,5 @@
-// terms/web/step-terms.js
+// plugins/plugin_terms/web/step-terms.js
+
 const next_route = "/wifi/web";
 
 export async function activate(container) {
@@ -7,14 +8,19 @@ export async function activate(container) {
   const declineBtn = container.querySelector("#declineBtn");
 
   try {
-    const res = await fetch("/terms/api/userterms");
+    const res = await fetch("/terms/api/userterms", {
+      headers: { "Accept": "application/json" }
+    });
     if (!res.ok) throw new Error("Failed to load terms.");
-    const text = await res.text();
-    termsDiv.textContent = text;
+
+    const json = await res.json();
+    termsDiv.textContent = json.terms || "No terms available.";
   } catch (err) {
     console.error("Error loading terms:", err);
     termsDiv.textContent = "Error loading terms.";
     acceptBtn.disabled = true;
+    declineBtn.disabled = true;
+    return;
   }
 
   acceptBtn.addEventListener("click", async () => {
@@ -25,7 +31,6 @@ export async function activate(container) {
         body: JSON.stringify({ accepted: true }),
       });
       if (!res.ok) throw new Error("Failed to accept terms.");
-
       history.pushState({}, "", next_route);
       window.dispatchEvent(new PopStateEvent("popstate"));
     } catch (err) {
@@ -34,7 +39,17 @@ export async function activate(container) {
     }
   });
 
-  declineBtn.addEventListener("click", () => {
-    alert("You must accept the terms to proceed.");
+  declineBtn.addEventListener("click", async () => {
+    try {
+      await fetch("/terms/api/userterms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accepted: false }),
+      });
+      alert("You must accept the terms to proceed.");
+    } catch (err) {
+      console.error("Error declining terms:", err);
+      alert("An error occurred while declining terms.");
+    }
   });
 }

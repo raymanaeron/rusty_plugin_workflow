@@ -4,7 +4,7 @@ import { routeTo } from './router.js';
 document.addEventListener("DOMContentLoaded", () => {
   // redirect block before initial route load
   if (location.pathname === "/" || location.pathname === "/index.html") {
-    history.replaceState({}, "", "/wifi/web");
+    history.replaceState({}, "", "/terms/web");
   }
 
   // Handle forward/back nav

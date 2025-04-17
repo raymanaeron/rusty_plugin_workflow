@@ -101,36 +101,46 @@ pub extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
             HttpMethod::Post => {
                 if path == "userterms" {
+                    // Safely read the raw request body into a UTF-8 string
                     let body_slice = std::slice::from_raw_parts(request.body_ptr, request.body_len);
                     let body_str = std::str::from_utf8(body_slice).unwrap_or("");
+            
+                    // Parse the incoming JSON body
                     let parsed: Result<serde_json::Value, _> = serde_json::from_str(body_str);
-
-                    if let Ok(json) = parsed {
-                        let accepted = json.get("accepted")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
-
-                        process_user_term_acceptance(accepted);
-
-                        let response_json = r#"{ "message": "Terms accepted" }"#;
-                        let bytes = response_json.as_bytes().to_vec();
-                        let len = bytes.len();
-                        let ptr = Box::into_raw(bytes.into_boxed_slice()) as *const u8;
-                        let content_type = CString::new("application/json").unwrap().into_raw();
-
-                        let response = Box::new(ApiResponse {
-                            status: 200,
-                            headers: ptr::null(),
-                            header_count: 0,
-                            content_type,
-                            body_ptr: ptr,
-                            body_len: len,
-                        });
-
-                        return Box::into_raw(response);
-                    } else {
+                    if parsed.is_err() {
                         return error_response(400, "Invalid JSON payload");
                     }
+            
+                    let json = parsed.unwrap();
+                    let accepted = json.get("accepted")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+            
+                    // Invoke the internal handler
+                    process_user_term_acceptance(accepted);
+            
+                    // Build the response message dynamically
+                    let message = if accepted {
+                        r#"{ "message": "Terms accepted" }"#
+                    } else {
+                        r#"{ "message": "Terms declined" }"#
+                    };
+            
+                    let bytes = message.as_bytes().to_vec();
+                    let len = bytes.len();
+                    let ptr = Box::into_raw(bytes.into_boxed_slice()) as *const u8;
+                    let content_type = CString::new("application/json").unwrap().into_raw();
+            
+                    let response = Box::new(ApiResponse {
+                        status: 200,
+                        headers: ptr::null(),
+                        header_count: 0,
+                        content_type,
+                        body_ptr: ptr,
+                        body_len: len,
+                    });
+            
+                    return Box::into_raw(response);
                 }
             }
 
