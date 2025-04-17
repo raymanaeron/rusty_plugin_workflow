@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 plugin_core = { path = "../../plugin_core" }
+logger = { path = "../../logger" }
 axum = { version = "0.7", features = ["macros", "http1", "tokio"] }
 tokio = { version = "1.36", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
