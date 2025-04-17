@@ -25,7 +25,7 @@ export async function activate(container) {
 
   acceptBtn.addEventListener("click", async () => {
     try {
-      const res = await fetch("/terms/api/userterms", {
+      const res = await fetch("/api/terms/userterms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accepted: true }),
@@ -41,7 +41,7 @@ export async function activate(container) {
 
   declineBtn.addEventListener("click", async () => {
     try {
-      await fetch("/terms/api/userterms", {
+      await fetch("/api/terms/userterms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accepted: false }),

@@ -14,7 +14,7 @@ export async function activate(container) {
       scanBtn.disabled = true;
   
       try {
-        const res = await fetch("/wifi/api/network");
+        const res = await fetch("/api/wifi/network");
         if (!res.ok) throw new Error(`Scan failed (${res.status})`);
         const networks = await res.json();
   
@@ -53,7 +53,7 @@ export async function activate(container) {
       connectBtn.disabled = true;
   
       try {
-        const res = await fetch("/wifi/api/network", {
+        const res = await fetch("/api/terms/network", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ssid, password }),
