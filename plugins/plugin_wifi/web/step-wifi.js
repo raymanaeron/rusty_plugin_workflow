@@ -53,7 +53,7 @@ export async function activate(container) {
       connectBtn.disabled = true;
   
       try {
-        const res = await fetch("/api/terms/network", {
+        const res = await fetch("/api/wifi/network", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ssid, password }),

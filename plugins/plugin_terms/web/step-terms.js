@@ -8,7 +8,7 @@ export async function activate(container) {
   const declineBtn = container.querySelector("#declineBtn");
 
   try {
-    const res = await fetch("/terms/api/userterms", {
+    const res = await fetch("/api/terms/userterms", {
       headers: { "Accept": "application/json" }
     });
     if (!res.ok) throw new Error("Failed to load terms.");
