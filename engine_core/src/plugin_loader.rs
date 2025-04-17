@@ -12,6 +12,8 @@ static mut STATIC_RESOURCES: Option<&'static [Resource]> = None;
 /// This assumes the plugin exports a `create_plugin()` function.
 pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), String> {
     unsafe {
+        println!("[engine] Loading DLL from: {:?}", path.as_ref().canonicalize());
+
         // Load the shared library
         let lib = Library::new(path.as_ref()).map_err(|e| format!("Failed to load plugin: {}", e))?;
 
@@ -58,7 +60,7 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         let binding = PluginBinding {
             name,
             static_path,
-            get_supported_resources: get_static_resources, // Use the function pointer
+            get_supported_resources: plugin.get_api_resources, // 
             handle_request: plugin.handle_request,
             cleanup: plugin.cleanup,
             run: plugin.run,

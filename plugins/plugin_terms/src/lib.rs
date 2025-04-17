@@ -6,6 +6,12 @@ use plugin_core::{ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginC
 use plugin_core::{method_not_allowed, cleanup_response, error_response};
 use logger::{LoggerLoader, LogLevel};
 
+#[ctor::ctor]
+fn on_load() {
+    println!("[plugin_terms] >>> DLL LOADED");
+}
+
+
 fn process_user_term_acceptance(accepted: bool) {
     if accepted {
         println!("[plugin_terms] user accepted the terms");

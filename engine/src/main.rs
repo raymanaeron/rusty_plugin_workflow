@@ -108,6 +108,7 @@ async fn main() {
     for plugin in registry.all() {
         let web_path = format!("/{}/web", plugin.name);
         println!("Web Path : {}", web_path);
+        println!("-> registered plugin name: {}", plugin.name);
 
         app = app.nest_service(&web_path, ServeDir::new(&plugin.static_path));
     }

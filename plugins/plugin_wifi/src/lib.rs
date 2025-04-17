@@ -9,6 +9,11 @@ use plugin_core::{ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginC
 use plugin_core::{method_not_allowed, cleanup_response};
 use std::ptr;
 
+#[ctor::ctor]
+fn on_load() {
+    println!("[plugin_wifi] >>> DLL LOADED");
+}
+
 // This function returns the name of the plugin
 extern "C" fn name() -> *const c_char {
     CString::new("wifi").unwrap().into_raw()

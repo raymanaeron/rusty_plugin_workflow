@@ -23,9 +23,29 @@ pub async fn dispatch_plugin_api(
     println!("resource_path = {}", resource_path);
     println!("registered plugins: {:?}", registry.all().iter().map(|p| &p.name).collect::<Vec<_>>());
 
+    let registered = registry.all();
+    println!("Registered plugins: {:?}", registered.iter().map(|p| &p.name).collect::<Vec<_>>());
+
+    for p in registry.all() {
+        println!("-> registered plugin name: {}", p.name);
+    }
+    
     let Some(binding) = registry.get(&plugin_name) else {
+        println!("Plugin '{}' not found!", plugin_name);
         return (StatusCode::NOT_FOUND, "Plugin not found").into_response();
     };
+    
+    println!("Dispatching to plugin '{}'", plugin_name);
+    println!("get_supported_resources() = {:p}", binding.get_supported_resources as *const ());
+
+    
+    let Some(binding) = registry.get(&plugin_name) else {
+        println!("Plugin '{}' not found!", plugin_name);
+        return (StatusCode::NOT_FOUND, "Plugin not found").into_response();
+    };
+    
+    println!("Dispatching to plugin '{}'", plugin_name);
+    println!("get_supported_resources() = {:p}", binding.get_supported_resources as *const ());
 
     let method_enum = match method.as_str() {
         "GET" => HttpMethod::Get,
