@@ -16,6 +16,9 @@ extern "C" fn name() -> *const c_char {
 
 // This function is called when the plugin is loaded
 extern "C" fn run(ctx: *const PluginContext) {
+    println!("[plugin_wifi] - run");
+    println!("[plugin_wifi] FINGERPRINT: run = {:p}", run as *const ());
+
     if ctx.is_null() {
         eprintln!("PluginContext is null");
         return;

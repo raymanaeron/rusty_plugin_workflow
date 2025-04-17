@@ -23,6 +23,8 @@ extern "C" fn name() -> *const c_char {
 }
 
 extern "C" fn run(ctx: *const PluginContext) {
+    println!("[plugin_terms] - run");
+    println!("[plugin_terms] FINGERPRINT: run = {:p}", run as *const ());
     if ctx.is_null() {
         eprintln!("PluginContext is null");
         return;
