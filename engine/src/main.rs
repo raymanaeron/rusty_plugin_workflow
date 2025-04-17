@@ -54,12 +54,12 @@ async fn main() {
     logger.log(LogLevel::Info, "Registering terms plugin");
     //registry.register(terms_plugin);
     registry.register(terms_plugin.clone());
-    println!("[engine] FINGERPRINT: plugin_terms.get_supported_resources = {:p}", terms_plugin.get_supported_resources as *const ());
+    println!("[engine] FINGERPRINT: plugin_terms.get_api_resources = {:p}", terms_plugin.get_api_resources as *const ());
 
 
-    let res_slice = (terms_plugin.get_supported_resources)();
+    let res_slice = (terms_plugin.get_api_resources)();
 
-    let res_slice = (terms_plugin.get_supported_resources)();
+    let res_slice = (terms_plugin.get_api_resources)();
     if !res_slice.is_empty() {
         for r in res_slice {
             let path = unsafe { std::ffi::CStr::from_ptr(r.path).to_string_lossy() };

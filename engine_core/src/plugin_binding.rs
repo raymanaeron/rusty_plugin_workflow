@@ -30,7 +30,7 @@ pub struct PluginBinding {
     /// - A list of supported HTTP methods for that resource
     ///
     /// This is typically backed by a static slice inside the plugin.
-    pub get_supported_resources: extern "C" fn() -> &'static [Resource],
+    pub get_api_resources: extern "C" fn() -> &'static [Resource],
 
     /// Function pointer to handle all plugin-level REST requests.
     ///
@@ -56,7 +56,7 @@ impl Clone for PluginBinding {
         Self {
             name: self.name.clone(),
             static_path: self.static_path.clone(),
-            get_supported_resources: self.get_supported_resources,
+            get_api_resources: self.get_api_resources,
             handle_request: self.handle_request,
             cleanup: self.cleanup,
             run: self.run,

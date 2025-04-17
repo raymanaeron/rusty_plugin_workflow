@@ -36,7 +36,7 @@ pub async fn dispatch_plugin_api(
     };
     
     println!("Dispatching to plugin '{}'", plugin_name);
-    println!("get_supported_resources() = {:p}", binding.get_supported_resources as *const ());
+    println!("get_api_resources() = {:p}", binding.get_api_resources as *const ());
 
     
     let Some(binding) = registry.get(&plugin_name) else {
@@ -45,7 +45,7 @@ pub async fn dispatch_plugin_api(
     };
     
     println!("Dispatching to plugin '{}'", plugin_name);
-    println!("get_supported_resources() = {:p}", binding.get_supported_resources as *const ());
+    println!("get_api_resources() = {:p}", binding.get_api_resources as *const ());
 
     let method_enum = match method.as_str() {
         "GET" => HttpMethod::Get,
@@ -56,7 +56,7 @@ pub async fn dispatch_plugin_api(
     };
 
     // Validate resource support
-    let supported = (binding.get_supported_resources)();
+    let supported = (binding.get_api_resources)();
     let Some(resource) = supported.iter().find(|r| {
         let cstr = unsafe { CStr::from_ptr(r.path) };
         let plugin_path = cstr.to_string_lossy();

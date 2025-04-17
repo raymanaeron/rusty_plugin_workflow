@@ -60,7 +60,7 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         let binding = PluginBinding {
             name,
             static_path,
-            get_supported_resources: plugin.get_api_resources, // 
+            get_api_resources: plugin.get_api_resources, 
             handle_request: plugin.handle_request,
             cleanup: plugin.cleanup,
             run: plugin.run,
