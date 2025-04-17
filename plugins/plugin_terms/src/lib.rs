@@ -222,6 +222,8 @@ pub extern "C" fn cleanup(resp: *mut ApiResponse) {
 
 #[no_mangle]
 pub extern "C" fn create_plugin() -> *const Plugin {
+    println!("[plugin_terms] FINGERPRINT: get_api_resources = {:p}", get_api_resources as *const ());
+
     &Plugin {
         name,
         run,

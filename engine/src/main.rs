@@ -54,6 +54,8 @@ async fn main() {
     logger.log(LogLevel::Info, "Registering terms plugin");
     //registry.register(terms_plugin);
     registry.register(terms_plugin.clone());
+    println!("[engine] FINGERPRINT: plugin_terms.get_supported_resources = {:p}", terms_plugin.get_supported_resources as *const ());
+
 
     let res_slice = (terms_plugin.get_supported_resources)();
 
