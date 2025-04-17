@@ -55,7 +55,24 @@ async fn main() {
     (terms_plugin.run)(&terms_ctx);
 
     logger.log(LogLevel::Info, "Registering terms plugin");
-    registry.register(terms_plugin);
+    //registry.register(terms_plugin);
+    registry.register(terms_plugin.clone());
+
+    let res_slice = (terms_plugin.get_supported_resources)();
+    
+
+    let res_slice = (terms_plugin.get_supported_resources)();
+    if !res_slice.is_empty() {
+        for r in res_slice {
+            let path = unsafe { std::ffi::CStr::from_ptr(r.path).to_string_lossy() };
+            println!("[engine] Plugin resource advertised: {}", path);
+        }
+    } else {
+        println!("[engine] Plugin returned no resources");
+    }
+    
+
+
 
     // Load the wifi plugin
     logger.log(LogLevel::Info, "Loading the wifi plugin");
