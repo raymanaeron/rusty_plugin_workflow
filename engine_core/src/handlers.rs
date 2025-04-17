@@ -17,6 +17,12 @@ pub async fn dispatch_plugin_api(
     headers: HeaderMap,
     body: Bytes,
 ) -> impl IntoResponse {
+    // Extract plugin name from State, not Path
+    
+    println!("plugin_name = {}", plugin_name);
+    println!("resource_path = {}", resource_path);
+    println!("registered plugins: {:?}", registry.all().iter().map(|p| &p.name).collect::<Vec<_>>());
+
     let Some(binding) = registry.get(&plugin_name) else {
         return (StatusCode::NOT_FOUND, "Plugin not found").into_response();
     };
@@ -96,7 +102,7 @@ pub async fn dispatch_plugin_api(
     let mut axum_headers = HeaderMap::new();
 
     if !headers.is_null() && header_count > 0 {
-        let header_slice = unsafe { std::slice::from_raw_parts(headers, header_count) };
+        let header_slice: &[plugin_core::ApiHeader] = unsafe { std::slice::from_raw_parts(headers, header_count) };
         for h in header_slice {
             let k = unsafe { CStr::from_ptr(h.key) }.to_str().unwrap_or("");
             let v = unsafe { CStr::from_ptr(h.value) }.to_str().unwrap_or("");
