@@ -103,7 +103,8 @@ async fn main() {
         let plugin_state = (registry.clone(), plugin.name.clone());
 
         app = app
-            .route(&api_path, any(dispatch_plugin_api).with_state(plugin_state))
+            //.route(&api_path, any(dispatch_plugin_api).with_state(plugin_state))
+            .route(&api_path, any(dispatch_plugin_api).with_state(registry.clone()))
             .nest_service(&web_path, ServeDir::new(&plugin.static_path));
 
     }

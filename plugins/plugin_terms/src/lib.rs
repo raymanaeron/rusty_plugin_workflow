@@ -76,6 +76,9 @@ pub extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
         } else {
             CStr::from_ptr(request.path).to_str().unwrap_or("<invalid>")
         };
+        let method = request.method;
+
+        println!("[plugin_terms] Received {:?} on path = '{}'", method, path);
 
         match request.method {
             HttpMethod::Get => {
