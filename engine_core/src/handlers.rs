@@ -39,8 +39,11 @@ pub async fn dispatch_plugin_api(
     let supported = (binding.get_supported_resources)();
     let Some(resource) = supported.iter().find(|r| {
         let cstr = unsafe { CStr::from_ptr(r.path) };
-        cstr.to_string_lossy() == resource_path
+        let plugin_path = cstr.to_string_lossy();
+        println!("Comparing resource: '{}' == '{}'", plugin_path, resource_path);
+        plugin_path == resource_path
     }) else {
+        println!("Resource '{}' not found in plugin '{}'", resource_path, plugin_name);
         return (StatusCode::NOT_FOUND, "Resource not found").into_response();
     };
     let method_supported = {
