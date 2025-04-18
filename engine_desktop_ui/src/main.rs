@@ -1,22 +1,51 @@
 use engine::start_server_async;
+use std::{thread, time::Duration};
 
-/* For headless */
-use std::thread;
-use std::time::Duration;
+use tao::event::{Event, StartCause, WindowEvent};
+use tao::event_loop::{ControlFlow, EventLoop};
+use tao::window::WindowBuilder;
 
-/* For a headless server -- launch the UI from the browser by visiting http://localhost:8080 */
-fn main() {
+use wry::{WebView, WebViewBuilder};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Start the Axum engine
     thread::spawn(|| {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(start_server_async());
     });
 
-    // Block forever or until you close manually
-    println!("Engine started. Press Ctrl+C to exit.");
-    loop {
-        thread::sleep(Duration::from_secs(60));
-    }
+    thread::sleep(Duration::from_secs(1));
+
+    // Set up native window + event loop
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_title("Device Setup")
+        .build(&event_loop)?;
+
+    let webview_builder = WebViewBuilder::new(&window)
+        .with_url("http://localhost:8080")?; 
+
+    // ⚠️ FIX 3: Call .build() to get the actual WebView
+    let _webview: WebView = webview_builder.build()?;
+
+    // Run the event loop
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+
+        match event {
+            Event::NewEvents(StartCause::Init) => {}
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => {
+                *control_flow = ControlFlow::Exit;
+            }
+            _ => (),
+        }
+    });
 }
+
+
 
 
 /* For a UI that hosts a WebView window */

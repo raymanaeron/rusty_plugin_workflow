@@ -62,12 +62,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Copying the logger_config.json file to the engine output directory...
+echo Copying the app config file to the engine output directory...
 copy app_config.toml %TARGET%\app_config.toml
 if errorlevel 1 (
     echo Failed to copy app_config.toml.
     exit /b 1
 )
+
 
 echo All builds successful.
 endlocal
