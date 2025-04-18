@@ -4,7 +4,6 @@ use std::sync::Mutex;
 use std::ptr;
 use plugin_core::{ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginContext};
 use plugin_core::{method_not_allowed, cleanup_response, error_response};
-// use logger::{LoggerLoader, LogLevel};
 
 #[ctor::ctor]
 fn on_load() {

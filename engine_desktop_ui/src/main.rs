@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } => {
                 *control_flow = ControlFlow::Exit;
 
-                // ✅ Take ownership and drop explicitly
+                // Take ownership and drop explicitly
                 if let Some(wv) = webview_opt.take() {
                     drop(wv);
                 }
@@ -62,16 +62,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 }
-
-
-/* For a UI that hosts a WebView window */
-/*
-fn main() {
-    std::thread::spawn(|| {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(start_server_async());
-    });
-
-    // Then launch WebView window to http://localhost:8080
-}
-*/
