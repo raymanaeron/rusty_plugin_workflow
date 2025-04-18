@@ -1,28 +1,29 @@
 <!-- plugins/plugin_wifi/web/step-wifi.html -->
 <div class="plugin-section">
-    <h5 class="plugin-title">WiFi Setup</h5>
-  
-    <div class="mb-3 d-flex justify-content-between">
-      <button id="scanBtn" class="btn btn-primary">Scan</button>
-      <div id="scanStatus" class="text-muted align-self-center ms-3"></div>
+  <h5 class="plugin-title">WiFi Setup</h5>
+
+  <div class="row mb-3 align-items-center">
+    <div class="col-auto">
+      <button id="scanBtn" class="btn btn-outline-primary">Scan</button>
     </div>
-  
-    <div class="mb-3">
-      <label for="networkList" class="plugin-label">Available Networks</label>
-      <select id="networkList" class="form-select">
-        <option value="" disabled selected>-- Choose a network --</option>
-      </select>
-    </div>
-  
-    <div class="mb-3">
-      <label for="password" class="plugin-label">Password</label>
-      <input type="password" id="password" class="form-control plugin-input" placeholder="Enter WiFi password">
-    </div>
-  
-    <div class="d-flex justify-content-end">
-      <button id="connectBtn" class="btn btn-success">Connect</button>
-    </div>
-  
-    <div id="resultBox" class="mt-4"></div>
+    <div class="col text-muted" id="scanStatus"></div>
   </div>
-  
+
+  <div class="mb-4">
+    <label for="networkList" class="form-label fw-semibold">Available Networks</label>
+    <select id="networkList" class="form-select shadow-sm">
+      <option value="" disabled selected>-- Choose a network --</option>
+    </select>
+  </div>
+
+  <div class="mb-4">
+    <label for="password" class="form-label fw-semibold">Password</label>
+    <input type="password" id="password" class="form-control shadow-sm" placeholder="Enter WiFi password" />
+  </div>
+
+  <div class="d-grid">
+    <button id="connectBtn" class="btn btn-primary btn-lg">Connect</button>
+  </div>
+
+  <div id="resultBox" class="mt-4 text-center"></div>
+</div>
