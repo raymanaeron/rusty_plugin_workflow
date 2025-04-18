@@ -54,8 +54,10 @@ async fn main() {
     logger.log(LogLevel::Info, "Registering terms plugin");
     //registry.register(terms_plugin);
     registry.register(terms_plugin.clone());
-    println!("[engine] FINGERPRINT: plugin_terms.get_api_resources = {:p}", terms_plugin.get_api_resources as *const ());
-
+    println!(
+        "[engine] FINGERPRINT: plugin_terms.get_api_resources = {:p}",
+        terms_plugin.get_api_resources as *const ()
+    );
 
     let res_slice = (terms_plugin.get_api_resources)();
 
@@ -86,57 +88,52 @@ async fn main() {
     // Build base router without state
     let mut app = Router::new();
 
- 
-// 1. Shared plugin API route for all plugins
-// This matches paths like /terms/api/userterms or /wifi/api/network
-use axum::routing::any;
-use axum::Router;
+    // 1. Shared plugin API route for all plugins
+    // This matches paths like /terms/api/userterms or /wifi/api/network
+    use axum::routing::any;
+    use axum::Router;
 
-let plugin_api_router = Router::new().route(
-    "/:plugin/:resource",
-    any(dispatch_plugin_api).with_state(registry.clone())
-);
+    let plugin_api_router = Router::new().route(
+        "/:plugin/:resource",
+        any(dispatch_plugin_api).with_state(registry.clone())
+    );
 
+    // Mount it under /api to avoid conflicts
+    app = app.nest("/api", plugin_api_router);
 
-// Mount it under /api to avoid conflicts
-app = app.nest("/api", plugin_api_router);
-
-
-// 2. Plugin static content like /terms/web/* or /wifi/web/*
-use tower_http::services::ServeDir;
-for plugin in registry.all() {
-    let web_path = format!("/{}/web", plugin.name);
-    println!("Web Path : {}", web_path);
-    println!("-> registered plugin name: {}", plugin.name);
-    app = app.nest_service(&web_path, ServeDir::new(&plugin.static_path));
-}
-
-// 3. Serve root UI assets (index.html, app.js, styles.css) from /webapp
-app = app.nest_service("/", ServeDir::new("webapp"));
-
-// 4. Fallback for unknown routes to index.html
-use axum::{routing::get, response::Response, http::StatusCode, body::Body};
-use std::fs;
-
-async fn fallback_handler() -> Response {
-    match fs::read_to_string("webapp/index.html") {
-        Ok(content) => Response::builder()
-            .status(StatusCode::OK)
-            .header("Content-Type", "text/html")
-            .body(Body::from(content))
-            .unwrap(),
-        Err(_) => Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::from("index.html not found"))
-            .unwrap(),
+    // 2. Plugin static content like /terms/web/* or /wifi/web/*
+    use tower_http::services::ServeDir;
+    for plugin in registry.all() {
+        let web_path = format!("/{}/web", plugin.name);
+        println!("Web Path : {}", web_path);
+        println!("-> registered plugin name: {}", plugin.name);
+        app = app.nest_service(&web_path, ServeDir::new(&plugin.static_path));
     }
-}
 
-app = app.fallback(get(fallback_handler));
+    // 3. Serve root UI assets (index.html, app.js, styles.css) from /webapp
+    app = app.nest_service("/", ServeDir::new("webapp"));
 
+    // 4. Fallback for unknown routes to index.html
+    use axum::{ routing::get, response::Response, http::StatusCode, body::Body };
+    use std::fs;
 
+    async fn fallback_handler() -> Response {
+        match fs::read_to_string("webapp/index.html") {
+            Ok(content) =>
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", "text/html")
+                    .body(Body::from(content))
+                    .unwrap(),
+            Err(_) =>
+                Response::builder()
+                    .status(StatusCode::NOT_FOUND)
+                    .body(Body::from("index.html not found"))
+                    .unwrap(),
+        }
+    }
 
-
+    app = app.fallback(get(fallback_handler));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("Listening at http://{}", addr);
