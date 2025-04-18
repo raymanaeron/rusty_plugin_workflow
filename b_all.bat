@@ -37,6 +37,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM === Build desktop_ui  ===
+echo Building desktop UI ...
+cargo build --manifest-path engine_desktop_ui\Cargo.toml %CARGO_FLAG%
+if errorlevel 1 (
+    echo Failed to build desktop UI.
+    exit /b 1
+)
+
 REM === Copy static web assets ===
 echo Copying root web folder to engine output directory...
 xcopy /E /I /Y webapp %TARGET%\webapp

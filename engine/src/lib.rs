@@ -27,8 +27,17 @@ async fn fallback_handler() -> Response {
     }
 }
 
-#[tokio::main]
-async fn main() {
+/// FFI-safe C entry point for Swift, Kotlin, C++, etc.
+#[no_mangle]
+pub extern "C" fn start_oobe_server() {
+    std::thread::spawn(|| {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(start_server_async());
+    });
+}
+
+/// /// Native async entry point for Rust-based apps (e.g. desktop, CLI)
+pub async fn start_server_async() {
     // Load the logger
     LoggerLoader::init("app_config.toml").await;
 
