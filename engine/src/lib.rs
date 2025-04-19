@@ -11,6 +11,7 @@ use std::ffi::CString;
 use axum::{ routing::get, http::StatusCode, response::Response, body::Body };
 use std::fs;
 
+/*
 async fn fallback_handler() -> Response {
     match fs::read_to_string("webapp/index.html") {
         Ok(contents) =>
@@ -26,15 +27,23 @@ async fn fallback_handler() -> Response {
                 .unwrap(),
     }
 }
+*/
 
 fn plugin_filename(base: &str) -> String {
-    if cfg!(target_os = "windows") {
+    let filename = if cfg!(target_os = "windows") {
         format!("{}.dll", base)
     } else if cfg!(target_os = "macos") {
         format!("lib{}.dylib", base)
     } else {
         format!("lib{}.so", base)
-    }
+    };
+
+    // Resolve the executable directory
+    let mut exe_dir = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    exe_dir.pop(); // remove executable filename
+    exe_dir.push(filename);
+
+    exe_dir.to_string_lossy().into_owned()
 }
 
 /// FFI-safe C entry point for Swift, Kotlin, C++, etc.
