@@ -68,6 +68,7 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     use std::ffi::CString;
     use std::ptr;
 
+    /*
     let output = if cfg!(target_os = "windows") {
         Command::new("netsh")
             .args(["wlan", "show", "networks", "mode=bssid"])
@@ -88,6 +89,31 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
             return ptr::null_mut();
         }
     };
+    */
+    let output = if cfg!(target_os = "windows") {
+        Command::new("netsh")
+            .args(["wlan", "show", "networks", "mode=bssid"])
+            .output()
+    } else if cfg!(target_os = "linux") {
+        Command::new("nmcli")
+            .args(["-t", "-f", "SSID,BSSID,SIGNAL,CHAN,SECURITY,FREQ", "dev", "wifi"])
+            .output()
+    } else if cfg!(target_os = "macos") {
+        Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport")
+            .arg("-s")
+            .output()
+    } else {
+        eprintln!("Unsupported OS for Wi-Fi scan.");
+        return ptr::null_mut();
+    };
+    
+let raw_output = match output {
+    Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
+    Err(err) => {
+        eprintln!("[plugin_wifi] Failed to run scan command: {}", err);
+        return ptr::null_mut();
+    }
+};
 
     println!("[plugin_wifi] Raw scan output:\n{}", raw_output);
 
@@ -152,6 +178,32 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
                     });
                 }
             }
+        }
+    } else if cfg!(target_os = "macos") {
+        for (i, line) in raw_output.lines().enumerate() {
+            if i == 0 || line.trim().is_empty() {
+                continue;
+            }
+    
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 5 {
+                continue;
+            }
+    
+            let ssid = CString::new(parts[0]).unwrap_or_default().into_raw();
+            let bssid = CString::new(parts[1]).unwrap_or_default().into_raw();
+            let signal = parts[2].parse::<i32>().unwrap_or(0);
+            let channel = parts[3].parse::<i32>().unwrap_or(0);
+            let security = CString::new(parts[5..].join(" ")).unwrap_or_default().into_raw();
+    
+            networks.push(NetworkInfo {
+                ssid,
+                bssid,
+                signal,
+                channel,
+                security,
+                frequency: 0.0,
+            });
         }
     }
 

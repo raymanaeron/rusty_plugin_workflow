@@ -31,6 +31,14 @@ cargo build --manifest-path engine/Cargo.toml $CARGO_FLAG
 echo "Building desktop UI..."
 cargo build --manifest-path engine_desktop_ui/Cargo.toml $CARGO_FLAG
 
+echo "📦 TARGET is: $TARGET"
+ls -ld "$TARGET"
+
+# === Create destination folders before rsync ===
+echo "Creating plugin destination folders..."
+mkdir -p "$TARGET/terms/web"
+mkdir -p "$TARGET/wifi/web"
+
 # === Copy static web assets ===
 echo "Copying root web folder to engine output directory..."
 rsync -a webapp/ "$TARGET/webapp/"
@@ -47,4 +55,4 @@ cp "$TARGET/libplugin_wifi.dylib" "$TARGET/plugin_wifi.dylib"
 echo "Copying the app config file to the engine output directory..."
 cp app_config.toml "$TARGET/app_config.toml"
 
-echo "✅ All builds successful."
+echo "All builds successful."
