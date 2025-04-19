@@ -5,8 +5,28 @@ use std::{fs, path::Path, error::Error};
 /// Root structure representing the dynamic plugin execution plan loaded from TOML.
 #[derive(Debug, Deserialize)]
 pub struct PluginExecutionPlan {
+    /// Global configuration used to manage execution plan updates.
+    pub general: GeneralConfig,
+
     /// List of plugin metadata entries to be dynamically loaded and executed.
     pub plugins: Vec<PluginMetadata>,
+}
+
+/// Represents the [general] section of the execution_plan.toml file.
+#[derive(Debug, Deserialize)]
+pub struct GeneralConfig {
+    /// Product family name (e.g., Echo, FireTV, Ring).
+    pub product_family: String,
+
+    /// Version of the current execution plan.
+    pub execution_plan_version: String,
+
+    /// Source type for update (e.g., "s3", "local", or "unc").
+    pub update_from: String,
+
+    /// Root path for updates. Final path will be:
+    /// update_path_root + "/" + product_family + "/" + execution_plan_version + "/execution_plan.toml"
+    pub update_path_root: String,
 }
 
 /// Loads and validates the plugin execution plan from a TOML file.
@@ -19,11 +39,30 @@ impl ExecutionPlanLoader {
         let content = fs::read_to_string(path)?;
         let plan: PluginExecutionPlan = toml::from_str(&content)?;
 
+        Self::validate_general(&plan.general)?;
         for (idx, plugin) in plan.plugins.iter().enumerate() {
             Self::validate_plugin(plugin, idx)?;
         }
 
         Ok(plan)
+    }
+
+    /// Validates the [general] section.
+    fn validate_general(general: &GeneralConfig) -> Result<(), Box<dyn Error>> {
+        if general.product_family.trim().is_empty() {
+            return Err("Missing 'product_family' in [general] section".into());
+        }
+        if general.execution_plan_version.trim().is_empty() {
+            return Err("Missing 'execution_plan_version' in [general] section".into());
+        }
+        if general.update_from != "s3" && general.update_from != "local" && general.update_from != "unc" {
+            return Err("Invalid 'update_from' in [general] section: must be 's3', 'local', or 'unc'".into());
+        }
+        if general.update_path_root.trim().is_empty() {
+            return Err("Missing 'update_path_root' in [general] section".into());
+        }
+
+        Ok(())
     }
 
     /// Validates all required fields for each plugin.
@@ -41,8 +80,7 @@ impl ExecutionPlanLoader {
             return Err(format!(
                 "Plugin at index {} has invalid 'plugin_location_type': must be 'local' or 's3'",
                 index
-            )
-            .into());
+            ).into());
         }
         if plugin.plugin_location_path.trim().is_empty() {
             return Err(format!("Plugin at index {} is missing 'plugin_location_path'", index).into());
@@ -54,15 +92,13 @@ impl ExecutionPlanLoader {
             return Err(format!(
                 "Plugin at index {} is missing 'engineering_contact_email'",
                 index
-            )
-            .into());
+            ).into());
         }
         if plugin.operation_contact_email.trim().is_empty() {
             return Err(format!(
                 "Plugin at index {} is missing 'operation_contact_email'",
                 index
-            )
-            .into());
+            ).into());
         }
 
         Ok(())
