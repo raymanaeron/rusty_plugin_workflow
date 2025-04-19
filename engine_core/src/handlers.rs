@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::PluginRegistry;
 
 use std::ffi::{CString, CStr};
-use plugin_core::{ApiRequest, HttpMethod, Resource};
+use plugin_core::{ApiRequest, HttpMethod};
 
 pub async fn dispatch_plugin_api(
     State(registry): State<Arc<PluginRegistry>>,

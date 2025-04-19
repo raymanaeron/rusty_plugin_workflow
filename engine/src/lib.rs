@@ -1,33 +1,10 @@
-use axum::{ Router, routing::any };
 use std::{ net::SocketAddr, sync::Arc };
 use tokio::net::TcpListener;
 use engine_core::{ plugin_loader::load_plugin, plugin_registry::PluginRegistry };
 use engine_core::handlers::dispatch_plugin_api;
-use tower_http::services::ServeDir;
 use plugin_core::PluginContext;
 use logger::{ LoggerLoader, LogLevel };
 use std::ffi::CString;
-
-use axum::{ routing::get, http::StatusCode, response::Response, body::Body };
-use std::fs;
-
-/*
-async fn fallback_handler() -> Response {
-    match fs::read_to_string("webapp/index.html") {
-        Ok(contents) =>
-            Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "text/html")
-                .body(Body::from(contents))
-                .unwrap(),
-        Err(_) =>
-            Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::from("Failed to load fallback page"))
-                .unwrap(),
-    }
-}
-*/
 
 fn plugin_filename(base: &str) -> String {
     let filename = if cfg!(target_os = "windows") {

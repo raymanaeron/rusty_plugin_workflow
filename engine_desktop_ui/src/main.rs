@@ -6,7 +6,7 @@ use tao::event_loop::{ControlFlow, EventLoop};
 use tao::window::WindowBuilder;
 use tao::dpi::LogicalSize;
 
-use wry::{WebView, WebViewBuilder};
+use wry::WebViewBuilder;
 
 fn wait_for_server() {
     use std::net::TcpStream;

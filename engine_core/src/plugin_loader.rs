@@ -51,7 +51,7 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         let path_cstr = CStr::from_ptr(path_ptr);
         let static_path = path_cstr.to_string_lossy().into_owned();
 
-        // ✅ Call plugin.get_api_resources correctly
+        // Call plugin.get_api_resources correctly
         let mut count: usize = 0;
         let ptr = (plugin.get_api_resources)(&mut count);
         if ptr.is_null() || count == 0 {
@@ -61,7 +61,7 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         let resource_slice = std::slice::from_raw_parts(ptr, count);
         STATIC_RESOURCES = Some(resource_slice);
 
-        // ✅ Construct the PluginBinding
+        // Construct the PluginBinding
         let binding = PluginBinding {
             name,
             static_path,
@@ -75,6 +75,7 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
     }
 }
 
+#[allow(dead_code)]
 /// Returns a pointer to static resources and writes count to `out_len`
 fn get_static_resources(out_len: *mut usize) -> *const Resource {
     unsafe {

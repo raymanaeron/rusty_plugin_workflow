@@ -1,6 +1,5 @@
 use std::ffi::{CString, CStr};
 use std::os::raw::c_char;
-use std::sync::Mutex;
 use std::ptr;
 use plugin_core::{ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginContext};
 use plugin_core::{method_not_allowed, cleanup_response, error_response};

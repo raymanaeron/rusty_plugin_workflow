@@ -4,7 +4,6 @@ use network_info::{NetworkInfo, to_json};
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use std::sync::Mutex;
 use plugin_core::{ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginContext};
 use plugin_core::{method_not_allowed, cleanup_response};
 use std::ptr;
