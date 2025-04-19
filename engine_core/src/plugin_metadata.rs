@@ -18,7 +18,7 @@ pub struct PluginMetadata {
     pub plugin_location_type: String,
 
     /// Folder where the plugin resides (e.g., "./", or an S3 URL prefix)
-    pub plugin_folder_name: String,
+    pub plugin_base_path: String,
 
     /// Engineering team name that owns this plugin.
     pub team_name: String,
@@ -50,6 +50,6 @@ fn default_visible_in_ui() -> bool {
 impl PluginMetadata {
     pub fn resolved_local_path(&self) -> String {
         use crate::plugin_utils::resolve_plugin_binary_path;
-        resolve_plugin_binary_path(&self.plugin_folder_name, &self.name)
+        resolve_plugin_binary_path(&self.plugin_base_path, &self.name)
     }
 }

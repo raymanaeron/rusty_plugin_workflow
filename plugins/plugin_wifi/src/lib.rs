@@ -1,11 +1,11 @@
 // plugins/plugin_wifi/src/lib.rs
 mod network_info;
-use network_info::{NetworkInfo, to_json};
+use network_info::{ NetworkInfo, to_json };
 use std::ffi::CString;
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use plugin_core::{ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginContext};
-use plugin_core::{method_not_allowed, cleanup_response};
+use plugin_core::{ ApiRequest, ApiResponse, HttpMethod, Resource, Plugin, PluginContext };
+use plugin_core::{ method_not_allowed, cleanup_response };
 use std::ptr;
 
 #[ctor::ctor]
@@ -43,10 +43,10 @@ fn connect_to_network(ssid: &str, password: &str) -> *mut ApiResponse {
     let body_ptr = Box::into_raw(body.into_boxed_slice()) as *const u8;
 
     let content_type = CString::new("application/json").unwrap();
-    
+
     let response = Box::new(ApiResponse {
         status: 200,
-        headers: ptr::null(),     // optional
+        headers: ptr::null(), // optional
         header_count: 0,
         body_ptr,
         body_len,
@@ -67,14 +67,17 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     use std::ffi::CString;
     use std::ptr;
 
-    /*
     let output = if cfg!(target_os = "windows") {
-        Command::new("netsh")
-            .args(["wlan", "show", "networks", "mode=bssid"])
-            .output()
+        Command::new("netsh").args(["wlan", "show", "networks", "mode=bssid"]).output()
     } else if cfg!(target_os = "linux") {
         Command::new("nmcli")
             .args(["-t", "-f", "SSID,BSSID,SIGNAL,CHAN,SECURITY,FREQ", "dev", "wifi"])
+            .output()
+    } else if cfg!(target_os = "macos") {
+        Command::new(
+            "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
+        )
+            .arg("-s")
             .output()
     } else {
         eprintln!("Unsupported OS for Wi-Fi scan.");
@@ -82,39 +85,14 @@ pub extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     };
 
     let raw_output = match output {
-        Ok(o) => String::from_utf8_lossy(&o.stdout).to_string(),
-        Err(e) => {
-            eprintln!("Failed to run scan command: {}", e);
+        Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
+        Err(err) => {
+            eprintln!("[plugin_wifi] Failed to run scan command: {}", err);
             return ptr::null_mut();
         }
     };
-    */
-    let output = if cfg!(target_os = "windows") {
-        Command::new("netsh")
-            .args(["wlan", "show", "networks", "mode=bssid"])
-            .output()
-    } else if cfg!(target_os = "linux") {
-        Command::new("nmcli")
-            .args(["-t", "-f", "SSID,BSSID,SIGNAL,CHAN,SECURITY,FREQ", "dev", "wifi"])
-            .output()
-    } else if cfg!(target_os = "macos") {
-        Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport")
-            .arg("-s")
-            .output()
-    } else {
-        eprintln!("Unsupported OS for Wi-Fi scan.");
-        return ptr::null_mut();
-    };
-    
-let raw_output = match output {
-    Ok(out) => String::from_utf8_lossy(&out.stdout).to_string(),
-    Err(err) => {
-        eprintln!("[plugin_wifi] Failed to run scan command: {}", err);
-        return ptr::null_mut();
-    }
-};
 
-    println!("[plugin_wifi] Raw scan output:\n{}", raw_output);
+    // println!("[plugin_wifi] Raw scan output:\n{}", raw_output);
 
     let mut networks = Vec::new();
 
@@ -154,7 +132,11 @@ let raw_output = match output {
                 current_ssid = parts[1].trim().to_string();
             } else if line.starts_with("Signal") {
                 if let Some(percent_str) = line.split(':').nth(1) {
-                    current_signal = percent_str.trim().trim_end_matches('%').parse::<i32>().unwrap_or(0);
+                    current_signal = percent_str
+                        .trim()
+                        .trim_end_matches('%')
+                        .parse::<i32>()
+                        .unwrap_or(0);
                 }
             } else if line.starts_with("Authentication") {
                 if let Some(sec) = line.split(':').nth(1) {
@@ -165,15 +147,17 @@ let raw_output = match output {
                     let bssid = bssid_str.trim().to_string();
                     let ssid = CString::new(current_ssid.clone()).unwrap_or_default().into_raw();
                     let bssid = CString::new(bssid).unwrap_or_default().into_raw();
-                    let security = CString::new(current_security.clone()).unwrap_or_default().into_raw();
+                    let security = CString::new(current_security.clone())
+                        .unwrap_or_default()
+                        .into_raw();
 
                     networks.push(NetworkInfo {
                         ssid,
                         bssid,
                         signal: current_signal,
-                        channel: 0,        // Channel parsing optional, skipped here
+                        channel: 0, // Channel parsing optional, skipped here
                         security,
-                        frequency: 0.0,    // Windows netsh does not give frequency
+                        frequency: 0.0, // Windows netsh does not give frequency
                     });
                 }
             }
@@ -183,18 +167,20 @@ let raw_output = match output {
             if i == 0 || line.trim().is_empty() {
                 continue;
             }
-    
+
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 5 {
                 continue;
             }
-    
+
             let ssid = CString::new(parts[0]).unwrap_or_default().into_raw();
             let bssid = CString::new(parts[1]).unwrap_or_default().into_raw();
             let signal = parts[2].parse::<i32>().unwrap_or(0);
             let channel = parts[3].parse::<i32>().unwrap_or(0);
-            let security = CString::new(parts[5..].join(" ")).unwrap_or_default().into_raw();
-    
+            let security = CString::new(parts[5..].join(" "))
+                .unwrap_or_default()
+                .into_raw();
+
             networks.push(NetworkInfo {
                 ssid,
                 bssid,
@@ -218,7 +204,7 @@ let raw_output = match output {
 }
 
 #[no_mangle]
-pub extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource{
+pub extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
     use std::sync::Once;
 
     static INIT: Once = Once::new();
@@ -233,9 +219,7 @@ pub extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource{
         static METHODS: [HttpMethod; 2] = [HttpMethod::Get, HttpMethod::Post];
         let methods_ptr = METHODS.as_ptr();
 
-        let resources = vec![
-            Resource::new(path_ptr, methods_ptr),
-        ];
+        let resources = vec![Resource::new(path_ptr, methods_ptr)];
 
         // Leak boxed vec into static slice
         unsafe {
@@ -252,9 +236,7 @@ pub extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource{
         }
     }
     ptr::null()
-    
 }
-
 
 #[no_mangle]
 pub extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
@@ -307,16 +289,21 @@ pub extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             // Handle POST requests
             HttpMethod::Post => {
                 if path == "network" {
-                    let body_slice = 
-                        std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                    
+                    let body_slice = std::slice::from_raw_parts(request.body_ptr, request.body_len);
+
                     let body_str = std::str::from_utf8(body_slice).unwrap_or("");
                     let parsed: Result<serde_json::Value, _> = serde_json::from_str(body_str);
-        
+
                     if let Ok(json) = parsed {
-                        let ssid = json.get("ssid").and_then(|v| v.as_str()).unwrap_or("");
-                        let password = json.get("password").and_then(|v| v.as_str()).unwrap_or("");
-        
+                        let ssid = json
+                            .get("ssid")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let password = json
+                            .get("password")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+
                         return connect_to_network(ssid, password);
                     } else {
                         return plugin_core::error_response(400, "Invalid JSON payload");
@@ -374,12 +361,12 @@ pub extern "C" fn cleanup(resp: *mut ApiResponse) {
 
 #[no_mangle]
 pub extern "C" fn create_plugin() -> *const Plugin {
-    &Plugin {
+    &(Plugin {
         name,
         run,
         get_static_content_path,
         get_api_resources,
         handle_request,
         cleanup,
-    }
+    })
 }

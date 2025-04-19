@@ -64,8 +64,8 @@ impl ExecutionPlanLoader {
                 index
             ).into());
         }
-        if plugin.plugin_folder_name.trim().is_empty() {
-            return Err(format!("Plugin at index {} is missing 'plugin_folder_name'", index).into());
+        if plugin.plugin_base_path.trim().is_empty() {
+            return Err(format!("Plugin at index {} is missing 'plugin_base_path'", index).into());
         }
         if plugin.team_name.trim().is_empty() {
             return Err(format!("Plugin at index {} is missing 'team_name'", index).into());
