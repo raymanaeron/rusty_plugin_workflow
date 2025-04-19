@@ -27,6 +27,16 @@ async fn fallback_handler() -> Response {
     }
 }
 
+fn plugin_filename(base: &str) -> String {
+    if cfg!(target_os = "windows") {
+        format!("{}.dll", base)
+    } else if cfg!(target_os = "macos") {
+        format!("lib{}.dylib", base)
+    } else {
+        format!("lib{}.so", base)
+    }
+}
+
 /// FFI-safe C entry point for Swift, Kotlin, C++, etc.
 #[no_mangle]
 pub extern "C" fn start_oobe_server() {
@@ -50,8 +60,15 @@ pub async fn start_server_async() {
 
     // Load the terms plugin
     logger.log(LogLevel::Info, "Loading the terms plugin");
-    let (terms_plugin, _terms_lib) =
-        load_plugin("plugin_terms.dll").expect("Failed to load plugin");
+    //let (terms_plugin, _terms_lib) =
+    //    load_plugin("plugin_terms.dll").expect("Failed to load plugin");
+    let (terms_plugin, _terms_lib) = match load_plugin(&plugin_filename("plugin_terms")) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Failed to load terms plugin: {}", e);
+            return;
+        }
+    };
 
     logger.log(LogLevel::Info, "Running the terms plugin with a parameter");
     let terms_config = CString::new("accepted=false").unwrap();
@@ -82,8 +99,15 @@ pub async fn start_server_async() {
 
     // Load the wifi plugin
     logger.log(LogLevel::Info, "Loading the wifi plugin");
-    let (wifi_plugin, _wifi_lib) = load_plugin("plugin_wifi.dll").expect("Failed to load plugin");
-
+    // let (wifi_plugin, _wifi_lib) = load_plugin("plugin_wifi.dll").expect("Failed to load plugin");
+    let (wifi_plugin, _wifi_lib) = match load_plugin(&plugin_filename("plugin_wifi")) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Failed to load wifi plugin: {}", e);
+            return;
+        }
+    };
+    
     logger.log(LogLevel::Info, "Running the wifi plugin with a parameter");
     let wifi_config = CString::new("scan=true").unwrap();
     let wifi_ctx = PluginContext {
