@@ -3,8 +3,8 @@ use serde::Deserialize;
 /// Represents metadata for a dynamically loaded plugin as defined in the execution plan.
 #[derive(Debug, Deserialize)]
 pub struct PluginMetadata {
-    /// Internal name of the plugin (used to match the shared library file).
-    pub full_name: String,
+    /// Plugin binary name (used to resolve OS-specific filename).
+    pub name: String,
 
     /// Logical identifier used for routing and workflow naming.
     pub plugin_route: String,
@@ -17,10 +17,8 @@ pub struct PluginMetadata {
     /// - "s3": download compiled binary from an S3 URL
     pub plugin_location_type: String,
 
-    /// Actual path or URL of the plugin binary.
-    /// - For local: "./plugin_wifi.so"
-    /// - For s3: "https://bucket-name.s3.amazonaws.com/plugin_wifi.dylib"
-    pub plugin_location_path: String,
+    /// Folder where the plugin resides (e.g., "./", or an S3 URL prefix)
+    pub plugin_folder_name: String,
 
     /// Engineering team name that owns this plugin.
     pub team_name: String,
@@ -47,4 +45,11 @@ pub struct PluginMetadata {
 /// Default value for `visible_in_ui` field (true).
 fn default_visible_in_ui() -> bool {
     true
+}
+
+impl PluginMetadata {
+    pub fn resolved_local_path(&self) -> String {
+        use crate::plugin_utils::resolve_plugin_binary_path;
+        resolve_plugin_binary_path(&self.plugin_folder_name, &self.name)
+    }
 }

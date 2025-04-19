@@ -5,22 +5,27 @@ use engine_core::handlers::dispatch_plugin_api;
 use plugin_core::PluginContext;
 use logger::{ LoggerLoader, LogLevel };
 use std::ffi::CString;
+use engine_core::execution_plan_updater::ExecutionPlanUpdater;
+use engine_core::execution_plan::ExecutionPlanLoader;
+use engine_core::plugin_utils;
 
-fn plugin_filename(base: &str) -> String {
-    let filename = if cfg!(target_os = "windows") {
-        format!("{}.dll", base)
-    } else if cfg!(target_os = "macos") {
-        format!("lib{}.dylib", base)
-    } else {
-        format!("lib{}.so", base)
-    };
+fn run_exection_plan_updater() {
+    let local_path = "execution_plan.toml";
 
-    // Resolve the executable directory
-    let mut exe_dir = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("."));
-    exe_dir.pop(); // remove executable filename
-    exe_dir.push(filename);
-
-    exe_dir.to_string_lossy().into_owned()
+    match ExecutionPlanUpdater::fetch_and_prepare_latest(local_path) {
+        Ok(path) => {
+            match ExecutionPlanLoader::load_from_file(&path) {
+                Ok(plan) => {
+                    println!("Final execution plan loaded with {} plugins", plan.plugins.len());
+                    println!("Execution plan: {:?}", plan);
+                }
+                Err(e) => eprintln!("Failed to parse execution plan: {}", e),
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to resolve execution plan: {}", e);
+        }
+    }
 }
 
 /// FFI-safe C entry point for Swift, Kotlin, C++, etc.
@@ -48,7 +53,8 @@ pub async fn start_server_async() {
     logger.log(LogLevel::Info, "Loading the terms plugin");
     //let (terms_plugin, _terms_lib) =
     //    load_plugin("plugin_terms.dll").expect("Failed to load plugin");
-    let (terms_plugin, _terms_lib) = match load_plugin(&plugin_filename("plugin_terms")) {
+    
+    let (terms_plugin, _terms_lib) = match load_plugin(plugin_utils::resolve_plugin_filename("plugin_terms")) {
         Ok(p) => p,
         Err(e) => {
             eprintln!("Failed to load terms plugin: {}", e);
@@ -71,20 +77,6 @@ pub async fn start_server_async() {
         terms_plugin.get_api_resources as *const ()
     );
 
-    /*
-    let res_slice = (terms_plugin.get_api_resources)();
-
-    let res_slice = (terms_plugin.get_api_resources)();
-    if !res_slice.is_empty() {
-        for r in res_slice {
-            let path = unsafe { std::ffi::CStr::from_ptr(r.path).to_string_lossy() };
-            println!("[engine] Plugin resource advertised: {}", path);
-        }
-    } else {
-        println!("[engine] Plugin returned no resources");
-    }
-    */
-
     let mut count: usize = 0;
     let res_ptr = (terms_plugin.get_api_resources)(&mut count);
 
@@ -101,7 +93,7 @@ pub async fn start_server_async() {
     // Load the wifi plugin
     logger.log(LogLevel::Info, "Loading the wifi plugin");
     // let (wifi_plugin, _wifi_lib) = load_plugin("plugin_wifi.dll").expect("Failed to load plugin");
-    let (wifi_plugin, _wifi_lib) = match load_plugin(&plugin_filename("plugin_wifi")) {
+    let (wifi_plugin, _wifi_lib) = match load_plugin(plugin_utils::resolve_plugin_filename("plugin_wifi")) {
         Ok(p) => p,
         Err(e) => {
             eprintln!("Failed to load wifi plugin: {}", e);
@@ -118,6 +110,11 @@ pub async fn start_server_async() {
 
     logger.log(LogLevel::Info, "Registering wifi plugin");
     registry.register(wifi_plugin);
+
+    // Load the execution plan 
+    // Add discovered plugins to the registry
+    logger.log(LogLevel::Info, "Loading the execution plan");
+    run_exection_plan_updater();
 
     // Build base router without state
     let mut app = Router::new();
