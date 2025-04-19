@@ -10,3 +10,4 @@ toml = "0.8"
 axum = { version = "0.7", features = ["http1", "tokio"] }
 plugin_core = { path = "../plugin_core" }
 http = "1"
+ureq = "2.9"
