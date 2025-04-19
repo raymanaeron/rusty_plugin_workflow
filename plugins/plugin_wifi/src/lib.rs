@@ -11,7 +11,7 @@ use std::ptr;
 
 #[ctor::ctor]
 fn on_load() {
-    println!("[plugin_wifi] >>> DLL LOADED");
+    println!("[plugin_wifi] >>> LOADED");
 }
 
 // This function returns the name of the plugin

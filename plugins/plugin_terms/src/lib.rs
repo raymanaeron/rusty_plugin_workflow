@@ -7,7 +7,7 @@ use plugin_core::{method_not_allowed, cleanup_response, error_response};
 
 #[ctor::ctor]
 fn on_load() {
-    println!("[plugin_terms] >>> DLL LOADED");
+    println!("[plugin_terms] >>> LOADED");
 }
 
 
