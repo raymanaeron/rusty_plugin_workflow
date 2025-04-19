@@ -10,6 +10,8 @@ if [[ "$1" == "--release" ]]; then
 fi
 TARGET="target/$MODE"
 
+echo ">> TARGET is: $TARGET"
+
 echo "[BUILD] Mode set to $MODE"
 echo "[BUILD] Output path: $TARGET"
 
