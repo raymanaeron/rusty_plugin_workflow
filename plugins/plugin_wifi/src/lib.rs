@@ -219,7 +219,7 @@ let raw_output = match output {
 }
 
 #[no_mangle]
-pub extern "C" fn get_api_resources() -> &'static [Resource] {
+pub extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource{
     use std::sync::Once;
 
     static INIT: Once = Once::new();
@@ -244,7 +244,16 @@ pub extern "C" fn get_api_resources() -> &'static [Resource] {
         }
     });
 
-    unsafe { RESOURCES.unwrap() }
+    unsafe {
+        if let Some(slice) = RESOURCES {
+            if !out_len.is_null() {
+                *out_len = slice.len();
+            }
+            return slice.as_ptr();
+        }
+    }
+    ptr::null()
+    
 }
 
 

@@ -30,7 +30,7 @@ pub struct PluginBinding {
     /// - A list of supported HTTP methods for that resource
     ///
     /// This is typically backed by a static slice inside the plugin.
-    pub get_api_resources: extern "C" fn() -> &'static [Resource],
+    pub get_api_resources: extern "C" fn(out_len: *mut usize) -> *const Resource,
 
     /// Function pointer to handle all plugin-level REST requests.
     ///

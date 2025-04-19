@@ -46,7 +46,7 @@ extern "C" fn get_static_content_path() -> *const c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn get_api_resources() -> &'static [Resource] {
+pub extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
     static INIT: std::sync::Once = std::sync::Once::new();
     static mut RESOURCES: Option<&'static [Resource]> = None;
 
@@ -69,7 +69,16 @@ pub extern "C" fn get_api_resources() -> &'static [Resource] {
         }
     });
 
-    unsafe { RESOURCES.unwrap() }
+    unsafe {
+        if let Some(slice) = RESOURCES {
+            if !out_len.is_null() {
+                *out_len = slice.len();
+            }
+            return slice.as_ptr();
+        }
+    }
+    ptr::null()
+    
 }
 
 #[no_mangle]

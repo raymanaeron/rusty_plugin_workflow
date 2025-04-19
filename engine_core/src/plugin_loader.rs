@@ -1,11 +1,13 @@
 use std::ffi::CStr;
 use std::path::Path;
+use std::ptr;
 
 use libloading::{Library, Symbol};
 use plugin_core::Resource;
 use crate::plugin_binding::PluginBinding;
 use plugin_core::Plugin;
 
+// Updated: now stores a real slice instead of raw pointer
 static mut STATIC_RESOURCES: Option<&'static [Resource]> = None;
 
 /// Loads a plugin from a shared library file and returns a PluginBinding.
@@ -15,11 +17,13 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         println!("[engine] Loading plugin from: {:?}", path.as_ref().canonicalize());
 
         // Load the shared library
-        let lib = Library::new(path.as_ref()).map_err(|e| format!("Failed to load plugin: {}", e))?;
+        let lib = Library::new(path.as_ref())
+            .map_err(|e| format!("Failed to load plugin: {}", e))?;
 
         // Load the create_plugin symbol
         let constructor: Symbol<unsafe extern "C" fn() -> *const Plugin> =
-            lib.get(b"create_plugin").map_err(|e| format!("Missing symbol: {}", e))?;
+            lib.get(b"create_plugin")
+                .map_err(|e| format!("Missing symbol: {}", e))?;
 
         // Call create_plugin to get the plugin struct
         let plugin_ptr = constructor();
@@ -47,32 +51,40 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         let path_cstr = CStr::from_ptr(path_ptr);
         let static_path = path_cstr.to_string_lossy().into_owned();
 
-        // Call plugin.get_api_resources() and copy to static slice
-        let resource_slice = (plugin.get_api_resources)();
-        if resource_slice.is_empty() {
+        // ✅ Call plugin.get_api_resources correctly
+        let mut count: usize = 0;
+        let ptr = (plugin.get_api_resources)(&mut count);
+        if ptr.is_null() || count == 0 {
             return Err(format!("Plugin {} returned no resources", name));
         }
-        
-        STATIC_RESOURCES = Some(resource_slice);
-        
 
-        // Construct and return the PluginBinding
+        let resource_slice = std::slice::from_raw_parts(ptr, count);
+        STATIC_RESOURCES = Some(resource_slice);
+
+        // ✅ Construct the PluginBinding
         let binding = PluginBinding {
             name,
             static_path,
-            get_api_resources: plugin.get_api_resources, 
+            get_api_resources: plugin.get_api_resources,
             handle_request: plugin.handle_request,
             cleanup: plugin.cleanup,
             run: plugin.run,
         };
 
-        // Return both the binding and the Library to keep it alive
         Ok((binding, lib))
     }
 }
 
-fn get_static_resources() -> &'static [Resource] {
+/// Returns a pointer to static resources and writes count to `out_len`
+fn get_static_resources(out_len: *mut usize) -> *const Resource {
     unsafe {
-        STATIC_RESOURCES.unwrap() // Access the static variable
+        if let Some(slice) = STATIC_RESOURCES {
+            if !out_len.is_null() {
+                *out_len = slice.len();
+            }
+            slice.as_ptr()
+        } else {
+            ptr::null()
+        }
     }
 }

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::PluginRegistry;
 
 use std::ffi::{CString, CStr};
-use plugin_core::{ApiRequest, HttpMethod};
+use plugin_core::{ApiRequest, HttpMethod, Resource};
 
 pub async fn dispatch_plugin_api(
     State(registry): State<Arc<PluginRegistry>>,
@@ -17,33 +17,15 @@ pub async fn dispatch_plugin_api(
     headers: HeaderMap,
     body: Bytes,
 ) -> impl IntoResponse {
-    // Extract plugin name from State, not Path
-    
     println!("plugin_name = {}", plugin_name);
     println!("resource_path = {}", resource_path);
     println!("registered plugins: {:?}", registry.all().iter().map(|p| &p.name).collect::<Vec<_>>());
 
-    let registered = registry.all();
-    println!("Registered plugins: {:?}", registered.iter().map(|p| &p.name).collect::<Vec<_>>());
-
-    for p in registry.all() {
-        println!("-> registered plugin name: {}", p.name);
-    }
-    
     let Some(binding) = registry.get(&plugin_name) else {
         println!("Plugin '{}' not found!", plugin_name);
         return (StatusCode::NOT_FOUND, "Plugin not found").into_response();
     };
-    
-    println!("Dispatching to plugin '{}'", plugin_name);
-    println!("get_api_resources() = {:p}", binding.get_api_resources as *const ());
 
-    
-    let Some(binding) = registry.get(&plugin_name) else {
-        println!("Plugin '{}' not found!", plugin_name);
-        return (StatusCode::NOT_FOUND, "Plugin not found").into_response();
-    };
-    
     println!("Dispatching to plugin '{}'", plugin_name);
     println!("get_api_resources() = {:p}", binding.get_api_resources as *const ());
 
@@ -55,8 +37,17 @@ pub async fn dispatch_plugin_api(
         _ => return (StatusCode::METHOD_NOT_ALLOWED, "Unsupported method").into_response(),
     };
 
-    // Validate resource support
-    let supported = (binding.get_api_resources)();
+    // ✅ FFI-safe call to plugin.get_api_resources
+    let mut count: usize = 0;
+    let ptr = (binding.get_api_resources)(&mut count);
+    if ptr.is_null() || count == 0 {
+        println!("Plugin '{}' returned no resources", plugin_name);
+        return (StatusCode::NOT_FOUND, "No API resources found").into_response();
+    }
+
+    let supported = unsafe { std::slice::from_raw_parts(ptr, count) };
+
+    // ✅ Search for matching resource
     let Some(resource) = supported.iter().find(|r| {
         let cstr = unsafe { CStr::from_ptr(r.path) };
         let plugin_path = cstr.to_string_lossy();
@@ -66,16 +57,18 @@ pub async fn dispatch_plugin_api(
         println!("Resource '{}' not found in plugin '{}'", resource_path, plugin_name);
         return (StatusCode::NOT_FOUND, "Resource not found").into_response();
     };
+
+    // ✅ Check method support
     let method_supported = {
         let mut i = 0;
         loop {
             let m = unsafe { *resource.supported_methods.add(i) };
             if m == method_enum {
-                break true; // Exit the loop with `true`
+                break true;
             } else if m == HttpMethod::Get && method_enum != HttpMethod::Get {
-                i += 1; // Continue the loop
+                i += 1;
             } else {
-                break false; // Exit the loop with `false`
+                break false;
             }
         }
     };
@@ -108,7 +101,7 @@ pub async fn dispatch_plugin_api(
         body_len: body.len(),
     };
 
-    // Call plugin
+    // ✅ Call plugin handler
     let response_ptr = (binding.handle_request)(&request);
     if response_ptr.is_null() {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Plugin error").into_response();
@@ -125,7 +118,10 @@ pub async fn dispatch_plugin_api(
     let mut axum_headers = HeaderMap::new();
 
     if !headers.is_null() && header_count > 0 {
-        let header_slice: &[plugin_core::ApiHeader] = unsafe { std::slice::from_raw_parts(headers, header_count) };
+        let header_slice: &[plugin_core::ApiHeader] = unsafe {
+            std::slice::from_raw_parts(headers, header_count)
+        };
+
         for h in header_slice {
             let k = unsafe { CStr::from_ptr(h.key) }.to_str().unwrap_or("");
             let v = unsafe { CStr::from_ptr(h.value) }.to_str().unwrap_or("");
@@ -137,7 +133,7 @@ pub async fn dispatch_plugin_api(
     }
 
     let status = StatusCode::from_u16(response.status).unwrap_or(StatusCode::OK);
-
     let body = body_slice.to_vec();
+
     (status, [(axum::http::header::CONTENT_TYPE, content_type)], body).into_response()
 }

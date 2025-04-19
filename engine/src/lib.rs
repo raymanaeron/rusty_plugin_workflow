@@ -94,10 +94,25 @@ pub async fn start_server_async() {
         terms_plugin.get_api_resources as *const ()
     );
 
+    /*
     let res_slice = (terms_plugin.get_api_resources)();
 
     let res_slice = (terms_plugin.get_api_resources)();
     if !res_slice.is_empty() {
+        for r in res_slice {
+            let path = unsafe { std::ffi::CStr::from_ptr(r.path).to_string_lossy() };
+            println!("[engine] Plugin resource advertised: {}", path);
+        }
+    } else {
+        println!("[engine] Plugin returned no resources");
+    }
+    */
+
+    let mut count: usize = 0;
+    let res_ptr = (terms_plugin.get_api_resources)(&mut count);
+
+    if !res_ptr.is_null() && count > 0 {
+        let res_slice = unsafe { std::slice::from_raw_parts(res_ptr, count) };
         for r in res_slice {
             let path = unsafe { std::ffi::CStr::from_ptr(r.path).to_string_lossy() };
             println!("[engine] Plugin resource advertised: {}", path);
