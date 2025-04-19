@@ -1,0 +1,50 @@
+[dynamic_plugins]
+
+# List of dynamically loaded plugins
+plugins = [
+
+  # Plugin definition begins here
+  {
+    # The internal name of the plugin. Must match the filename of the compiled shared library,
+    # e.g., plugin_wifi.dll (Windows), plugin_wifi.dylib (macOS), or plugin_wifi.so (Linux)
+    full_name = "plugin_wifi"
+
+    # Logical route or short name used to expose the plugin's UI or API entry point.
+    # Also used for matching HTTP routes or workflow actions.
+    plugin_route = "wifi"
+
+    # Semantic version of the plugin. Helps with version control and debugging.
+    version = "3.4"
+
+    # Source type for the plugin. One of:
+    # - "local": plugin is loaded from a file in the same directory as the executable
+    # - "s3": plugin is downloaded from a given S3 URL as a precompiled shared library
+    plugin_location_type = "s3"
+
+    # Location of the plugin:
+    # - If plugin_location_type == "local", this is a relative path or file name like "./plugin_wifi.dylib"
+    # - If plugin_location_type == "s3", this must be a full URL to the compiled binary
+    plugin_location_path = "https://my-s3-bucket.s3.amazonaws.com/plugins/plugin_wifi.dylib"
+
+    # Team that owns this plugin. Used for tracking and operational ownership.
+    team_name = "Edge Connectivity Team"
+
+    # Contact email for the engineering team responsible for implementation and maintenance.
+    engineering_contact_email = "wifi-eng@example.com"
+
+    # Contact email for the operations or support team that handles runtime issues or customer-facing problems.
+    operation_contact_email = "wifi-ops@example.com"
+
+    # Whether this plugin should be invoked asynchronously using run_async() instead of run().
+    # If true, engine will wait for a callback. Default is false.
+    run_async = false
+
+    # Whether this plugin step should appear in the UI flow (progress bar, logs, etc).
+    # If false, it runs silently. Default is true.
+    visible_in_ui = true
+
+    # Optional description of what the plugin does. Used for UI hints and debugging.
+    plugin_description = "Wi-Fi scan and connect flow"
+  }
+
+]

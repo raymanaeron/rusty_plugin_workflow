@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 libloading = "0.8"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
 axum = { version = "0.7", features = ["http1", "tokio"] }
 plugin_core = { path = "../plugin_core" }
 http = "1"

@@ -69,6 +69,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Copying the execution_plan.toml file to the engine output directory...
+copy execution_plan.toml %TARGET%\execution_plan.toml 
+if errorlevel 1 (
+    echo Failed to copy  execution_plan.toml.
+    exit /b 1
+)
 
 echo All builds successful.
 endlocal

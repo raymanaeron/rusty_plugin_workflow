@@ -55,4 +55,7 @@ cp "$TARGET/libplugin_wifi.dylib" "$TARGET/plugin_wifi.dylib"
 echo "Copying the app config file to the engine output directory..."
 cp app_config.toml "$TARGET/app_config.toml"
 
+echo "Copying the execution_plan.toml file to the engine output directory..."
+cp execution_plan.toml "$TARGET/execution_plan.toml"
+
 echo "All builds successful."

@@ -1,9 +1,0 @@
-{
-    "plugins": [
-      {
-        "name": "plugin_wifi",
-        "path": "target/debug/libplugin_wifi.dll"
-      }
-    ]
-  }
-  
