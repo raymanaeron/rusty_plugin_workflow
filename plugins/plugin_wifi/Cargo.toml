@@ -14,4 +14,4 @@ async-trait = "0.1"
 ctor = "0.1"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
