@@ -3,7 +3,7 @@ members = [
     "engine", "engine_core",
     "plugin_core", "plugins/plugin_terms",
     "plugins/plugin_wifi", "logger", 
-    "engine_desktop_ui", "plugins/plugin_status"]
+    "engine_desktop_ui", "plugins/plugin_status", "plugins/plugin_task_agent_headless"]
 resolver = "2"
 
 [workspace.dependencies]

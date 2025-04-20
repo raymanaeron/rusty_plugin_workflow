@@ -87,7 +87,7 @@ pub struct Plugin {
     /// ```
     pub cleanup: extern "C" fn(response: *mut ApiResponse),
 
-    pub run_workflow: Option<extern "C" fn(input: *const ApiRequest)>,
+    pub run_workflow: Option<extern "C" fn(input: *const ApiRequest) -> *mut ApiResponse>,
     pub on_progress: Option<extern "C" fn() -> *mut ApiResponse>,
     pub on_complete: Option<extern "C" fn() -> *mut ApiResponse>,
 }

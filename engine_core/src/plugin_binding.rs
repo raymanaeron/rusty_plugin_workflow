@@ -51,7 +51,7 @@ pub struct PluginBinding {
     /// Function pointer to run the plugin's main loop or event loop.
     pub run: extern "C" fn(ctx: *const PluginContext), 
 
-    pub run_workflow: Option<extern "C" fn(input: *const ApiRequest)>,
+    pub run_workflow: Option<extern "C" fn(input: *const ApiRequest) -> *mut ApiResponse>,
     pub on_progress: Option<extern "C" fn() -> *mut ApiResponse>,
     pub on_complete: Option<extern "C" fn() -> *mut ApiResponse>,
 }
