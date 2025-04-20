@@ -7,8 +7,11 @@ pub mod plugin;
 pub mod resource;
 pub mod helper_functions;
 
+pub mod response_utils;
+pub mod resource_utils;
+
 #[macro_use]
-pub mod plugin_macros;
+mod plugin_macros;
 
 pub use api_request::ApiRequest;
 pub use api_response::ApiResponse;
@@ -22,6 +25,3 @@ pub use helper_functions::error_response;
 pub use helper_functions::success_response;
 pub use helper_functions::method_not_allowed;
 pub use helper_functions::cleanup_response;
-
-
-

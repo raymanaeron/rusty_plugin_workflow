@@ -1,10 +1,8 @@
 use std::ffi::CString;
 use crate::{HttpMethod, Resource};
+use std::sync::Once;
 
 pub fn static_resource(path: &str, methods: &'static [HttpMethod]) -> &'static [Resource] {
-    use std::sync::Once;
-    use std::ptr;
-
     static mut STATIC_SLICE: Option<&'static [Resource]> = None;
     static INIT: Once = Once::new();
 
