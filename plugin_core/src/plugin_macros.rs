@@ -21,6 +21,9 @@ macro_rules! declare_plugin {
                 get_api_resources: $resources_fn,
                 handle_request: $handle_fn,
                 cleanup: $cleanup_fn,
+                run_workflow: None,
+                on_progress: None,
+                on_complete: None,
             }
         }
     };

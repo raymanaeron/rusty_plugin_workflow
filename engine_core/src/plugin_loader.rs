@@ -79,6 +79,9 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
             handle_request: plugin.handle_request,
             cleanup: plugin.cleanup,
             run: plugin.run,
+            run_workflow: plugin.run_workflow,
+            on_progress: plugin.on_progress,
+            on_complete: plugin.on_complete,
         };
 
         Ok((binding, lib))

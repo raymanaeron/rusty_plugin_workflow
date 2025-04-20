@@ -50,6 +50,10 @@ pub struct PluginBinding {
 
     /// Function pointer to run the plugin's main loop or event loop.
     pub run: extern "C" fn(ctx: *const PluginContext), 
+
+    pub run_workflow: Option<extern "C" fn(input: *const ApiRequest)>,
+    pub on_progress: Option<extern "C" fn() -> *mut ApiResponse>,
+    pub on_complete: Option<extern "C" fn() -> *mut ApiResponse>,
 }
 
 impl Clone for PluginBinding {
@@ -62,6 +66,9 @@ impl Clone for PluginBinding {
             handle_request: self.handle_request,
             cleanup: self.cleanup,
             run: self.run,
+            run_workflow: self.run_workflow,
+            on_progress: self.on_progress,
+            on_complete: self.on_complete,
         }
     }
 }
