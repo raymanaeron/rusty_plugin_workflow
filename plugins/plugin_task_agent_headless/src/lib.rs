@@ -4,10 +4,10 @@ use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
 
-use std::ffi::{CString, CStr};
+use std::ffi::{ CString, CStr };
 use std::os::raw::c_char;
 use std::ptr;
-use std::sync::{Mutex, Arc};
+use std::sync::{ Mutex, Arc };
 use std::thread;
 use std::time::Duration;
 
@@ -16,8 +16,9 @@ fn on_load() {
     println!("[plugin_task_agent_headless] >>> LOADED");
 }
 
-static PROGRESS_STATE: once_cell::sync::Lazy<Arc<Mutex<String>>> =
-    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new("Waiting for job...".to_string())));
+static PROGRESS_STATE: once_cell::sync::Lazy<Arc<Mutex<String>>> = once_cell::sync::Lazy::new(||
+    Arc::new(Mutex::new("Waiting for job...".to_string()))
+);
 
 extern "C" fn run(ctx: *const PluginContext) {
     println!("[plugin_task_agent_headless] - run");
@@ -40,7 +41,9 @@ extern "C" fn get_static_content_path() -> *const c_char {
 extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
     static METHODS: [HttpMethod; 1] = [HttpMethod::Post];
     let slice = static_resource("jobs", &METHODS);
-    unsafe { *out_len = slice.len(); }
+    unsafe {
+        *out_len = slice.len();
+    }
     slice.as_ptr()
 }
 
@@ -63,7 +66,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                 // by invoking an HTTP POST on api/taskgent/jobs
                 // of course we could also call run_worfklow directly
                 // from the engine (where the plugin is loaded)
-                // But this additional entry point is useful 
+                // But this additional entry point is useful
                 // if we wanted to run the workflow from a different plugin
                 // or from a JS inside a webview of another plugin
                 run_workflow(req)
@@ -74,32 +77,37 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
     }
 }
 
-extern "C" fn run_workflow(req: *const ApiRequest) -> *mut ApiResponse {
-    println!("[plugin_task_agent_headless] - run_workflow input request: {:?}", req);
-    let state = PROGRESS_STATE.clone();
+extern "C" fn run_workflow(_req: *const ApiRequest) -> *mut ApiResponse {
+    println!("[plugin_task_agent_headless] - run_workflow");
+
     {
-        let mut lock = state.lock().unwrap();
+        let mut lock = PROGRESS_STATE.lock().unwrap();
         *lock = "Starting background job...".to_string();
     }
 
-    thread::spawn(move || {
-        let mut state = state.lock().unwrap();
-        *state = "Step 1: initializing...".to_string();
-        drop(state);
+    thread::spawn(|| {
+        {
+            let mut lock = PROGRESS_STATE.lock().unwrap();
+            *lock = "Step 1: initializing...".to_string();
+        }
         thread::sleep(Duration::from_secs(2));
 
-        let mut state = PROGRESS_STATE.lock().unwrap();
-        *state = "Step 2: processing...".to_string();
-        drop(state);
+        {
+            let mut lock = PROGRESS_STATE.lock().unwrap();
+            *lock = "Step 2: processing...".to_string();
+        }
         thread::sleep(Duration::from_secs(2));
 
-        let mut state = PROGRESS_STATE.lock().unwrap();
-        *state = "Step 3: finalizing...".to_string();
-        drop(state);
+        {
+            let mut lock = PROGRESS_STATE.lock().unwrap();
+            *lock = "Step 3: finalizing...".to_string();
+        }
         thread::sleep(Duration::from_secs(2));
 
-        let mut state = PROGRESS_STATE.lock().unwrap();
-        *state = "Job completed".to_string();
+        {
+            let mut lock = PROGRESS_STATE.lock().unwrap();
+            *lock = "Job completed".to_string();
+        }
     });
 
     json_response(202, r#"{ "message": "Job started" }"#)
@@ -107,7 +115,7 @@ extern "C" fn run_workflow(req: *const ApiRequest) -> *mut ApiResponse {
 
 extern "C" fn on_progress() -> *mut ApiResponse {
     let current = PROGRESS_STATE.lock().unwrap().clone();
-    println!("[plugin_task_agent_headless] on_progress = {}", current);  
+    println!("[plugin_task_agent_headless] on_progress = {}", current);
     let msg = format!(r#"{{ "status": "{}" }}"#, current);
     json_response(200, &msg)
 }
@@ -137,4 +145,3 @@ declare_plugin!(
     on_progress,
     on_complete
 );
-

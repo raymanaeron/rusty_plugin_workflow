@@ -12,6 +12,11 @@ use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
 
+use std::sync::{Arc, Mutex};
+use once_cell::sync::Lazy;
+
+static WIFI_CONNECTED: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new(false)));
+
 #[ctor::ctor]
 fn on_load() {
     println!("[plugin_wifi] >>> LOADED");
@@ -89,9 +94,23 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 }
 
 fn connect_to_network(ssid: &str, _password: &str) -> *mut ApiResponse {
+    {
+        let mut flag = WIFI_CONNECTED.lock().unwrap();
+        *flag = true;  // Mark as connected
+    }
     let msg = format!(r#"{{ "message": "Connected to {}" }}"#, ssid);
     json_response(200, &msg)
 }
+
+extern "C" fn on_complete() -> *mut ApiResponse {
+    let connected = *WIFI_CONNECTED.lock().unwrap();
+    if connected {
+        json_response(200, r#"{ "message": "WiFi Connected" }"#)
+    } else {
+        json_response(204, r#"{ "message": "WiFi not connected" }"#)
+    }
+}
+
 
 extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     let output = if cfg!(target_os = "windows") {
@@ -220,6 +239,14 @@ extern "C" fn cleanup(resp: *mut ApiResponse) {
     cleanup_response(resp);
 }
 
+extern "C" fn null_workflow(_req: *const ApiRequest) -> *mut ApiResponse {
+    std::ptr::null_mut()
+}
+
+extern "C" fn null_progress() -> *mut ApiResponse {
+    std::ptr::null_mut()
+}
+
 declare_plugin!(
     "plugin_wifi",
     "wifi",
@@ -227,5 +254,8 @@ declare_plugin!(
     get_static_content_path,
     get_api_resources,
     handle_request,
-    cleanup
+    cleanup,
+    null_workflow,
+    null_progress,
+    on_complete
 );

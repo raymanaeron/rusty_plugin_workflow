@@ -2128,6 +2128,7 @@ dependencies = [
  "async-trait",
  "axum",
  "ctor",
+ "once_cell",
  "plugin_core",
  "serde",
  "serde_json",

@@ -150,7 +150,7 @@ pub async fn start_server_async() {
 
     logger.log(LogLevel::Info, "Registering wifi plugin");
     plugin_libraries.push(_wifi_lib);
-    registry.register(wifi_plugin);
+    registry.register(wifi_plugin.clone());
 
     // Load the status plugin
     logger.log(LogLevel::Info, "Loading the status plugin");
@@ -226,12 +226,9 @@ pub async fn start_server_async() {
                     let progress_resp = unsafe { Box::from_raw(progress_resp_ptr) };
 
                     let status_json = unsafe {
-                        std::slice::from_raw_parts(
-                            progress_resp.body_ptr,
-                            progress_resp.body_len
-                        )
+                        std::slice::from_raw_parts(progress_resp.body_ptr, progress_resp.body_len)
                     };
-                    
+
                     let status_text = String::from_utf8_lossy(status_json);
 
                     logger.log(LogLevel::Debug, &format!("[engine] Progress: {}", status_text));
@@ -275,29 +272,59 @@ pub async fn start_server_async() {
         }
     });
 
-    // Now we can trigger the workflow
-    // This is a blocking call, so we need to run it in a separate thread
-    if let Some(run_workflow_fn) = task_agent_headless_plugin.run_workflow {
-        logger.log(LogLevel::Info, "Triggering task_agent_headless run_workflow");
+    // We are now going to subscribe to the on_complete callback of the wifi plugin
+    // So that we can trigger the task agent headless plugin
+    let wifi_plugin = wifi_plugin.clone();
+    let task_agent = task_agent_headless_plugin.clone();
+    tokio::spawn(async move {
+        use std::time::Duration;
+        use tokio::time::sleep;
+        use plugin_core::{ HttpMethod, ApiRequest };
 
-        let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
-        let json_len = json_bytes.len();
-        let body_ptr = Box::into_raw(json_bytes.into_boxed_slice()) as *const u8;
-        
-        let request = plugin_core::ApiRequest {
-            method: plugin_core::HttpMethod::Post,
-            path: std::ptr::null(), // Or CString::new("job").unwrap().into_raw() if needed
-            headers: std::ptr::null(),
-            header_count: 0,
-            body_ptr,
-            body_len: json_len, 
-            content_type: std::ptr::null(),
-            query: std::ptr::null(),
-        };
+        loop {
+            if let Some(wifi_complete_fn) = wifi_plugin.on_complete {
+                let resp_ptr = wifi_complete_fn();
+                if !resp_ptr.is_null() {
+                    let resp = unsafe { Box::from_raw(resp_ptr) };
+                    if resp.status == 200 {
+                        LoggerLoader::get_logger().log(LogLevel::Info, "WiFi is connected");
 
-        // This will start the task
-        let _ = run_workflow_fn(&request);
-    }
+                        if let Some(run_workflow_fn) = task_agent.run_workflow {
+                            LoggerLoader::get_logger().log(
+                                LogLevel::Info,
+                                "Triggering task_agent_headless run_workflow"
+                            );
+
+                            let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
+                            let json_len = json_bytes.len();
+                            let body_ptr = Box::into_raw(
+                                json_bytes.into_boxed_slice()
+                            ) as *const u8;
+
+                            let request = ApiRequest {
+                                method: HttpMethod::Post,
+                                path: CString::new("job").unwrap().into_raw(),
+                                headers: std::ptr::null(),
+                                header_count: 0,
+                                body_ptr,
+                                body_len: json_len,
+                                content_type: std::ptr::null(),
+                                query: std::ptr::null(),
+                            };
+
+                            let _ = run_workflow_fn(&request);
+                        }
+
+                        break; // stop polling after success
+                    }
+
+                    (wifi_plugin.cleanup)(Box::into_raw(resp));
+                }
+            }
+
+            sleep(Duration::from_secs(1)).await;
+        }
+    });
 
     // Let's load the execution plan
     // Add discovered plugins to the registry
