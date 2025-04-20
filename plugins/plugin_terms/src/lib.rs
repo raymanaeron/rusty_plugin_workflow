@@ -9,7 +9,6 @@ fn on_load() {
     println!("[plugin_terms] >>> LOADED");
 }
 
-
 fn process_user_term_acceptance(accepted: bool) {
     if accepted {
         println!("[plugin_terms] user accepted the terms");
