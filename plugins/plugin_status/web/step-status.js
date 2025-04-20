@@ -1,29 +1,21 @@
 const statusContent = document.getElementById('statusContent');
-const wsUrl = `ws://${location.host}/status/ws`;
-let socket;
 
-function connectWebSocket() {
-  socket = new WebSocket(wsUrl);
+function pollStatus() {
+  fetch('/api/status/statusmessage', { method: 'GET' })
+    .then(response => response.json())
+    .then(message => {
+      console.log('[status] API response:', message);  //  MUST see this in console
 
-  socket.onopen = () => {
-    console.log('[status] WebSocket connected');
-  };
-
-  socket.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-      if (message.action === 'status' && typeof message.data?.text === 'string') {
-        statusContent.textContent = message.data.text;
+      if (typeof message.status === 'string') {
+        statusContent.textContent = message.status;
       }
-    } catch (err) {
-      console.error('[status] Failed to parse message', err);
-    }
-  };
 
-  socket.onclose = () => {
-    console.warn('[status] WebSocket closed. Reconnecting...');
-    setTimeout(connectWebSocket, 1000);
-  };
+    })
+    .catch(err => console.error('[status] Failed to fetch status', err))
+    .finally(() => setTimeout(pollStatus, 1000));
 }
 
-connectWebSocket();
+// our web app is vanilla JS, and therefore no two way binding possible without a major workaround
+// websocket is not possible because that will require us to host a web server on the rust side
+// for now polling just works fine, and is the easiest solution
+pollStatus();

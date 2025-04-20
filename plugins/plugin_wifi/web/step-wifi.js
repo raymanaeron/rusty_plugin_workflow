@@ -1,4 +1,5 @@
 // plugins/plugin_wifi/web/step-wifi.js
+const next_route = "/status/web";
 
 export async function activate(container) {
     const scanBtn = container.querySelector("#scanBtn");
@@ -70,6 +71,11 @@ export async function activate(container) {
 
         if (res.ok) {
           resultBox.innerHTML = `<div class="alert alert-success">${json.message || "Connected successfully"}</div>`;
+
+          // now switch to a core plugin route named status
+          history.pushState({}, "", next_route);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+          
         } else {
           resultBox.innerHTML = `<div class="alert alert-danger">${json.message || "Connection failed"}</div>`;
         }

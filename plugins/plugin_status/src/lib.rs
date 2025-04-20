@@ -35,6 +35,7 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
 }
 
 extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
+    println!("[plugin_status] handle_request called");
     if req.is_null() {
         return ptr::null_mut();
     }
@@ -49,8 +50,19 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
         match request.method {
             HttpMethod::Get if path == "statusmessage" => {
+                // let current = STATUS.lock().unwrap().clone();
+                // let json = format!(r#"{{ "status": "{}" }}"#, current);
+                // This redirect logic is necessary to handle the switch plugin UI request from the rust engine side
                 let current = STATUS.lock().unwrap().clone();
-                let json = format!(r#"{{ "status": "{}" }}"#, current);
+                let should_redirect = current.starts_with("Step"); // or any other logic
+                let json = if should_redirect {
+                    //format!(r#"{{ "status": "{}", "redirect": "/status/web" }}"#, current)
+                    format!(r#"{{ "status": "{}", "redirect": "/status" }}"#, current)
+                } else {
+                    format!(r#"{{ "status": "{}" }}"#, current)
+                };
+                println!("[plugin_status] Returning status = {}, redirect = {}", current, should_redirect);
+
                 return json_response(200, &json);
             }
 
