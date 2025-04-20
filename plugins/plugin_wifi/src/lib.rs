@@ -96,21 +96,33 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 fn connect_to_network(ssid: &str, _password: &str) -> *mut ApiResponse {
     {
         let mut flag = WIFI_CONNECTED.lock().unwrap();
-        *flag = true;  // Mark as connected
+        *flag = false; // Reset the flag first to simulate a fresh connection
     }
+
+    // Simulate connection delay or logic here...
+    std::thread::sleep(std::time::Duration::from_millis(200)); // Optional
+
+    {
+        let mut flag = WIFI_CONNECTED.lock().unwrap();
+        *flag = true; // Set connected flag
+    }
+
+    println!("[plugin_wifi] Connected to {}", ssid);
     let msg = format!(r#"{{ "message": "Connected to {}" }}"#, ssid);
     json_response(200, &msg)
 }
 
+
 extern "C" fn on_complete() -> *mut ApiResponse {
     let connected = *WIFI_CONNECTED.lock().unwrap();
+    println!("[plugin_wifi] on_complete: connected = {}", connected);
+
     if connected {
         json_response(200, r#"{ "message": "WiFi Connected" }"#)
     } else {
         json_response(204, r#"{ "message": "WiFi not connected" }"#)
     }
 }
-
 
 extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     let output = if cfg!(target_os = "windows") {
