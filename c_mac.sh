@@ -7,7 +7,7 @@ if [ -d "target" ]; then
 fi
 
 if [ -d "target" ]; then
-  echo "❌ Failed to delete target folder."
+  echo "Failed to delete target folder."
 else
-  echo "✅ Target folder successfully deleted."
+  echo "Target folder successfully deleted."
 fi
