@@ -8,23 +8,57 @@ use std::ffi::CString;
 use engine_core::execution_plan_updater::ExecutionPlanUpdater;
 use engine_core::execution_plan::ExecutionPlanLoader;
 use engine_core::plugin_utils;
+use engine_core::plugin_metadata::PluginMetadata;
+use engine_core::plugin_utils::prepare_plugin_binary;
+use std::path::PathBuf;
+use engine_core::execution_plan_updater::PlanLoadSource;
 
-fn run_exection_plan_updater() {
+pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
     let local_path = "execution_plan.toml";
 
     match ExecutionPlanUpdater::fetch_and_prepare_latest(local_path) {
-        Ok(path) => {
-            match ExecutionPlanLoader::load_from_file(&path) {
+        Ok(plan_status) => {
+            let plan_path = match &plan_status {
+                PlanLoadSource::Remote(path) => path,
+                PlanLoadSource::LocalFallback(path) => path,
+            };
+
+            match ExecutionPlanLoader::load_from_file(plan_path) {
                 Ok(plan) => {
-                    println!("Final execution plan loaded with {} plugins", plan.plugins.len());
-                    println!("Execution plan: {:?}", plan);
+                    println!(
+                        "Execution plan [{}] loaded with {} plugins",
+                        match plan_status {
+                            PlanLoadSource::Remote(_) => "remote",
+                            PlanLoadSource::LocalFallback(_) => "local fallback",
+                        },
+                        plan.plugins.len()
+                    );
+                    Some((plan_status, plan.plugins))
                 }
-                Err(e) => eprintln!("Failed to parse execution plan: {}", e),
+                Err(e) => {
+                    eprintln!("Failed to parse execution plan: {}", e);
+                    None
+                }
             }
         }
         Err(e) => {
             eprintln!("Failed to resolve execution plan: {}", e);
+            None
         }
+    }
+}
+
+fn load_and_register(
+    path: PathBuf,
+    registry: &Arc<PluginRegistry>,
+    lib_holder: &mut Vec<libloading::Library>
+) {
+    match load_plugin(&path) {
+        Ok((plugin, lib)) => {
+            registry.register(plugin);
+            lib_holder.push(lib); // retain library to avoid drop
+        }
+        Err(e) => eprintln!("Failed to load plugin from {}: {}", path.display(), e),
     }
 }
 
@@ -49,12 +83,15 @@ pub async fn start_server_async() {
     // Create a plugin registry
     let registry = Arc::new(PluginRegistry::new());
 
+    // We hold the libs in memory to avoid dropping them
+    let mut plugin_libraries = Vec::new();
+
     // Load the terms plugin
     logger.log(LogLevel::Info, "Loading the terms plugin");
-    //let (terms_plugin, _terms_lib) =
-    //    load_plugin("plugin_terms.dll").expect("Failed to load plugin");
-    
-    let (terms_plugin, _terms_lib) = match load_plugin(plugin_utils::resolve_plugin_filename("plugin_terms")) {
+
+    let (terms_plugin, _terms_lib) = match
+        load_plugin(plugin_utils::resolve_plugin_filename("plugin_terms"))
+    {
         Ok(p) => p,
         Err(e) => {
             eprintln!("Failed to load terms plugin: {}", e);
@@ -70,8 +107,9 @@ pub async fn start_server_async() {
     (terms_plugin.run)(&terms_ctx);
 
     logger.log(LogLevel::Info, "Registering terms plugin");
-    //registry.register(terms_plugin);
     registry.register(terms_plugin.clone());
+    plugin_libraries.push(_terms_lib);
+
     println!(
         "[engine] FINGERPRINT: plugin_terms.get_api_resources = {:p}",
         terms_plugin.get_api_resources as *const ()
@@ -93,14 +131,16 @@ pub async fn start_server_async() {
     // Load the wifi plugin
     logger.log(LogLevel::Info, "Loading the wifi plugin");
     // let (wifi_plugin, _wifi_lib) = load_plugin("plugin_wifi.dll").expect("Failed to load plugin");
-    let (wifi_plugin, _wifi_lib) = match load_plugin(plugin_utils::resolve_plugin_filename("plugin_wifi")) {
+    let (wifi_plugin, _wifi_lib) = match
+        load_plugin(plugin_utils::resolve_plugin_filename("plugin_wifi"))
+    {
         Ok(p) => p,
         Err(e) => {
             eprintln!("Failed to load wifi plugin: {}", e);
             return;
         }
     };
-    
+
     logger.log(LogLevel::Info, "Running the wifi plugin with a parameter");
     let wifi_config = CString::new("scan=true").unwrap();
     let wifi_ctx = PluginContext {
@@ -109,12 +149,39 @@ pub async fn start_server_async() {
     (wifi_plugin.run)(&wifi_ctx);
 
     logger.log(LogLevel::Info, "Registering wifi plugin");
+    plugin_libraries.push(_wifi_lib);
     registry.register(wifi_plugin);
 
-    // Load the execution plan 
+    // Load the execution plan
     // Add discovered plugins to the registry
     logger.log(LogLevel::Info, "Loading the execution plan");
-    run_exection_plan_updater();
+
+    let Some((plan_status, plugins)) = run_exection_plan_updater() else {
+        eprintln!("Execution plan loading failed. Cannot continue.");
+        return;
+    };
+
+    let allow_write = matches!(plan_status, PlanLoadSource::Remote(_));
+
+    for plugin_meta in plugins {
+        match prepare_plugin_binary(&plugin_meta, allow_write) {
+            Ok(local_path) => load_and_register(local_path, &registry, &mut plugin_libraries),
+            Err(e) => {
+                let source = match plan_status {
+                    PlanLoadSource::Remote(_) => "remote plan",
+                    PlanLoadSource::LocalFallback(_) => "local fallback plan",
+                };
+
+                eprintln!(
+                    "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
+                    plugin_meta.name,
+                    plugin_meta.plugin_location_type,
+                    source,
+                    e
+                );
+            }
+        }
+    }
 
     // Build base router without state
     let mut app = Router::new();
