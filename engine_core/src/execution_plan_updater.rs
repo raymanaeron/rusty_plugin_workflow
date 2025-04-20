@@ -1,4 +1,4 @@
-use crate::execution_plan::{ExecutionPlanLoader, PluginExecutionPlan};
+use crate::execution_plan::ExecutionPlanLoader;
 use std::{fs, io::Write, path::PathBuf, error::Error};
 
 /// Responsible for resolving and downloading updated execution plans.
