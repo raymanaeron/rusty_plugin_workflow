@@ -56,17 +56,33 @@ impl ExecutionPlanUpdater {
         fixed
     }
 
-    /// Downloads the file from an HTTPS S3 URL and stores it locally in temp dir.
     fn download_from_https_url(url: &str) -> Result<PathBuf, Box<dyn Error>> {
         let response = ureq::get(url).call()?;
         if response.status() != 200 {
             return Err(format!("HTTP GET failed with status {}", response.status()).into());
         }
-
+    
         let content = response.into_string()?;
         let tmp_path = std::env::temp_dir().join("execution_plan.override.toml");
-        let mut file = fs::File::create(&tmp_path)?;
-        file.write_all(content.as_bytes())?;
-        Ok(tmp_path)
+        let mut tmp_file = fs::File::create(&tmp_path)?;
+        tmp_file.write_all(content.as_bytes())?;
+    
+        // Resolve exe folder path
+        let mut exe_path = std::env::current_exe()?;
+        exe_path.pop();
+    
+        let final_path = exe_path.join("execution_plan.toml");
+        let backup_path = exe_path.join("execution_plan.old.toml");
+    
+        // Rename the old plan if it exists
+        if final_path.exists() {
+            fs::rename(&final_path, &backup_path)?;
+        }
+    
+        // Copy override to the new canonical location
+        fs::copy(&tmp_path, &final_path)?;
+    
+        Ok(final_path)
     }
+    
 }

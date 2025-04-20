@@ -18,3 +18,25 @@ pub fn resolve_plugin_binary_path(folder: &str, name: &str) -> String {
 
     base_path.to_string_lossy().into_owned()
 }
+
+/// Downloads a plugin binary from an S3 HTTPS URL and stores it in the exe folder.
+/// Returns the final local path to the copied file.
+pub fn download_plugin_from_s3(url: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let response = ureq::get(url).call()?;
+    if response.status() != 200 {
+        return Err(format!("HTTP GET failed with status {}", response.status()).into());
+    }
+
+    let bytes = response.into_bytes()?;
+
+    let mut exe_path = std::env::current_exe()?;
+    exe_path.pop();
+
+    let filename = url.split('/').last().ok_or("Invalid URL filename")?;
+    let final_path = exe_path.join(filename);
+
+    let mut file = fs::File::create(&final_path)?;
+    file.write_all(&bytes)?;
+
+    Ok(final_path)
+}
