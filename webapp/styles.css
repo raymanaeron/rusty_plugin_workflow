@@ -111,3 +111,7 @@ button.btn-lg {
   font-size: 0.95rem;
   border-radius: 0.375rem;
 }
+
+.status-line.info { color: #333; }
+.status-line.success { color: green; }
+.status-line.error { color: red; }
