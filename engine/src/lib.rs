@@ -152,7 +152,32 @@ pub async fn start_server_async() {
     plugin_libraries.push(_wifi_lib);
     registry.register(wifi_plugin);
 
-    // Load the execution plan
+    // Load the status plugin
+    logger.log(LogLevel::Info, "Loading the status plugin");
+    
+    let (status_plugin, _status_lib) = match
+        load_plugin(plugin_utils::resolve_plugin_filename("plugin_status"))
+    {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Failed to load status plugin: {}", e);
+            return;
+        }
+    };
+
+    logger.log(LogLevel::Info, "Running the status plugin with a parameter");
+    let status_config = CString::new("scan=true").unwrap();
+    let status_ctx = PluginContext {
+        config: status_config.as_ptr(),
+    };
+    (status_plugin.run)(&status_ctx);
+
+    logger.log(LogLevel::Info, "Registering status plugin");
+    plugin_libraries.push(_status_lib);
+    registry.register(status_plugin);
+
+    // Core plugins loaded
+    // Let's load the execution plan
     // Add discovered plugins to the registry
     logger.log(LogLevel::Info, "Loading the execution plan");
 
