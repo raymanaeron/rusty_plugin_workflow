@@ -10,12 +10,13 @@ use plugin_core::{ApiRequest, ApiResponse, Resource, PluginContext};
 /// engines (e.g., headless, UI-driven) may construct and use it differently,
 /// even if they all conform to the shared plugin interface.
 pub struct PluginBinding {
-    /// The unique name of the plugin, such as `"wifi"`, `"bluetooth"`, etc.
-    ///
+    /// The unique name of the plugin, such as `"plugin_wifi"`, `"plugin_bluetooth"`, etc.
+    pub name: String,
+    
     /// This name is used to mount routes at:
     /// - `/wifi/api/<resource>` for REST APIs
     /// - `/wifi/web/<file>` for static web content
-    pub name: String,
+    pub plugin_route: String,
 
     /// The path to the plugin's static web assets folder.
     ///
@@ -55,6 +56,7 @@ impl Clone for PluginBinding {
     fn clone(&self) -> Self {
         Self {
             name: self.name.clone(),
+            plugin_route: self.plugin_route.clone(),
             static_path: self.static_path.clone(),
             get_api_resources: self.get_api_resources,
             handle_request: self.handle_request,

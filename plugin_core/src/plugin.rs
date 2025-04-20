@@ -18,6 +18,10 @@ pub struct Plugin {
     /// The returned value must be a null-terminated C string.
     pub name: extern "C" fn() -> *const c_char,
 
+    /// Returns the route prefix for the plugin (e.g., "/wifi").
+    /// This is used to mount the plugin's static content and API routes.
+    pub plugin_route: extern "C" fn() -> *const c_char,
+
     /// Called once at plugin startup with configuration details.
     pub run: extern "C" fn(ctx: *const PluginContext),
 

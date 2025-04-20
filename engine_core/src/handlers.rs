@@ -12,21 +12,22 @@ use plugin_core::{ApiRequest, HttpMethod};
 
 pub async fn dispatch_plugin_api(
     State(registry): State<Arc<PluginRegistry>>,
-    Path((plugin_name, resource_path)): Path<(String, String)>,
+    Path((plugin_route, resource_path)): Path<(String, String)>,
     method: Method,
     headers: HeaderMap,
     body: Bytes,
 ) -> impl IntoResponse {
-    println!("plugin_name = {}", plugin_name);
+    // println!("plugin_name = {}", plugin_name);
+    println!("plugin_route = {}", plugin_route);
     println!("resource_path = {}", resource_path);
     println!("registered plugins: {:?}", registry.all().iter().map(|p| &p.name).collect::<Vec<_>>());
 
-    let Some(binding) = registry.get(&plugin_name) else {
-        println!("Plugin '{}' not found!", plugin_name);
+    let Some(binding) = registry.get_by_route(&plugin_route) else {
+        println!("Plugin route '{}' not found!", plugin_route);
         return (StatusCode::NOT_FOUND, "Plugin not found").into_response();
     };
 
-    println!("Dispatching to plugin '{}'", plugin_name);
+    println!("Dispatching to plugin '{}'", binding.name);
     println!("get_api_resources() = {:p}", binding.get_api_resources as *const ());
 
     let method_enum = match method.as_str() {
@@ -37,28 +38,28 @@ pub async fn dispatch_plugin_api(
         _ => return (StatusCode::METHOD_NOT_ALLOWED, "Unsupported method").into_response(),
     };
 
-    // ✅ FFI-safe call to plugin.get_api_resources
+    // FFI-safe call to plugin.get_api_resources
     let mut count: usize = 0;
     let ptr = (binding.get_api_resources)(&mut count);
     if ptr.is_null() || count == 0 {
-        println!("Plugin '{}' returned no resources", plugin_name);
+        println!("Plugin '{}' returned no resources", binding.name);
         return (StatusCode::NOT_FOUND, "No API resources found").into_response();
     }
 
     let supported = unsafe { std::slice::from_raw_parts(ptr, count) };
 
-    // ✅ Search for matching resource
+    // Search for matching resource
     let Some(resource) = supported.iter().find(|r| {
         let cstr = unsafe { CStr::from_ptr(r.path) };
         let plugin_path = cstr.to_string_lossy();
         println!("Comparing resource: '{}' == '{}'", plugin_path, resource_path);
         plugin_path == resource_path
     }) else {
-        println!("Resource '{}' not found in plugin '{}'", resource_path, plugin_name);
+        println!("Resource '{}' not found in plugin '{}'", resource_path,  binding.name);
         return (StatusCode::NOT_FOUND, "Resource not found").into_response();
     };
 
-    // ✅ Check method support
+    // Check method support
     let method_supported = {
         let mut i = 0;
         loop {
@@ -101,7 +102,7 @@ pub async fn dispatch_plugin_api(
         body_len: body.len(),
     };
 
-    // ✅ Call plugin handler
+    // Call plugin handler
     let response_ptr = (binding.handle_request)(&request);
     if response_ptr.is_null() {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Plugin error").into_response();

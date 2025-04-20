@@ -15,6 +15,11 @@ fn on_load() {
 
 // This function returns the name of the plugin
 extern "C" fn name() -> *const c_char {
+    CString::new("plugin_wifi").unwrap().into_raw()
+}
+
+// This function returns the base route of the plugin
+extern "C" fn plugin_route() -> *const c_char {
     CString::new("wifi").unwrap().into_raw()
 }
 
@@ -363,6 +368,7 @@ pub extern "C" fn cleanup(resp: *mut ApiResponse) {
 pub extern "C" fn create_plugin() -> *const Plugin {
     &(Plugin {
         name,
+        plugin_route,
         run,
         get_static_content_path,
         get_api_resources,

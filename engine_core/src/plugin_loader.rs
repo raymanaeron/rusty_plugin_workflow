@@ -42,6 +42,15 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         let name_cstr = CStr::from_ptr(name_ptr);
         let name = name_cstr.to_string_lossy().into_owned();
 
+        // Call plugin.plugin_route()
+        let plugin_route_ptr = (plugin.plugin_route)();
+        if plugin_route_ptr.is_null() {
+            return Err("Plugin plugin_route() returned null".to_string());
+        }
+
+        let plugin_route_cstr = CStr::from_ptr(plugin_route_ptr);
+        let plugin_route = plugin_route_cstr.to_string_lossy().into_owned();
+
         // Call plugin.get_static_content_path()
         let path_ptr = (plugin.get_static_content_path)();
         if path_ptr.is_null() {
@@ -64,6 +73,7 @@ pub fn load_plugin<P: AsRef<Path>>(path: P) -> Result<(PluginBinding, Library), 
         // Construct the PluginBinding
         let binding = PluginBinding {
             name,
+            plugin_route,
             static_path,
             get_api_resources: plugin.get_api_resources,
             handle_request: plugin.handle_request,

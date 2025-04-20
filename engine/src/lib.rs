@@ -135,9 +135,9 @@ pub async fn start_server_async() {
     // 2. Plugin static content like /terms/web/* or /wifi/web/*
     use tower_http::services::ServeDir;
     for plugin in registry.all() {
-        let web_path = format!("/{}/web", plugin.name);
-        println!("Web Path : {}", web_path);
+        let web_path = format!("/{}/web", plugin.plugin_route);
         println!("-> registered plugin name: {}", plugin.name);
+        println!("Web Path : {}", web_path);
         app = app.nest_service(&web_path, ServeDir::new(&plugin.static_path));
     }
 
