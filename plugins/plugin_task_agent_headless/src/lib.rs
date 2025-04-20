@@ -59,6 +59,13 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
         match request.method {
             HttpMethod::Post if path == "jobs" => {
+                // This allows us to kick off the run_workflow function
+                // by invoking an HTTP POST on api/taskgent/jobs
+                // of course we could also call run_worfklow directly
+                // from the engine (where the plugin is loaded)
+                // But this additional entry point is useful 
+                // if we wanted to run the workflow from a different plugin
+                // or from a JS inside a webview of another plugin
                 run_workflow(req)
             }
 
@@ -100,6 +107,7 @@ extern "C" fn run_workflow(req: *const ApiRequest) -> *mut ApiResponse {
 
 extern "C" fn on_progress() -> *mut ApiResponse {
     let current = PROGRESS_STATE.lock().unwrap().clone();
+    println!("[plugin_task_agent_headless] on_progress = {}", current);  
     let msg = format!(r#"{{ "status": "{}" }}"#, current);
     json_response(200, &msg)
 }

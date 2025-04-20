@@ -154,7 +154,7 @@ pub async fn start_server_async() {
 
     // Load the status plugin
     logger.log(LogLevel::Info, "Loading the status plugin");
-    
+
     let (status_plugin, _status_lib) = match
         load_plugin(plugin_utils::resolve_plugin_filename("plugin_status"))
     {
@@ -174,11 +174,13 @@ pub async fn start_server_async() {
 
     logger.log(LogLevel::Info, "Registering status plugin");
     plugin_libraries.push(_status_lib);
-    registry.register(status_plugin);
+
+    // clone it because we will need to reuse it
+    registry.register(status_plugin.clone());
 
     // Load the task_agent_headless plugin
     logger.log(LogLevel::Info, "Loading the task_agent_headless plugin");
-    
+
     let (task_agent_headless_plugin, _task_agent_headless_lib) = match
         load_plugin(plugin_utils::resolve_plugin_filename("plugin_task_agent_headless"))
     {
@@ -198,9 +200,105 @@ pub async fn start_server_async() {
 
     logger.log(LogLevel::Info, "Registering task_agent_headless plugin");
     plugin_libraries.push(_task_agent_headless_lib);
-    registry.register(task_agent_headless_plugin);
+
+    // clone it because we will need to reuse it
+    registry.register(task_agent_headless_plugin.clone());
 
     // Core plugins loaded
+    logger.log(LogLevel::Info, "Core plugins loaded");
+
+    // We are going to run a workflow on the task agent headless plugin
+    // First subscribe to the on_prgress and on_complete callbacks
+    let task_agent = task_agent_headless_plugin.clone();
+    let status_plugin = status_plugin.clone();
+    let logger = LoggerLoader::get_logger();
+
+    tokio::spawn(async move {
+        use std::time::Duration;
+        use tokio::time::sleep;
+        use plugin_core::{ HttpMethod, ApiRequest };
+
+        loop {
+            // Call on_progress (if available)
+            if let Some(on_progress_fn) = task_agent.on_progress {
+                let progress_resp_ptr = on_progress_fn();
+                if !progress_resp_ptr.is_null() {
+                    let progress_resp = unsafe { Box::from_raw(progress_resp_ptr) };
+
+                    let status_json = unsafe {
+                        std::slice::from_raw_parts(
+                            progress_resp.body_ptr,
+                            progress_resp.body_len
+                        )
+                    };
+                    
+                    let status_text = String::from_utf8_lossy(status_json);
+
+                    logger.log(LogLevel::Debug, &format!("[engine] Progress: {}", status_text));
+
+                    // Send it to plugin_status
+                    let path_cstr = std::ffi::CString::new("statusmessage").unwrap();
+
+                    let req = ApiRequest {
+                        method: HttpMethod::Post,
+                        path: path_cstr.as_ptr(),
+                        headers: std::ptr::null(),
+                        header_count: 0,
+                        body_ptr: progress_resp.body_ptr,
+                        body_len: progress_resp.body_len,
+                        content_type: progress_resp.content_type,
+                        query: std::ptr::null(),
+                    };
+
+                    (status_plugin.handle_request)(&req);
+
+                    // Do not double-free pointers, transfer ownership only once
+                    // So do NOT call cleanup here
+                }
+            }
+
+            // Check for completion
+            if let Some(on_complete_fn) = task_agent.on_complete {
+                let done_ptr = on_complete_fn();
+                if !done_ptr.is_null() {
+                    let done_resp = unsafe { Box::from_raw(done_ptr) };
+                    if done_resp.status == 200 {
+                        logger.log(LogLevel::Info, "[engine] Job complete, stopping polling");
+                        break;
+                    }
+                    // Drop/cleanup here, since we allocated response
+                    (task_agent.cleanup)(Box::into_raw(done_resp));
+                }
+            }
+
+            sleep(Duration::from_secs(1)).await;
+        }
+    });
+
+    // Now we can trigger the workflow
+    // This is a blocking call, so we need to run it in a separate thread
+    if let Some(run_workflow_fn) = task_agent_headless_plugin.run_workflow {
+        logger.log(LogLevel::Info, "Triggering task_agent_headless run_workflow");
+
+        let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
+        let json_len = json_bytes.len();
+        let body_ptr = Box::into_raw(json_bytes.into_boxed_slice()) as *const u8;
+        
+        let request = plugin_core::ApiRequest {
+            method: plugin_core::HttpMethod::Post,
+            path: std::ptr::null(), // Or CString::new("job").unwrap().into_raw() if needed
+            headers: std::ptr::null(),
+            header_count: 0,
+            body_ptr,
+            body_len: json_len, 
+            content_type: std::ptr::null(),
+            query: std::ptr::null(),
+        };
+
+        // This will start the task
+        let _ = run_workflow_fn(&request);
+    }
+
     // Let's load the execution plan
     // Add discovered plugins to the registry
     logger.log(LogLevel::Info, "Loading the execution plan");
