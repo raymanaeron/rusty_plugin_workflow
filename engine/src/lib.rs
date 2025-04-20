@@ -176,6 +176,30 @@ pub async fn start_server_async() {
     plugin_libraries.push(_status_lib);
     registry.register(status_plugin);
 
+    // Load the task_agent_headless plugin
+    logger.log(LogLevel::Info, "Loading the task_agent_headless plugin");
+    
+    let (task_agent_headless_plugin, _task_agent_headless_lib) = match
+        load_plugin(plugin_utils::resolve_plugin_filename("plugin_task_agent_headless"))
+    {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("Failed to load task_agent_headless plugin: {}", e);
+            return;
+        }
+    };
+
+    logger.log(LogLevel::Info, "Running the task_agent_headless plugin with a parameter");
+    let task_agent_headless_config = CString::new("scan=true").unwrap();
+    let task_agent_headless_ctx = PluginContext {
+        config: task_agent_headless_config.as_ptr(),
+    };
+    (task_agent_headless_plugin.run)(&task_agent_headless_ctx);
+
+    logger.log(LogLevel::Info, "Registering task_agent_headless plugin");
+    plugin_libraries.push(_task_agent_headless_lib);
+    registry.register(task_agent_headless_plugin);
+
     // Core plugins loaded
     // Let's load the execution plan
     // Add discovered plugins to the registry
