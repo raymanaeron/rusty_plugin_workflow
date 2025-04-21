@@ -102,6 +102,115 @@ window.dispatchEvent(new PopStateEvent("popstate"));
 
 This dynamic web routing mechanism mirrors the plugin routing used in the engine, ensuring the correct assets and APIs are loaded without hardcoding plugin names or routes.
 
+## Plugin Types: Headless vs. UI Plugins
+
+The OOBE engine supports two primary types of plugins: **UI plugins** and **headless plugins**. While all plugins implement the same FFI interface and are registered in the same way, the distinction lies in whether they expose user-facing web views or operate silently in the background.
+
+### UI Plugins
+
+A UI plugin provides a frontend interface rendered in the browser and typically interacts with the user via forms, buttons, or status updates. These plugins serve their web content from a folder like `/web` and expose both HTML and JavaScript entry points.
+
+For example, `plugin_status` is a UI plugin that monitors progress and reflects status updates in near real-time. Its `step-status.html` contains a simple container:
+
+```html
+<div id="statusContent">Waiting for updates...</div>
+<script type="module" src="./step-status.js?cachebust=1"></script>
+```
+
+The corresponding `step-status.js` script polls the plugin’s REST endpoint every second and updates the DOM:
+
+```javascript
+function pollStatus() {
+  fetch('/api/status/statusmessage', { method: 'GET' })
+    .then(res => res.json())
+    .then(message => {
+      if (typeof message.status === 'string') {
+        statusContent.textContent = message.status;
+      }
+    })
+    .finally(() => setTimeout(pollStatus, 1000));
+}
+pollStatus();
+```
+
+On the backend, the plugin’s `handle_request()` method serves and updates the shared `STATUS` variable, and conditionally includes a redirect field if it detects a switch in workflow state.
+
+```rust
+HttpMethod::Get if path == "statusmessage" => {
+    let current = STATUS.lock().unwrap().clone();
+    let should_redirect = current.starts_with("Step");
+    let json = if should_redirect {
+        format!(r#"{{ "status": "{}", "redirect": "/status" }}"#, current)
+    } else {
+        format!(r#"{{ "status": "{}" }}"#, current)
+    };
+    json_response(200, &json)
+}
+```
+
+This plugin illustrates how a UI-bound plugin surfaces status while remaining loosely coupled to whatever backend plugin drives the underlying logic.
+
+### Headless Plugins
+
+A headless plugin does not provide any web UI. It operates in the background and is typically used to perform long-running tasks, coordinate work across other plugins, or emit telemetry.
+
+A good example is `plugin_task_agent_headless`, which simulates a three-phase job ("initializing", "processing", "finalizing"). It exposes a REST endpoint to trigger the job and relies on `on_progress()` and `on_complete()` for polling updates.
+
+Its `run_workflow()` method launches a background thread:
+
+```rust
+thread::spawn(|| {
+    *PROGRESS_STATE.lock().unwrap() = "Step 1: initializing...".to_string();
+    thread::sleep(Duration::from_secs(2));
+    *PROGRESS_STATE.lock().unwrap() = "Step 2: processing...".to_string();
+    thread::sleep(Duration::from_secs(2));
+    *PROGRESS_STATE.lock().unwrap() = "Step 3: finalizing...".to_string();
+    thread::sleep(Duration::from_secs(2));
+    *PROGRESS_STATE.lock().unwrap() = "Job completed".to_string();
+});
+```
+
+Meanwhile, `on_progress()` returns the current job phase as a JSON payload:
+
+```rust
+let current = PROGRESS_STATE.lock().unwrap().clone();
+let msg = format!(r#"{{ "status": "{}" }}"#, current);
+json_response(200, &msg)
+```
+
+And `on_complete()` lets the engine determine when to stop polling and proceed:
+
+```rust
+if current == "Job completed" {
+    json_response(200, r#"{ "message": "Job finished" }"#)
+} else {
+    json_response(204, r#"{ "message": "Still running" }"#)
+}
+```
+
+This headless plugin does not render anything in its HTML:
+
+```html
+<!-- headless plugin stub -->
+<div class="plugin-section text-muted">
+  <em>This plugin runs in the background and does not have a UI.</em>
+</div>
+```
+
+And its JS controller is a no-op:
+
+```javascript
+export function activate(container) {
+  console.log("[taskagent] No UI to activate. Headless plugin.");
+}
+```
+
+### Example: Interaction Between Headless and UI Plugins
+
+When the task agent plugin is run (either via REST or from a `run_workflow()`), it updates its shared internal progress. The `plugin_status` plugin continuously polls `GET /api/status/statusmessage`, which reflects the current state pulled from `plugin_task_agent_headless`.
+
+This decoupling is intentional. The task agent does not need to know who is watching its output, and the status UI does not need to care who updates the shared state—as long as someone does. This allows one plugin to visualize the internal state of another in a clean and modular fashion, using only REST calls and shared memory primitives inside the engine.
+
 ## Execution Plan and Plugin Metadata
 
 Plugins listed in the execution plan are described using `PluginMetadata`, which includes fields like:
