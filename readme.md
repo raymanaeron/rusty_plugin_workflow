@@ -126,27 +126,73 @@ http_endpoint = "http://localhost:9000/logs"
 threshold = "debug"
 ```
 
-Logging follows the `Logger` trait defined in `log_contracts.rs`, and is implemented via `LogWriter`. Messages are serialized to `LogEntry` and dispatched to the configured destination.
+Logging follows the `Logger` trait and is implemented via `LogWriter`. Messages are serialized to `LogEntry` and dispatched to the configured destination.
 
-If `type = "file"`, logs are written in JSON lines to a rotating log file:
+If `type = "file"`, logs are written in JSON lines to a rotating log file. If `type = "http"`, logs are posted to the endpoint as structured JSON payloads.
 
-```rust
-FileLogDestination::new(PathBuf::from("app.log"), 10 * 1024 * 1024);
-```
-
-If `type = "http"`, logs are posted to the endpoint as structured JSON payloads:
+Structured log context (MDC) is supported using:
 
 ```rust
-HttpLogDestination::new("http://example.com/logs");
+LogWriter::set_context("session=abc123".to_string());
 ```
-
-Structured log context (MDC) is supported using `LogWriter::set_context("session=abc123")`.
 
 The logger is accessed globally via:
 
 ```rust
 LoggerLoader::get_logger().info("Plugin wifi started");
 ```
+
+## Plugin Scaffolding with Scripts
+
+To simplify plugin creation, the system provides `create_plugin.sh` (Unix/macOS) and `create_plugin.bat` (Windows). These scripts generate a new plugin scaffold from template files.
+
+### Example Usage
+
+#### On Linux/macOS
+
+```bash
+chmod +x create_plugin.sh
+./create_plugin.sh plugin_wifi wifi network
+```
+
+#### On Windows
+
+```cmd
+create_plugin.bat plugin_wifi wifi network
+```
+
+### What This Creates
+
+```
+plugins/
+└── plugin_wifi/
+    ├── src/
+    │   └── lib.rs
+    ├── web/
+    │   ├── step-wifi.html
+    │   └── step-wifi.js
+    ├── Cargo.toml
+    └── README.md
+```
+
+- `plugin_wifi`: the crate name
+- `wifi`: the plugin route
+- `network`: the REST resource
+
+### Template Substitution
+
+- Rust files use `{{plugin_name}}`, `{{plugin_route}}`, `{{resource_name}}`
+- HTML/JS files use the same to bind REST endpoints
+- Cargo.toml and README are also customized
+
+### Example REST
+
+```http
+GET  /api/wifi/network
+POST /api/wifi/network
+```
+
+The generated plugin is immediately usable in either manual or execution-plan-based loading.
 
 ## Conclusion
 
