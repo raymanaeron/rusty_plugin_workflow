@@ -194,16 +194,15 @@ Logging follows the `Logger` trait and is implemented via `LogWriter`. Messages 
 
 If `type = "file"`, logs are written in JSON lines to a rotating log file. If `type = "http"`, logs are posted to the endpoint as structured JSON payloads.
 
-Structured log context (MDC) is supported using:
-
-```rust
-LogWriter::set_context("session=abc123".to_string());
-```
-
 The logger is accessed globally via:
 
 ```rust
-LoggerLoader::get_logger().info("Plugin wifi started");
+// Initialize logger once
+LoggerLoader::init("app_config.toml").await;
+
+// Then use it 
+let logger = LoggerLoader::get_logger();
+logger.log(LogLevel::Info, "Logger initialized");
 ```
 
 ## Plugin Scaffolding with Scripts
