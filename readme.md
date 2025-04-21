@@ -38,6 +38,70 @@ At startup, the engine reads a static configuration for required plugins (e.g., 
 4. It invokes the plugin’s `run()` method with a `PluginContext` containing configuration parameters.
 5. It retains the library handle to prevent unloading during execution.
 
+## Plugin Loading and Dynamic Routing (Rust and Web)
+
+### Rust Side: Plugin Loading and Registration
+
+On the Rust side, plugins are loaded from `.so`/`.dll` files using `libloading`. Each plugin must export the `create_plugin()` symbol, which returns a `Plugin` struct. Here's how a plugin is loaded and registered in `plugin_loader.rs`:
+
+```rust
+let lib = unsafe { Library::new(path)? };
+let constructor: Symbol<unsafe extern "C" fn() -> *mut Plugin> = unsafe { lib.get(b"create_plugin")? };
+let plugin_ptr = unsafe { constructor() };
+let plugin = unsafe { *Box::from_raw(plugin_ptr) };
+
+let route = ffi_cstr_to_string((plugin.plugin_route)());
+let name = ffi_cstr_to_string((plugin.name)());
+
+let binding = PluginBinding::new(name.clone(), route.clone(), plugin, path.clone());
+registry.register(binding);
+```
+
+After registration, the engine can look up the plugin by route or name using:
+
+```rust
+registry.get_by_route("wifi")
+```
+
+The plugin's route is used for both serving web content and handling REST API calls.
+
+---
+
+### Web App: Dynamic Routing to Plugin Views
+
+In the web UI, plugin navigation is handled by JavaScript using the `router.js` module. When a user navigates to a route like `/wifi/web`, the app dynamically loads that plugin's HTML and JavaScript controller.
+
+From `router.js`:
+
+```javascript
+export async function routeTo(path) {
+  const parts = path.split("/").filter(Boolean);
+  const pluginName = parts[0];
+
+  const htmlUrl = `/${pluginName}/web/step-${pluginName}.html`;
+  const jsUrl = `/${pluginName}/web/step-${pluginName}.js`;
+
+  const html = await fetch(htmlUrl).then(res => res.text());
+  document.getElementById("content").innerHTML = html;
+
+  const module = await import(jsUrl);
+  if (typeof module.activate === "function") {
+    await module.activate(document.getElementById("content"));
+  }
+}
+```
+
+This approach allows any plugin with a properly named HTML and JS file to be mounted dynamically. The JS file must export an `activate(container)` function to bind UI logic to REST APIs.
+
+When the user navigates from one plugin to another, the router updates the history and dispatches a synthetic `popstate` event to re-route the shell:
+
+```javascript
+history.pushState({}, "", "/status/web");
+window.dispatchEvent(new PopStateEvent("popstate"));
+```
+
+This dynamic web routing mechanism mirrors the plugin routing used in the engine, ensuring the correct assets and APIs are loaded without hardcoding plugin names or routes.
+
 ## Execution Plan and Plugin Metadata
 
 Plugins listed in the execution plan are described using `PluginMetadata`, which includes fields like:
