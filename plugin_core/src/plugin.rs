@@ -4,6 +4,10 @@ use crate::ApiResponse;
 use crate::PluginContext;
 use crate::Resource;
 
+use std::sync::Mutex;
+use once_cell::sync::OnceCell;
+use ws_server::ws_client::WsClient;
+
 /// Represents a dynamically loaded plugin and its exposed API to the engine.
 ///
 /// Each plugin must implement this structure and return a pointer to it
@@ -12,6 +16,10 @@ use crate::Resource;
 /// - Discover supported API endpoints
 /// - Route and handle HTTP-style API requests
 /// - Clean up memory returned by the plugin
+
+// Shared client per plugin, initialized in run()
+pub static WS_CLIENT: OnceCell<Mutex<WsClient>> = OnceCell::new();
+
 #[repr(C)]
 pub struct Plugin {
     /// Returns the name of the plugin (e.g., "WiFi Plugin").

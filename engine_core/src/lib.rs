@@ -14,6 +14,7 @@ pub mod execution_plan;
 pub mod plugin_metadata;
 pub mod execution_plan_updater;
 pub mod plugin_utils;
+pub mod ws_utils;
 
 
 

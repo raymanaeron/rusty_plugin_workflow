@@ -8,6 +8,10 @@ use tao::dpi::LogicalSize;
 
 use wry::WebViewBuilder;
 
+// === WebSocket Event Topics ===
+pub static RUST_INVOKED_EVENT: &str = "RustInvokedEvent";
+pub static PLUGIN_TASK_AGENT_INVOKED_EVENT: &str = "PluginTaskAgentInvokedEvent";
+
 fn wait_for_server() {
     use std::net::TcpStream;
     for _ in 0..20 {
