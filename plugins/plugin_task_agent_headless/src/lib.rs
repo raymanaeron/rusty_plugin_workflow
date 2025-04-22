@@ -3,6 +3,7 @@ extern crate plugin_core;
 use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
+use plugin_core::ws_utils;
 
 use std::ffi::{ CString, CStr };
 use std::os::raw::c_char;
@@ -31,6 +32,13 @@ extern "C" fn run(ctx: *const PluginContext) {
     unsafe {
         let config = CStr::from_ptr((*ctx).config);
         println!("Plugin running with config: {}", config.to_string_lossy());
+
+        // extract config string into an owned String BEFORE spawn
+        let config_string = config.to_string_lossy().to_string();
+
+        tokio::spawn(async move {
+            ws_utils::init_ws_client_from_config("plugin_task_agent", &config_string).await;
+        });
     }
 }
 

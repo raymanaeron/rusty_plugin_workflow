@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 use once_cell::sync::OnceCell;
-use crate::PluginContext;
+// use crate::PluginContext;
 use ws_server::ws_client::WsClient;
 
 /*
@@ -11,16 +11,8 @@ tokio::spawn(async move {
 */
 pub static WS_CLIENT: OnceCell<Mutex<WsClient>> = OnceCell::new();
 
-pub async fn init_ws_client(ctx: &PluginContext, client_name: &str) {
-    let config_str = if ctx.config.is_null() {
-        "".to_string()
-    } else {
-        unsafe {
-            let c_str = std::ffi::CStr::from_ptr(ctx.config);
-            let owned_str = c_str.to_string_lossy().to_string();
-            owned_str.trim().to_string()
-        }
-    };
+pub async fn init_ws_client_from_config(client_name: &str, config: &str) {
+    let config_str = config.trim();
 
     let ws_url = if let Some(url) = config_str.split(';').find(|kv| kv.starts_with("ws=")) {
         url.trim_start_matches("ws=").to_string()
@@ -35,3 +27,4 @@ pub async fn init_ws_client(ctx: &PluginContext, client_name: &str) {
 
     println!("[{}] WebSocket client initialized", client_name);
 }
+
