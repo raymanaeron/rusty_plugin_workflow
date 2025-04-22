@@ -13,6 +13,17 @@ use engine_core::plugin_utils::prepare_plugin_binary;
 use std::path::PathBuf;
 use engine_core::execution_plan_updater::PlanLoadSource;
 
+use ws_server::{ handle_socket, Subscribers };
+use std::collections::HashMap;
+use tokio::sync::mpsc::UnboundedSender;
+use once_cell::sync::Lazy;
+
+pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
+    std::sync::Arc::new(
+        std::sync::Mutex::new(HashMap::<String, Vec<UnboundedSender<String>>>::new())
+    )
+});
+
 pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
     let local_path = "execution_plan.toml";
 
@@ -79,6 +90,32 @@ pub async fn start_server_async() {
     let logger = LoggerLoader::get_logger();
     logger.log(LogLevel::Info, "Logger initialized");
     logger.log(LogLevel::Info, "Creating plugin registry");
+
+    // Start WebSocket server for clients
+    tokio::spawn({
+        let subs = WS_SUBSCRIBERS.clone();
+        async move {
+            use axum::{ Router, routing::get };
+            use axum::extract::connect_info::ConnectInfo;
+            use std::net::SocketAddr;
+            use tokio::net::TcpListener;
+
+            let ws_app = Router::new().route(
+                "/ws",
+                get(move |ws, ConnectInfo(addr)| {
+                    handle_socket(ws, ConnectInfo(addr), subs.clone())
+                })
+            );
+
+            let listener = TcpListener::bind("127.0.0.1:8081").await.unwrap();
+            println!("[engine] WebSocket server listening at ws://127.0.0.1:8081/ws");
+
+            axum::serve(
+                listener,
+                ws_app.into_make_service_with_connect_info::<SocketAddr>()
+            ).await.unwrap();
+        }
+    });
 
     // Create a plugin registry
     let registry = Arc::new(PluginRegistry::new());
