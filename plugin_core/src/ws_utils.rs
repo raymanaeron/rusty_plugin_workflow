@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 use once_cell::sync::OnceCell;
-use plugin_core::PluginContext;
+use crate::PluginContext;
 use ws_server::ws_client::WsClient;
 
 /*

@@ -9,6 +9,7 @@ pub mod helper_functions;
 
 pub mod response_utils;
 pub mod resource_utils;
+pub mod ws_utils;
 
 #[macro_use]
 mod plugin_macros;
