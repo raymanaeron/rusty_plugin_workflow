@@ -4024,7 +4024,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ws"
+name = "ws_server"
 version = "0.1.0"
 dependencies = [
  "axum",

@@ -1,5 +1,5 @@
 [package]
-name = "ws"
+name = "ws_server"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,6 +10,6 @@ tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = "0.21"
 
 [lib]
-name = "ws"
+name = "ws_server"
 path = "src/lib.rs"
 crate-type = ["rlib"]
