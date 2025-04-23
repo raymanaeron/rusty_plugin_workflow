@@ -52,6 +52,10 @@ pub async fn create_ws_engine_client() {
         let mut client = client_arc.lock().unwrap();
         client.subscribe(STATUS_RECEIVED).await;
         println!("Engine, subscribed to STATUS_RECEIVED");
+
+        client.on_message(STATUS_RECEIVED, |msg| {
+            println!("[engine] => STATUS_RECEIVED: {}", msg);
+        });
     }
 }
 
