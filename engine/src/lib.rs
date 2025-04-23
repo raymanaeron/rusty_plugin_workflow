@@ -1,24 +1,30 @@
+// Imports
 use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
+use std::collections::HashMap;
+use std::ffi::CString;
+use std::path::PathBuf;
+
 use tokio::net::TcpListener;
+use tokio::sync::mpsc::UnboundedSender;
+
+use once_cell::sync::{ Lazy, OnceCell };
+
 use engine_core::{ plugin_loader::load_plugin, plugin_registry::PluginRegistry };
 use engine_core::handlers::dispatch_plugin_api;
-use plugin_core::PluginContext;
-use logger::{ LoggerLoader, LogLevel };
-use std::ffi::CString;
-use engine_core::execution_plan_updater::ExecutionPlanUpdater;
+use engine_core::execution_plan_updater::{ ExecutionPlanUpdater, PlanLoadSource };
 use engine_core::execution_plan::ExecutionPlanLoader;
 use engine_core::plugin_utils;
 use engine_core::plugin_metadata::PluginMetadata;
 use engine_core::plugin_utils::prepare_plugin_binary;
-use std::path::PathBuf;
-use engine_core::execution_plan_updater::PlanLoadSource;
+
+use plugin_core::PluginContext;
 
 use ws_server::{ handle_socket, Subscribers };
 use ws_server::ws_client::WsClient;
-use std::collections::HashMap;
-use tokio::sync::mpsc::UnboundedSender;
-use once_cell::sync::{ Lazy, OnceCell };
 
+use logger::{ LoggerLoader, LogLevel };
+
+// Static Variables
 pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
     std::sync::Arc::new(
         std::sync::Mutex::new(HashMap::<String, Vec<UnboundedSender<String>>>::new())
@@ -29,6 +35,8 @@ pub static STATUS_RECEIVED: &str = "StatusMessageReceived";
 
 pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
 
+// WebSocket Client Initialization
+/// Creates and initializes the WebSocket client for the engine.
 pub async fn create_ws_engine_client() {
     println!("Creating ws client for the engine");
     let url = "ws://127.0.0.1:8081/ws";
@@ -47,6 +55,8 @@ pub async fn create_ws_engine_client() {
     }
 }
 
+// Execution Plan Updater
+/// Runs the execution plan updater and returns the plan status and plugins.
 pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
     let local_path = "execution_plan.toml";
 
@@ -82,6 +92,8 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
     }
 }
 
+// Plugin Loader
+/// Loads and registers a plugin from the given path.
 fn load_and_register(
     path: PathBuf,
     registry: &Arc<PluginRegistry>,
@@ -96,6 +108,7 @@ fn load_and_register(
     }
 }
 
+// Entry Points
 /// FFI-safe C entry point for Swift, Kotlin, C++, etc.
 #[no_mangle]
 pub extern "C" fn start_oobe_server() {
@@ -105,23 +118,20 @@ pub extern "C" fn start_oobe_server() {
     });
 }
 
-/// /// Native async entry point for Rust-based apps (e.g. desktop, CLI)
+/// Native async entry point for Rust-based apps (e.g. desktop, CLI)
 pub async fn start_server_async() {
-    // Load the logger
+    // Logger Initialization
     LoggerLoader::init("app_config.toml").await;
-
     let logger = LoggerLoader::get_logger();
     logger.log(LogLevel::Info, "Logger initialized");
     logger.log(LogLevel::Info, "Creating plugin registry");
 
-    // Start WebSocket server for clients
+    // WebSocket Server Initialization
     tokio::spawn({
         let subs = WS_SUBSCRIBERS.clone();
         async move {
             use axum::{ Router, routing::get };
             use axum::extract::connect_info::ConnectInfo;
-            use std::net::SocketAddr;
-            use tokio::net::TcpListener;
 
             let ws_app = Router::new().route(
                 "/ws",
@@ -140,16 +150,14 @@ pub async fn start_server_async() {
         }
     });
 
-    // Create the WebSocket client for the engine
+    // WebSocket Client Initialization
     create_ws_engine_client().await;
 
-    // Create a plugin registry
+    // Plugin Registry Initialization
     let registry = Arc::new(PluginRegistry::new());
-
-    // We hold the libs in memory to avoid dropping them
     let mut plugin_libraries = Vec::new();
 
-    // Load the terms plugin
+    // Plugin Loading
     logger.log(LogLevel::Info, "Loading the terms plugin");
 
     let (terms_plugin, _terms_lib) = match
@@ -191,9 +199,8 @@ pub async fn start_server_async() {
         println!("[engine] Plugin returned no resources");
     }
 
-    // Load the wifi plugin
     logger.log(LogLevel::Info, "Loading the wifi plugin");
-    // let (wifi_plugin, _wifi_lib) = load_plugin("plugin_wifi.dll").expect("Failed to load plugin");
+
     let (wifi_plugin, _wifi_lib) = match
         load_plugin(plugin_utils::resolve_plugin_filename("plugin_wifi"))
     {
@@ -215,7 +222,6 @@ pub async fn start_server_async() {
     plugin_libraries.push(_wifi_lib);
     registry.register(wifi_plugin.clone());
 
-    // Load the status plugin
     logger.log(LogLevel::Info, "Loading the status plugin");
 
     let (status_plugin, _status_lib) = match
@@ -238,10 +244,8 @@ pub async fn start_server_async() {
     logger.log(LogLevel::Info, "Registering status plugin");
     plugin_libraries.push(_status_lib);
 
-    // clone it because we will need to reuse it
     registry.register(status_plugin.clone());
 
-    // Load the task_agent_headless plugin
     logger.log(LogLevel::Info, "Loading the task_agent_headless plugin");
 
     let (task_agent_headless_plugin, _task_agent_headless_lib) = match
@@ -264,14 +268,10 @@ pub async fn start_server_async() {
     logger.log(LogLevel::Info, "Registering task_agent_headless plugin");
     plugin_libraries.push(_task_agent_headless_lib);
 
-    // clone it because we will need to reuse it
     registry.register(task_agent_headless_plugin.clone());
 
-    // Core plugins loaded
     logger.log(LogLevel::Info, "Core plugins loaded");
 
-    // We are going to run a workflow on the task agent headless plugin
-    // First subscribe to the on_prgress and on_complete callbacks
     let task_agent = task_agent_headless_plugin.clone();
     let status_plugin = status_plugin.clone();
     let logger = LoggerLoader::get_logger();
@@ -282,7 +282,6 @@ pub async fn start_server_async() {
         use plugin_core::{ HttpMethod, ApiRequest };
 
         loop {
-            // Call on_progress (if available)
             if let Some(on_progress_fn) = task_agent.on_progress {
                 let progress_resp_ptr = on_progress_fn();
                 if !progress_resp_ptr.is_null() {
@@ -296,7 +295,6 @@ pub async fn start_server_async() {
 
                     logger.log(LogLevel::Debug, &format!("[engine] Progress: {}", status_text));
 
-                    // Send it to plugin_status
                     let path_cstr = std::ffi::CString::new("statusmessage").unwrap();
 
                     let req = ApiRequest {
@@ -311,13 +309,9 @@ pub async fn start_server_async() {
                     };
 
                     (status_plugin.handle_request)(&req);
-
-                    // Do not double-free pointers, transfer ownership only once
-                    // So do NOT call cleanup here
                 }
             }
 
-            // Check for completion
             if let Some(on_complete_fn) = task_agent.on_complete {
                 let done_ptr = on_complete_fn();
                 if !done_ptr.is_null() {
@@ -326,7 +320,6 @@ pub async fn start_server_async() {
                         logger.log(LogLevel::Info, "[engine] Job complete, stopping polling");
                         break;
                     }
-                    // Drop/cleanup here, since we allocated response
                     (task_agent.cleanup)(Box::into_raw(done_resp));
                 }
             }
@@ -335,8 +328,6 @@ pub async fn start_server_async() {
         }
     });
 
-    // We are now going to subscribe to the on_complete callback of the wifi plugin
-    // So that we can trigger the task agent headless plugin
     let wifi_plugin = wifi_plugin.clone();
     let task_agent = task_agent_headless_plugin.clone();
     tokio::spawn(async move {
@@ -378,7 +369,7 @@ pub async fn start_server_async() {
                             let _ = run_workflow_fn(&request);
                         }
 
-                        break; // stop polling after success
+                        break;
                     }
 
                     (wifi_plugin.cleanup)(Box::into_raw(resp));
@@ -389,8 +380,6 @@ pub async fn start_server_async() {
         }
     });
 
-    // Let's load the execution plan
-    // Add discovered plugins to the registry
     logger.log(LogLevel::Info, "Loading the execution plan");
 
     let Some((plan_status, plugins)) = run_exection_plan_updater() else {
@@ -420,11 +409,8 @@ pub async fn start_server_async() {
         }
     }
 
-    // Build base router without state
     let mut app = Router::new();
 
-    // 1. Shared plugin API route for all plugins
-    // This matches paths like /terms/api/userterms or /wifi/api/network
     use axum::routing::any;
     use axum::Router;
 
@@ -433,10 +419,8 @@ pub async fn start_server_async() {
         any(dispatch_plugin_api).with_state(registry.clone())
     );
 
-    // Mount it under /api to avoid conflicts
     app = app.nest("/api", plugin_api_router);
 
-    // 2. Plugin static content like /terms/web/* or /wifi/web/*
     use tower_http::services::ServeDir;
     for plugin in registry.all() {
         let web_path = format!("/{}/web", plugin.plugin_route);
@@ -445,10 +429,8 @@ pub async fn start_server_async() {
         app = app.nest_service(&web_path, ServeDir::new(&plugin.static_path));
     }
 
-    // 3. Serve root UI assets (index.html, app.js, styles.css) from /webapp
     app = app.nest_service("/", ServeDir::new("webapp"));
 
-    // 4. Fallback for unknown routes to index.html
     use axum::{ routing::get, response::Response, http::StatusCode, body::Body };
     use std::fs;
 
@@ -473,7 +455,6 @@ pub async fn start_server_async() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("Listening at http://{}", addr);
 
-    // Use make_service_with_connect_info to bind the stateful router to axum::serve
     let listener = TcpListener::bind(addr).await.unwrap();
 
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
