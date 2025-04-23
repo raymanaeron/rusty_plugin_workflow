@@ -1,4 +1,4 @@
-use std::{ net::SocketAddr, sync::Arc };
+use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
 use tokio::net::TcpListener;
 use engine_core::{ plugin_loader::load_plugin, plugin_registry::PluginRegistry };
 use engine_core::handlers::dispatch_plugin_api;
@@ -14,15 +14,38 @@ use std::path::PathBuf;
 use engine_core::execution_plan_updater::PlanLoadSource;
 
 use ws_server::{ handle_socket, Subscribers };
+use ws_server::ws_client::WsClient;
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
-use once_cell::sync::Lazy;
+use once_cell::sync::{ Lazy, OnceCell };
 
 pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
     std::sync::Arc::new(
         std::sync::Mutex::new(HashMap::<String, Vec<UnboundedSender<String>>>::new())
     )
 });
+
+pub static STATUS_RECEIVED: &str = "StatusMessageReceived";
+
+pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
+
+pub async fn create_ws_engine_client() {
+    println!("Creating ws client for the engine");
+    let url = "ws://127.0.0.1:8081/ws";
+    let client = WsClient::connect("engine", url).await.expect("Failed to connect WsClient");
+    if ENGINE_WS_CLIENT.set(Arc::new(Mutex::new(client))).is_err() {
+        eprintln!("Failed to set ENGINE_WS_CLIENT: already initialized");
+        return;
+    }
+
+    println!("ws client for the engine created");
+
+    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+        let mut client = client_arc.lock().unwrap();
+        client.subscribe(STATUS_RECEIVED).await;
+        println!("Engine, subscribed to STATUS_RECEIVED");
+    }
+}
 
 pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
     let local_path = "execution_plan.toml";
@@ -116,6 +139,9 @@ pub async fn start_server_async() {
             ).await.unwrap();
         }
     });
+
+    // Create the WebSocket client for the engine
+    create_ws_engine_client().await;
 
     // Create a plugin registry
     let registry = Arc::new(PluginRegistry::new());

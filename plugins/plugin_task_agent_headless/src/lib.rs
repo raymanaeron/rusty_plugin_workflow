@@ -28,7 +28,7 @@ extern "C" fn run(ctx: *const PluginContext) {
         eprintln!("PluginContext is null");
         return;
     }
-
+/*
     unsafe {
         let config = CStr::from_ptr((*ctx).config);
         println!("Plugin running with config: {}", config.to_string_lossy());
@@ -39,7 +39,7 @@ extern "C" fn run(ctx: *const PluginContext) {
         tokio::spawn(async move {
             ws_utils::init_ws_client_from_config("plugin_task_agent", &config_string).await;
         });
-    }
+    }*/
 }
 
 extern "C" fn get_static_content_path() -> *const c_char {
