@@ -35,10 +35,6 @@ cargo build --manifest-path plugins/plugin_task_agent_headless/Cargo.toml $CARGO
 echo "Building plugin_settings..."
 cargo build --manifest-path plugins/plugin_settings/Cargo.toml $CARGO_FLAG
 
-# === Build log_viewer ===
-echo "Building log_viewer..."
-cargo build --manifest-path log_viewer/Cargo.toml $CARGO_FLAG
-
 # === Build engine ===
 echo "Building engine..."
 cargo build --manifest-path engine/Cargo.toml $CARGO_FLAG
