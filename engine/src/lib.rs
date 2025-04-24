@@ -32,8 +32,8 @@ pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
     )
 });
 
-/// Topic for receiving status messages.
-pub static STATUS_RECEIVED: &str = "StatusMessageReceived";
+/// Topic for receiving status change messages.
+pub static STATUS_CHANGED: &str = "StatusMessageChanged";
 
 /// WebSocket client for the engine.
 pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
@@ -57,16 +57,16 @@ pub async fn create_ws_engine_client() {
 
     println!("ws client for the engine created");
 
-    // Subscribe to the STATUS_RECEIVED topic and set up a message handler.
+    // Subscribe to the STATUS_CHANGED topic and set up a message handler.
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let mut client = client_arc.lock().unwrap();
         client
-            .subscribe("engine_subscriber", STATUS_RECEIVED, "")
+            .subscribe("engine_subscriber", STATUS_CHANGED, "")
             .await;
-        println!("Engine, subscribed to STATUS_RECEIVED");
+        println!("Engine, subscribed to STATUS_CHANGED");
 
-        client.on_message(STATUS_RECEIVED, |msg| {
-            println!("[engine] => STATUS_RECEIVED: {}", msg);
+        client.on_message(STATUS_CHANGED, |msg| {
+            println!("[engine] => STATUS_CHANGED: {}", msg);
         });
     }
 }
@@ -292,6 +292,7 @@ pub async fn start_server_async() {
     let status_plugin = status_plugin.clone();
     let logger = LoggerLoader::get_logger();
 
+    /*
     tokio::spawn(async move {
         use std::time::Duration;
         use tokio::time::sleep;
@@ -343,7 +344,8 @@ pub async fn start_server_async() {
             sleep(Duration::from_secs(1)).await;
         }
     });
-
+    */
+    
     let wifi_plugin = wifi_plugin.clone();
     let task_agent = task_agent_headless_plugin.clone();
     tokio::spawn(async move {

@@ -12,6 +12,9 @@ use std::sync::{ Mutex, Arc };
 use std::thread;
 use std::time::Duration;
 
+use once_cell::sync::{ Lazy, OnceCell };
+use ws_server::ws_client::WsClient;
+
 #[ctor::ctor]
 fn on_load() {
     println!("[plugin_task_agent_headless] >>> LOADED");
@@ -21,6 +24,45 @@ static PROGRESS_STATE: once_cell::sync::Lazy<Arc<Mutex<String>>> = once_cell::sy
     Arc::new(Mutex::new("Waiting for job...".to_string()))
 );
 
+/// Topic for receiving status change messages.
+pub static STATUS_CHANGED: &str = "StatusMessageChanged";
+
+/// WebSocket client for the plugin.
+pub static PLUGIN_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
+
+// WebSocket Client Initialization
+/// Creates and initializes the WebSocket client for the plugin.
+pub async fn create_ws_plugin_client() {
+    println!("Creating ws client for the plugin");
+    let url = "ws://127.0.0.1:8081/ws";
+
+    // Connect to the WebSocket server.
+    let client = WsClient::connect("plugin_task_agent", url)
+        .await
+        .expect("Failed to connect WsClient");
+
+    // Store the WebSocket client in the static variable.
+    if PLUGIN_WS_CLIENT.set(Arc::new(Mutex::new(client))).is_err() {
+        eprintln!("Failed to set PLUGIN_WS_CLIENT: already initialized");
+        return;
+    }
+
+    println!("ws client for the plugin_task_agent created");
+
+    // Subscribe to the STATUS_CHANGED topic and set up a message handler.
+    if let Some(client_arc) = PLUGIN_WS_CLIENT.get() {
+        let mut client = client_arc.lock().unwrap();
+        client
+            .subscribe("plugin_task_agent", STATUS_CHANGED, "")
+            .await;
+        println!("Plugin, subscribed to STATUS_CHANGED");
+
+        client.on_message(STATUS_CHANGED, |msg| {
+            println!("[plugin_task_agent_headless] => STATUS_CHANGED: {}", msg);
+        });
+    }
+}
+
 extern "C" fn run(ctx: *const PluginContext) {
     println!("[plugin_task_agent_headless] - run");
     println!("[plugin_task_agent_headless] FINGERPRINT: run = {:p}", run as *const ());
@@ -28,18 +70,12 @@ extern "C" fn run(ctx: *const PluginContext) {
         eprintln!("PluginContext is null");
         return;
     }
-/*
-    unsafe {
-        let config = CStr::from_ptr((*ctx).config);
-        println!("Plugin running with config: {}", config.to_string_lossy());
 
-        // extract config string into an owned String BEFORE spawn
-        let config_string = config.to_string_lossy().to_string();
-
-        tokio::spawn(async move {
-            ws_utils::init_ws_client_from_config("plugin_task_agent", &config_string).await;
-        });
-    }*/
+    // Create a new Tokio runtime and block on the async function.
+    let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+    runtime.block_on(async {
+        create_ws_plugin_client().await;
+    });
 }
 
 extern "C" fn get_static_content_path() -> *const c_char {
@@ -88,33 +124,39 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 extern "C" fn run_workflow(_req: *const ApiRequest) -> *mut ApiResponse {
     println!("[plugin_task_agent_headless] - run_workflow");
 
-    {
-        let mut lock = PROGRESS_STATE.lock().unwrap();
-        *lock = "Starting background job...".to_string();
-    }
-
     thread::spawn(|| {
-        {
-            let mut lock = PROGRESS_STATE.lock().unwrap();
-            *lock = "Step 1: initializing...".to_string();
-        }
-        thread::sleep(Duration::from_secs(2));
+        // Create a single runtime for all async operations
+        let runtime = tokio::runtime::Runtime::new()
+            .expect("Failed to create Tokio runtime");
 
-        {
-            let mut lock = PROGRESS_STATE.lock().unwrap();
-            *lock = "Step 2: processing...".to_string();
-        }
-        thread::sleep(Duration::from_secs(2));
+        let steps = vec![
+            "Step 1: Initializing..",
+            "Step 2: Processing..",
+            "Step 3: Finalizing..",
+            "Step 4: Completed",
+        ];
 
-        {
-            let mut lock = PROGRESS_STATE.lock().unwrap();
-            *lock = "Step 3: finalizing...".to_string();
-        }
-        thread::sleep(Duration::from_secs(2));
+        for step in steps {
+            {
+                let mut lock = PROGRESS_STATE.lock().unwrap();
+                *lock = step.to_string();
+            }
 
-        {
-            let mut lock = PROGRESS_STATE.lock().unwrap();
-            *lock = "Job completed".to_string();
+            // Publish the message using PLUGIN_WS_CLIENT
+            if let Some(client_arc) = PLUGIN_WS_CLIENT.get() {
+                let client_arc = client_arc.clone();
+                let step = step.to_string();
+                let timestamp = chrono::Utc::now().to_rfc3339();
+
+                // Use runtime to block on the publish operation
+                runtime.block_on(async {
+                    if let Ok(mut client) = client_arc.lock() {
+                        client.publish("plugin_task_agent", STATUS_CHANGED, &step, &timestamp).await;
+                    }
+                });
+            }
+
+            thread::sleep(Duration::from_secs(2));
         }
     });
 
