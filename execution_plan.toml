@@ -18,14 +18,14 @@ visible_in_ui = true
 plugin_description = "Wi-Fi scan and connect flow"
 
 [[plugins]]
-name = "plugin_terms"
-plugin_route = "terms"
+name = "plugin_settings"
+plugin_route = "settings"
 version = "1.1"
 plugin_location_type = "local"
 plugin_base_path = "./"
-team_name = "Compliance Team"
-engineering_contact_email = "terms-eng@example.com"
-operation_contact_email = "terms-ops@example.com"
+team_name = "Kindle Product Team"
+engineering_contact_email = "kindle-settings-eng@example.com"
+operation_contact_email = "kindle-settings-ops@example.com"
 run_async = false
 visible_in_ui = true
-plugin_description = "Show terms and collect user acceptance"
+plugin_description = "Collect device specific user settings"
