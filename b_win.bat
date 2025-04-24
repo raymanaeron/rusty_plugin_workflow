@@ -21,6 +21,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM === Build plugin_settings ===
+echo Building plugin_settings...
+cargo build --manifest-path plugins\plugin_settings\Cargo.toml %CARGO_FLAG%
+if errorlevel 1 (
+    echo Failed to build plugin_settings.
+    exit /b 1
+)
+
 REM === Build plugin_wifi ===
 echo Building plugin_wifi...
 cargo build --manifest-path plugins\plugin_wifi\Cargo.toml %CARGO_FLAG%
@@ -69,6 +77,13 @@ echo Copying plugins web folder to engine output directory...
 xcopy /E /I /Y plugins\plugin_terms\web %TARGET%\terms\web
 if errorlevel 1 (
     echo Failed to copy plugin_terms web folder.
+    exit /b 1
+)
+
+echo Copying plugins web folder to engine output directory...
+xcopy /E /I /Y plugins\plugin_settings\web %TARGET%\settings\web
+if errorlevel 1 (
+    echo Failed to copy plugin_settings web folder.
     exit /b 1
 )
 

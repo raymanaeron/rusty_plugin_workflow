@@ -290,7 +290,7 @@ pub async fn start_server_async() {
     logger.log(LogLevel::Info, "Core plugins loaded");
 
     let task_agent = task_agent_headless_plugin.clone();
-    let status_plugin = status_plugin.clone();
+    let _status_plugin = status_plugin.clone();
     let logger = LoggerLoader::get_logger();
 
     // Subscribe to NETWORK_CONNECTED and trigger task agent workflow

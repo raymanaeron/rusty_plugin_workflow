@@ -1,26 +1,75 @@
-extern crate plugin_core;
-
-use std::ffi::{CStr, CString};
-use std::os::raw::c_char;
-use std::ptr;
-use std::sync::Mutex;
-
-use plugin_core::*;
-use plugin_core::resource_utils::static_resource;
-use plugin_core::response_utils::*;
-
+use plugin_core::{
+    ApiRequest, ApiResponse, HttpMethod, PluginContext, Resource,
+    declare_plugin,
+    error_response,
+    response_utils::{json_response, method_not_allowed_response},
+    resource_utils::static_resource,
+    cleanup_response,
+};
+use std::sync::{Arc, Mutex};
+use ws_server::ws_client::WsClient;
+use tokio::runtime::Runtime;
 use once_cell::sync::Lazy;
+use std::os::raw::c_char;
+use std::ffi::CString;
+use std::ffi::CStr;
+use std::ptr;
+use serde::Serialize;
+use serde::Deserialize;
 
-static STATE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("Ready.".to_string()));
+// Shared Runtime
+static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
+
+// Shared WebSocket client
+static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
+
+// Device Settings structure
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct DeviceSettings {
+    timezone: String,
+    language: String,
+    metrics_enabled: bool,
+    copy_settings: bool,
+    theme: String,
+}
+
+// Shared state
+static STATE: Lazy<Mutex<DeviceSettings>> = Lazy::new(|| {
+    Mutex::new(DeviceSettings {
+        timezone: "UTC".to_string(),
+        language: "en-US".to_string(),
+        metrics_enabled: false,
+        copy_settings: false,
+        theme: "light".to_string(),
+    })
+});
 
 #[ctor::ctor]
 fn on_load() {
     println!("[plugin_settings] >>> LOADED");
 }
 
+// Create WebSocket client
+pub async fn create_ws_plugin_client() {
+    if let Ok(client) = WsClient::connect("plugin_settings", "ws://127.0.0.1:8081/ws").await {
+        let client = Arc::new(Mutex::new(client));
+        
+        if let Ok(mut ws_client) = client.lock() {
+            ws_client.subscribe("plugin_settings", "SettingUpdateCompleted", "").await;
+            println!("[plugin_settings] Subscribed to SettingUpdateCompleted");
+        }
+        
+        unsafe {
+            PLUGIN_WS_CLIENT = Some(client);
+        }
+    }
+}
+
 extern "C" fn run(_ctx: *const PluginContext) {
     println!("[plugin_settings] - run");
-    println!("[plugin_settings] FINGERPRINT: run = {:p}", run as *const ());
+    RUNTIME.block_on(async {
+        create_ws_plugin_client().await;
+    });
 }
 
 extern "C" fn get_static_content_path() -> *const c_char {
@@ -28,8 +77,13 @@ extern "C" fn get_static_content_path() -> *const c_char {
 }
 
 extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
-    static METHODS: [HttpMethod; 2] = [HttpMethod::Get, HttpMethod::Post];
-    let slice = static_resource("deviceconfigs", &METHODS);
+    static METHODS: [HttpMethod; 4] = [
+        HttpMethod::Get, 
+        HttpMethod::Post,
+        HttpMethod::Put,
+        HttpMethod::Delete,
+    ];
+    let slice = static_resource("devicesettings", &METHODS);
     unsafe { *out_len = slice.len(); }
     slice.as_ptr()
 }
@@ -48,26 +102,38 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
         };
 
         match request.method {
-            HttpMethod::Get if path == "deviceconfigs" => {
+            HttpMethod::Get if path == "devicesettings" => {
                 let current = STATE.lock().unwrap().clone();
-                let json = format!(r#"{{ "status": "{}" }}"#, current);
-                return json_response(200, &json);
+                let json = serde_json::to_string(&current).unwrap();
+                json_response(200, &json)
             }
 
-            HttpMethod::Post if path == "deviceconfigs" => {
+            HttpMethod::Post if path == "devicesettings" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                let body_str = std::str::from_utf8(body).unwrap_or("");
-                let parsed: Result<serde_json::Value, _> = serde_json::from_str(body_str);
-
-                if let Ok(json) = parsed {
-                    if let Some(text) = json.get("status").and_then(|v| v.as_str()) {
-                        let mut shared = STATE.lock().unwrap();
-                        *shared = text.to_string();
-                        return json_response(200, r#"{ "message": "Updated" }"#);
-                    }
+                if let Ok(settings) = serde_json::from_slice::<DeviceSettings>(body) {
+                    let mut state = STATE.lock().unwrap();
+                    *state = settings;
+                    json_response(201, r#"{"message": "Settings created"}"#)
+                } else {
+                    error_response(400, "Invalid settings data")
                 }
+            }
 
-                return error_response(400, "Missing or invalid 'status'");
+            HttpMethod::Put if path == "devicesettings" => {
+                let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
+                if let Ok(settings) = serde_json::from_slice::<DeviceSettings>(body) {
+                    let mut state = STATE.lock().unwrap();
+                    *state = settings;
+                    json_response(200, r#"{"message": "Settings updated"}"#)
+                } else {
+                    error_response(400, "Invalid settings data")
+                }
+            }
+
+            HttpMethod::Delete if path == "devicesettings" => {
+                let mut state = STATE.lock().unwrap();
+                *state = DeviceSettings::default();
+                json_response(200, r#"{"message": "Settings reset to defaults"}"#)
             }
 
             _ => method_not_allowed_response(request.method, request.path),

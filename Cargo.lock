@@ -2098,6 +2098,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
+ "chrono",
  "ctor",
  "logger",
  "once_cell",
@@ -2106,6 +2107,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tower 0.4.13",
+ "ws_server",
 ]
 
 [[package]]
