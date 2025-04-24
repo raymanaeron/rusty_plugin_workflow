@@ -2,79 +2,44 @@
 
 ## Background and Motivation
 
-### Current State and Challenges
+The out-of-box experience (OOBE) is a critical first impression in any device lifecycle. Traditionally, OOBE workflows are tightly embedded within the firmware or bundled into application layers as part of the production system image. This gives product teams full control, but at a cost. Even minor changes—like tweaking a screen, fixing a logic bug, or adding a new step—require a full firmware rebuild. Coordination across teams becomes unavoidable, and timing has to align with broader product release schedules.
 
-Out-of-Box Experience (OOBE) workflows are traditionally embedded directly into firmware or application layers, delivered as part of the production system image. While this approach gives product teams full control over their implementation, it creates several critical challenges:
+The rigidity of this model becomes even more evident post-deployment. Devices already in warehouses or customer hands carry whatever onboarding logic they were manufactured with. There is no practical path to patch, fix, or improve setup flows without shipping firmware updates—a non-trivial and often unrealistic undertaking for many hardware programs.
 
-1. **Tight Coupling to System Image**
-   - Even minor updates require full firmware rebuilds
-   - Changes must align with product release schedules
-   - Cross-team coordination needed for simple fixes
+Over time, these constraints extend to the full lifecycle of the product. Setup flows are often treated as one-time-only journeys. Once the device is configured, there is no clean mechanism for surfacing new features, engaging users contextually, or updating onboarding logic based on evolving product needs. What starts as a one-time interaction becomes a lost opportunity to deliver long-term value.
 
-2. **Post-Deployment Limitations**
-   - Warehouse inventory ships with outdated onboarding logic
-   - No way to patch or fix issues without firmware updates
-   - Limited ability to observe or debug issues in the field
+### Why This Matters
 
-3. **Lifecycle Management Constraints**
-   - Setup flows are treated as one-time processes
-   - No clean mechanism for ongoing feature discovery
-   - Difficult to implement contextual interactions post-setup
+These limitations have tangible downstream impacts:
 
-### Impact of These Challenges
+- **Innovation slows down.** Teams cannot iterate quickly on improvements, and user pain points linger in the field.
+- **Field devices become stale.** There is no mechanism to add new post-setup capabilities, even when customers would benefit.
+- **Maintenance becomes a burden.** A fix that should take an hour can stretch across multiple teams, QA cycles, and firmware releases.
+- **Observability is limited.** When setup goes wrong, teams have little insight into the customer journey.
+- **User journeys remain static.** There is no room for context-aware or personalized experiences.
 
-These limitations directly affect product quality and customer experience:
+## Introducing a Plugin-Based OOBE Engine
 
-- **Slow Innovation Cycles**: Teams cannot quickly iterate on onboarding improvements
-- **Missed Opportunities**: Devices in the field cannot receive new engagement features
-- **High Maintenance Overhead**: Simple changes require complex coordination
-- **Limited Observability**: Difficult to understand and improve user experience
-- **Rigid User Journeys**: Cannot adapt flows based on context or user behavior
+To break these limitations, we reimagined the OOBE architecture around a plugin-based execution engine. Rather than shipping setup logic as static binaries inside the firmware, we now externalize onboarding into modular, dynamically loadable plugins. These plugins are discovered and executed at runtime by a lightweight engine that reads from a declarative execution plan.
 
-### Plugin-Based Architecture
+This changes the game in several fundamental ways:
 
-The OOBE plugin engine addresses these challenges by fundamentally changing how onboarding logic is delivered and executed:
+- **Execution is decoupled.** OOBE logic is delivered in independently versioned plugins, which can be updated or replaced without touching the base firmware. 
+- **Workflows are declarative.** The engine composes and sequences plugins based on external JSON plans, making it easy to modify setup flows without any code changes.
+- **Lifecycle support is extended.** Beyond just first-boot configuration, we can now support pre-setup provisioning, post-setup engagement (SCOOBE), and ongoing feature discovery.
 
-1. **Decoupled Execution**
-   - Onboarding logic lives in dynamically loadable plugins
-   - Updates possible without firmware rebuilds
-   - Independent versioning and deployment
+## Architectural Advantages
 
-2. **Declarative Workflows**
-   - Engine reads external execution plans
-   - Plugins composed and sequenced at runtime
-   - Easy to modify flow without changing code
+This plugin-driven model unlocks a new level of agility and resilience:
 
-3. **Extended Lifecycle Support**
-   - Pre-Setup: Cloud configuration before device arrival
-   - Setup (OOBE Core): Essential first-boot configuration
-   - Post-Setup (SCOOBE): Ongoing engagement and feature discovery
+- **Rapid Iteration:** Teams can build, test, and deploy onboarding changes without waiting on firmware cycles. 
+- **Dynamic Execution:** Plugins are loaded and invoked on demand. The system can adapt flows based on runtime context, device capabilities, or user behavior.
+- **Improved Observability:** Because the engine is runtime-aware, it can emit metrics, collect diagnostics, and provide visibility into the setup journey—without requiring firmware logging hooks.
+- **Sustained Engagement:** Setup no longer ends after first boot. The plugin engine can resurface contextual features, deliver personalized content, and evolve with the user over time.
 
-### Architecture Benefits
+## Next Steps
 
-This plugin-based approach delivers several key advantages:
-
-1. **Agile Updates**
-   - Deploy onboarding changes independently
-   - Test and iterate quickly
-   - Fix issues without system updates
-
-2. **Runtime Flexibility**
-   - Load and execute plugins on demand
-   - Compose workflows dynamically
-   - Adapt to user context and behavior
-
-3. **Improved Observability**
-   - Monitor execution in real-time
-   - Collect metrics and diagnostics
-   - Debug issues without firmware access
-
-4. **Sustainable Engagement**
-   - Surface features post-activation
-   - Deliver personalized experiences
-   - Evolve messaging and content over time
-
-The following sections detail the technical implementation of this architecture, including plugin interfaces, execution plans, and runtime behavior.
+The following sections will walk through the core components of this architecture, including the plugin interfaces, runtime behaviors, and how execution plans govern the user journey. We will explore how plugins are registered, invoked, and how they communicate with each other and with the UI layer. Together, these pieces form the foundation of a scalable, extensible, and future-proof OOBE platform.
 
 ## Plugin Model and Interface
 
