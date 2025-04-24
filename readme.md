@@ -2,9 +2,79 @@
 
 ## Background and Motivation
 
-Out-of-Box Experience (OOBE) is traditionally treated as a fixed part of firmware, tightly coupled with the system image. Any change—whether it is a regulatory update, a localization fix, or a new onboarding step—requires rebuilding and revalidating the firmware image. This rigidity impedes innovation and slows down the ability to respond to customer needs.
+### Current State and Challenges
 
-The OOBE plugin engine addresses this constraint by shifting setup logic from firmware to a runtime-executed, plugin-based model. Each step in the onboarding process is encapsulated in a dynamically loadable plugin that the engine discovers and executes according to a declarative plan. This approach enables updates without firmware rebuilds, modular development, dynamic workflow composition, and runtime observability.
+Out-of-Box Experience (OOBE) workflows are traditionally embedded directly into firmware or application layers, delivered as part of the production system image. While this approach gives product teams full control over their implementation, it creates several critical challenges:
+
+1. **Tight Coupling to System Image**
+   - Even minor updates require full firmware rebuilds
+   - Changes must align with product release schedules
+   - Cross-team coordination needed for simple fixes
+
+2. **Post-Deployment Limitations**
+   - Warehouse inventory ships with outdated onboarding logic
+   - No way to patch or fix issues without firmware updates
+   - Limited ability to observe or debug issues in the field
+
+3. **Lifecycle Management Constraints**
+   - Setup flows are treated as one-time processes
+   - No clean mechanism for ongoing feature discovery
+   - Difficult to implement contextual interactions post-setup
+
+### Impact of These Challenges
+
+These limitations directly affect product quality and customer experience:
+
+- **Slow Innovation Cycles**: Teams cannot quickly iterate on onboarding improvements
+- **Missed Opportunities**: Devices in the field cannot receive new engagement features
+- **High Maintenance Overhead**: Simple changes require complex coordination
+- **Limited Observability**: Difficult to understand and improve user experience
+- **Rigid User Journeys**: Cannot adapt flows based on context or user behavior
+
+### Plugin-Based Architecture
+
+The OOBE plugin engine addresses these challenges by fundamentally changing how onboarding logic is delivered and executed:
+
+1. **Decoupled Execution**
+   - Onboarding logic lives in dynamically loadable plugins
+   - Updates possible without firmware rebuilds
+   - Independent versioning and deployment
+
+2. **Declarative Workflows**
+   - Engine reads external execution plans
+   - Plugins composed and sequenced at runtime
+   - Easy to modify flow without changing code
+
+3. **Extended Lifecycle Support**
+   - Pre-Setup: Cloud configuration before device arrival
+   - Setup (OOBE Core): Essential first-boot configuration
+   - Post-Setup (SCOOBE): Ongoing engagement and feature discovery
+
+### Architecture Benefits
+
+This plugin-based approach delivers several key advantages:
+
+1. **Agile Updates**
+   - Deploy onboarding changes independently
+   - Test and iterate quickly
+   - Fix issues without system updates
+
+2. **Runtime Flexibility**
+   - Load and execute plugins on demand
+   - Compose workflows dynamically
+   - Adapt to user context and behavior
+
+3. **Improved Observability**
+   - Monitor execution in real-time
+   - Collect metrics and diagnostics
+   - Debug issues without firmware access
+
+4. **Sustainable Engagement**
+   - Surface features post-activation
+   - Deliver personalized experiences
+   - Evolve messaging and content over time
+
+The following sections detail the technical implementation of this architecture, including plugin interfaces, execution plans, and runtime behavior.
 
 ## Plugin Model and Interface
 
@@ -110,45 +180,39 @@ The OOBE engine supports two primary types of plugins: **UI plugins** and **head
 
 A UI plugin provides a frontend interface rendered in the browser and typically interacts with the user via forms, buttons, or status updates. These plugins serve their web content from a folder like `/web` and expose both HTML and JavaScript entry points.
 
-For example, `plugin_status` is a UI plugin that monitors progress and reflects status updates in near real-time. Its `step-status.html` contains a simple container:
+For example, `plugin_status` is a UI plugin that monitors progress and reflects status updates in real-time using WebSocket communication. Its `step-status.html` contains a simple container:
 
 ```html
 <div id="statusContent">Waiting for updates...</div>
-<script type="module" src="./step-status.js?cachebust=1"></script>
+<script type="module" src="./step-status.js"></script>
 ```
 
-The corresponding `step-status.js` script polls the plugin’s REST endpoint every second and updates the DOM:
+The corresponding `step-status.js` establishes a WebSocket connection and subscribes to status updates:
 
 ```javascript
-function pollStatus() {
-  fetch('/api/status/statusmessage', { method: 'GET' })
-    .then(res => res.json())
-    .then(message => {
-      if (typeof message.status === 'string') {
-        statusContent.textContent = message.status;
-      }
-    })
-    .finally(() => setTimeout(pollStatus, 1000));
-}
-pollStatus();
+let ws = new WebSocket('ws://localhost:8081/ws');
+
+ws.onopen = () => {
+    ws.send('register-name:plugin_status');
+    ws.send('subscribe:StatusMessageChanged');
+    console.log('Subscribed to StatusMessageChanged topic');
+};
+
+ws.onmessage = (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        if (data.topic === 'StatusMessageChanged') {
+            const status = JSON.parse(data.payload);
+            statusContent.textContent = status.status || 'Unknown status';
+        }
+    } catch (err) {
+        console.error('Error processing message:', err);
+        statusContent.textContent = 'Error processing status update';
+    }
+};
 ```
 
-On the backend, the plugin’s `handle_request()` method serves and updates the shared `STATUS` variable, and conditionally includes a redirect field if it detects a switch in workflow state.
-
-```rust
-HttpMethod::Get if path == "statusmessage" => {
-    let current = STATUS.lock().unwrap().clone();
-    let should_redirect = current.starts_with("Step");
-    let json = if should_redirect {
-        format!(r#"{{ "status": "{}", "redirect": "/status" }}"#, current)
-    } else {
-        format!(r#"{{ "status": "{}" }}"#, current)
-    };
-    json_response(200, &json)
-}
-```
-
-This plugin illustrates how a UI-bound plugin surfaces status while remaining loosely coupled to whatever backend plugin drives the underlying logic.
+This WebSocket-based approach provides immediate status updates without polling, creating a responsive user experience as the task agent progresses through its workflow steps.
 
 ### Headless Plugins
 
@@ -210,6 +274,132 @@ export function activate(container) {
 When the task agent plugin is run (either via REST or from a `run_workflow()`), it updates its shared internal progress. The `plugin_status` plugin continuously polls `GET /api/status/statusmessage`, which reflects the current state pulled from `plugin_task_agent_headless`.
 
 This decoupling is intentional. The task agent does not need to know who is watching its output, and the status UI does not need to care who updates the shared state—as long as someone does. This allows one plugin to visualize the internal state of another in a clean and modular fashion, using only REST calls and shared memory primitives inside the engine.
+
+## Inter-Plugin Communication via WebSocket
+
+The OOBE system implements real-time communication between plugins, the engine, and web UI components using a WebSocket server. This enables status updates, progress monitoring, and event-driven workflow transitions.
+
+### WebSocket Topics and Message Flow
+
+The system uses predefined topics for different types of messages:
+- `StatusMessageChanged`: For progress and status updates
+- `NetworkConnected`: For network connection events that trigger workflows
+
+### Engine: Subscribe and Listen
+
+The engine subscribes to topics to monitor plugin events. From `engine/src/lib.rs`:
+
+```rust
+// Subscribe to both status and network topics
+if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+    let mut client = client_arc.lock().unwrap();
+    
+    for topic in [STATUS_CHANGED, NETWORK_CONNECTED] {
+        client.subscribe("engine_subscriber", topic, "").await;
+        println!("Engine, subscribed to {}", topic);
+
+        client.on_message(topic, move |msg| {
+            println!("[engine] => {}: {}", topic, msg);
+        });
+    }
+}
+```
+
+### Background Plugin: Publishing Updates
+
+The task agent plugin (`plugin_task_agent_headless/src/lib.rs`) publishes status updates during its workflow:
+
+```rust
+for step in steps {
+    // Update progress state
+    {
+        let mut lock = PROGRESS_STATE.lock().unwrap();
+        *lock = step.to_string();
+    }
+
+    // Publish status update
+    if let Some(client_arc) = PLUGIN_WS_CLIENT.get() {
+        let client_arc = client_arc.clone();
+        let step = step.to_string();
+        let timestamp = chrono::Utc::now().to_rfc3339();
+
+        runtime.block_on(async {
+            if let Ok(mut client) = client_arc.lock() {
+                client.publish("plugin_task_agent", STATUS_CHANGED, &step, &timestamp).await;
+            }
+        });
+    }
+
+    thread::sleep(Duration::from_secs(2));
+}
+```
+
+### Web UI: Subscribe and Display
+
+The status plugin's web component (`plugin_status/web/step-status.js`) subscribes to status updates and reflects them in the UI:
+
+```javascript
+ws.onmessage = (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        if (data.topic === 'StatusMessageChanged') {
+            const status = JSON.parse(data.payload);
+            statusContent.textContent = status.status || 'Unknown status';
+        }
+    } catch (err) {
+        console.error('Error processing message:', err);
+        statusContent.textContent = 'Error processing status update';
+    }
+};
+```
+
+### Workflow Trigger via WebSocket
+
+When the WiFi plugin connects successfully, it publishes a message that triggers the task agent's workflow (`plugin_wifi/web/step-wifi.js`):
+
+```javascript
+// After successful WiFi connection
+if (ws && ws.readyState === WebSocket.OPEN) {
+    const message = {
+        publisher_name: "plugin_wifi",
+        topic: "NetworkConnected",
+        payload: JSON.stringify({ status: 'connected', ssid: ssid }),
+        timestamp: getTimestamp()
+    };
+    ws.send(`publish-json:${JSON.stringify(message)}`);
+}
+```
+
+The engine receives this message and triggers the task agent's workflow:
+
+```rust
+client.on_message(NETWORK_CONNECTED, move |msg| {
+    if let Some(run_workflow_fn) = task_agent.run_workflow {
+        let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
+        let json_len = json_bytes.len();
+        let body_ptr = Box::into_raw(json_bytes.into_boxed_slice()) as *const u8;
+        
+        let request = ApiRequest {
+            method: HttpMethod::Post,
+            path: CString::new("job").unwrap().into_raw(),
+            headers: std::ptr::null(),
+            header_count: 0,
+            body_ptr,
+            body_len: json_len,
+            content_type: std::ptr::null(),
+            query: std::ptr::null(),
+        };
+
+        let _ = run_workflow_fn(&request);
+    }
+});
+```
+
+This WebSocket-based communication enables:
+- Real-time status updates without polling
+- Event-driven workflow transitions
+- Loose coupling between plugins
+- Immediate UI feedback for background operations
 
 ## Execution Plan and Plugin Metadata
 

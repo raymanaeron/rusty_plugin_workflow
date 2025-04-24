@@ -128,6 +128,9 @@ extern "C" fn run_workflow(_req: *const ApiRequest) -> *mut ApiResponse {
     println!("[plugin_task_agent_headless] - run_workflow");
 
     thread::spawn(|| {
+        // Wait for 3 seconds before starting the workflow
+        thread::sleep(Duration::from_secs(3));
+
         let steps = vec![
             "Step 1: Initializing..",
             "Step 2: Processing..",
