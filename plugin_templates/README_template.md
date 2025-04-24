@@ -1,14 +1,62 @@
-# {{plugin_name}}
+# Plugin: {{plugin_name}}
 
-This plugin implements the `{{plugin_route}}` step in the OOBE workflow. It exposes an HTTP API endpoint:
+Route: `{{plugin_route}}`
+Resource: `{{resource_name}}`
 
+## HTTP API Endpoints
+
+### GET /api/{{plugin_route}}/{{resource_name}}
+Retrieves current configuration
+
+**Response**
+```json
+{
+    "field1": "string",
+    "field2": boolean
+}
 ```
-GET  /api/{{plugin_route}}/{{resource_name}}
-POST /api/{{plugin_route}}/{{resource_name}}
+
+### POST /api/{{plugin_route}}/{{resource_name}}
+Creates new configuration
+
+**Request Body**
+```json
+{
+    "field1": "string",
+    "field2": boolean
+}
 ```
 
-## Folder structure
+### PUT /api/{{plugin_route}}/{{resource_name}}
+Updates existing configuration
 
+**Request Body**
+```json
+{
+    "field1": "string",
+    "field2": boolean
+}
+```
+
+### DELETE /api/{{plugin_route}}/{{resource_name}}
+Resets configuration to defaults
+
+## WebSocket Integration
+
+### Topics
+- `{{resource_name}}Updated` - Published when configuration changes
+
+### Message Format
+```json
+{
+    "publisher_name": "{{plugin_route}}_ui",
+    "topic": "{{resource_name}}Updated",
+    "payload": "JSON string of updated data",
+    "timestamp": "ISO-8601 timestamp"
+}
+```
+
+## File Structure
 ```
 plugins/
 └── {{plugin_name}}/
@@ -20,24 +68,14 @@ plugins/
     └── Cargo.toml
 ```
 
-## Integration Notes
-
-### Core Plugin Integration
-Update `engine/src/lib.rs` to load and register this plugin manually using:
-
-```rust
-let (plugin, _lib) = load_plugin(plugin_utils::resolve_plugin_filename("{{plugin_name}}"))?;
-(plugin.run)(&PluginContext { config: CString::new("").unwrap().as_ptr() });
-registry.register(plugin);
-```
-
-### Dynamic Plan-Based Integration
-Add the plugin to `execution_plan.toml`:
+## Integration
+Add to engine/lib.rs or via execution_plan.toml:
 
 ```toml
 [[plugins]]
 name = "{{plugin_name}}"
-route = "{{plugin_route}}"
-location_type = "Local"
-location = "plugins/{{plugin_name}}/target/debug/{{plugin_name}}.dll"
+plugin_route = "{{plugin_route}}"
+version = "1.0.0"
+plugin_location_type = "local"
+plugin_base_path = "./plugins"
 ```

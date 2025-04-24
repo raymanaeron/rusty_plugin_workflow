@@ -1,26 +1,66 @@
 extern crate plugin_core;
 
-use std::ffi::{CStr, CString};
-use std::os::raw::c_char;
-use std::ptr;
-use std::sync::Mutex;
-
-use plugin_core::*;
-use plugin_core::resource_utils::static_resource;
-use plugin_core::response_utils::*;
-
+use plugin_core::{
+    ApiRequest, ApiResponse, HttpMethod, PluginContext, Resource,
+    declare_plugin,
+    error_response,
+    response_utils::{json_response, method_not_allowed_response},
+    resource_utils::static_resource,
+    cleanup_response,
+};
+use std::sync::{Arc, Mutex};
+use ws_server::ws_client::WsClient;
+use tokio::runtime::Runtime;
 use once_cell::sync::Lazy;
+use std::os::raw::c_char;
+use std::ffi::{CString, CStr};
+use std::ptr;
+use serde::{Serialize, Deserialize};
 
-static STATE: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new("Ready.".to_string()));
+// Shared Runtime for async operations
+static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
+
+// Shared WebSocket client
+static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
+
+// Define your data structure
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct {{resource_name}}Data {
+    // Add your fields here
+    field1: String,
+    field2: bool,
+}
+
+// Shared state
+static STATE: Lazy<Mutex<{{resource_name}}Data>> = Lazy::new(|| {
+    Mutex::new({{resource_name}}Data::default())
+});
 
 #[ctor::ctor]
 fn on_load() {
     println!("[{{plugin_name}}] >>> LOADED");
 }
 
+pub async fn create_ws_plugin_client() {
+    if let Ok(client) = WsClient::connect("{{plugin_name}}", "ws://127.0.0.1:8081/ws").await {
+        let client = Arc::new(Mutex::new(client));
+        
+        if let Ok(mut ws_client) = client.lock() {
+            ws_client.subscribe("{{plugin_name}}", "{{resource_name}}Updated", "").await;
+            println!("[{{plugin_name}}] Subscribed to {{resource_name}}Updated");
+        }
+        
+        unsafe {
+            PLUGIN_WS_CLIENT = Some(client);
+        }
+    }
+}
+
 extern "C" fn run(_ctx: *const PluginContext) {
     println!("[{{plugin_name}}] - run");
-    println!("[{{plugin_name}}] FINGERPRINT: run = {:p}", run as *const ());
+    RUNTIME.block_on(async {
+        create_ws_plugin_client().await;
+    });
 }
 
 extern "C" fn get_static_content_path() -> *const c_char {
@@ -28,7 +68,12 @@ extern "C" fn get_static_content_path() -> *const c_char {
 }
 
 extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
-    static METHODS: [HttpMethod; 2] = [HttpMethod::Get, HttpMethod::Post];
+    static METHODS: [HttpMethod; 4] = [
+        HttpMethod::Get,
+        HttpMethod::Post,
+        HttpMethod::Put,
+        HttpMethod::Delete,
+    ];
     let slice = static_resource("{{resource_name}}", &METHODS);
     unsafe { *out_len = slice.len(); }
     slice.as_ptr()
@@ -50,24 +95,36 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
         match request.method {
             HttpMethod::Get if path == "{{resource_name}}" => {
                 let current = STATE.lock().unwrap().clone();
-                let json = format!(r#"{{ "status": "{}" }}"#, current);
-                return json_response(200, &json);
+                let json = serde_json::to_string(&current).unwrap();
+                json_response(200, &json)
             }
 
             HttpMethod::Post if path == "{{resource_name}}" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                let body_str = std::str::from_utf8(body).unwrap_or("");
-                let parsed: Result<serde_json::Value, _> = serde_json::from_str(body_str);
-
-                if let Ok(json) = parsed {
-                    if let Some(text) = json.get("status").and_then(|v| v.as_str()) {
-                        let mut shared = STATE.lock().unwrap();
-                        *shared = text.to_string();
-                        return json_response(200, r#"{ "message": "Updated" }"#);
-                    }
+                if let Ok(data) = serde_json::from_slice::<{{resource_name}}Data>(body) {
+                    let mut state = STATE.lock().unwrap();
+                    *state = data;
+                    json_response(201, r#"{"message": "Resource created"}"#)
+                } else {
+                    error_response(400, "Invalid data")
                 }
+            }
 
-                return error_response(400, "Missing or invalid 'status'");
+            HttpMethod::Put if path == "{{resource_name}}" => {
+                let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
+                if let Ok(data) = serde_json::from_slice::<{{resource_name}}Data>(body) {
+                    let mut state = STATE.lock().unwrap();
+                    *state = data;
+                    json_response(200, r#"{"message": "Resource updated"}"#)
+                } else {
+                    error_response(400, "Invalid data")
+                }
+            }
+
+            HttpMethod::Delete if path == "{{resource_name}}" => {
+                let mut state = STATE.lock().unwrap();
+                *state = {{resource_name}}Data::default();
+                json_response(200, r#"{"message": "Resource reset to defaults"}"#)
             }
 
             _ => method_not_allowed_response(request.method, request.path),

@@ -6,9 +6,27 @@
   <script type="module" src="./step-{{plugin_route}}.js"></script>
 </head>
 <body>
-  <div class="plugin-container">
-    <h2>{{plugin_route}} Plugin</h2>
-    <div id="statusContent">Loading status...</div>
-  </div>
+  <div class="container mt-4">
+    <h2>{{plugin_route}} Configuration</h2>
+    
+    <form id="dataForm" class="mt-4">
+        <div class="mb-3">
+            <label for="field1" class="form-label">Field 1</label>
+            <input type="text" class="form-control" id="field1">
+        </div>
+
+        <div class="mb-3 form-check form-switch">
+            <input type="checkbox" class="form-check-input" id="field2">
+            <label class="form-check-label" for="field2">Field 2</label>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Save</button>
+            <button type="button" class="btn btn-secondary ms-2" id="resetBtn">Reset to Defaults</button>
+        </div>
+    </form>
+
+    <div id="statusMessage" class="alert mt-3" style="display: none;"></div>
+</div>
 </body>
 </html>
