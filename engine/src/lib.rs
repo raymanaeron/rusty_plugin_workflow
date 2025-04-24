@@ -25,14 +25,17 @@ use ws_server::ws_client::WsClient;
 use logger::{ LoggerLoader, LogLevel };
 
 // Static Variables
+/// WebSocket subscribers for the engine.
 pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
     std::sync::Arc::new(
         std::sync::Mutex::new(HashMap::<String, Vec<UnboundedSender<String>>>::new())
     )
 });
 
+/// Topic for receiving status messages.
 pub static STATUS_RECEIVED: &str = "StatusMessageReceived";
 
+/// WebSocket client for the engine.
 pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
 
 // WebSocket Client Initialization
@@ -40,7 +43,13 @@ pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
 pub async fn create_ws_engine_client() {
     println!("Creating ws client for the engine");
     let url = "ws://127.0.0.1:8081/ws";
-    let client = WsClient::connect("engine", url).await.expect("Failed to connect WsClient");
+
+    // Connect to the WebSocket server.
+    let client = WsClient::connect("engine", url)
+        .await
+        .expect("Failed to connect WsClient");
+
+    // Store the WebSocket client in the static variable.
     if ENGINE_WS_CLIENT.set(Arc::new(Mutex::new(client))).is_err() {
         eprintln!("Failed to set ENGINE_WS_CLIENT: already initialized");
         return;
@@ -48,9 +57,12 @@ pub async fn create_ws_engine_client() {
 
     println!("ws client for the engine created");
 
+    // Subscribe to the STATUS_RECEIVED topic and set up a message handler.
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let mut client = client_arc.lock().unwrap();
-        client.subscribe(STATUS_RECEIVED).await;
+        client
+            .subscribe("engine_subscriber", STATUS_RECEIVED, "")
+            .await;
         println!("Engine, subscribed to STATUS_RECEIVED");
 
         client.on_message(STATUS_RECEIVED, |msg| {
