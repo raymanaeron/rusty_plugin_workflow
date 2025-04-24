@@ -30,6 +30,11 @@ pub static STATUS_CHANGED: &str = "StatusMessageChanged";
 /// WebSocket client for the plugin.
 pub static PLUGIN_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
 
+/// Shared Tokio runtime for the plugin.
+pub static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
+    tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime")
+});
+
 // WebSocket Client Initialization
 /// Creates and initializes the WebSocket client for the plugin.
 pub async fn create_ws_plugin_client() {
@@ -71,9 +76,8 @@ extern "C" fn run(ctx: *const PluginContext) {
         return;
     }
 
-    // Create a new Tokio runtime and block on the async function.
-    let runtime = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
-    runtime.block_on(async {
+    // Use shared runtime instead of creating new one
+    RUNTIME.block_on(async {
         create_ws_plugin_client().await;
     });
 }
@@ -125,10 +129,6 @@ extern "C" fn run_workflow(_req: *const ApiRequest) -> *mut ApiResponse {
     println!("[plugin_task_agent_headless] - run_workflow");
 
     thread::spawn(|| {
-        // Create a single runtime for all async operations
-        let runtime = tokio::runtime::Runtime::new()
-            .expect("Failed to create Tokio runtime");
-
         let steps = vec![
             "Step 1: Initializing..",
             "Step 2: Processing..",
@@ -142,16 +142,35 @@ extern "C" fn run_workflow(_req: *const ApiRequest) -> *mut ApiResponse {
                 *lock = step.to_string();
             }
 
-            // Publish the message using PLUGIN_WS_CLIENT
+            // Try to publish with reconnection attempts
             if let Some(client_arc) = PLUGIN_WS_CLIENT.get() {
                 let client_arc = client_arc.clone();
                 let step = step.to_string();
                 let timestamp = chrono::Utc::now().to_rfc3339();
 
-                // Use runtime to block on the publish operation
-                runtime.block_on(async {
-                    if let Ok(mut client) = client_arc.lock() {
-                        client.publish("plugin_task_agent", STATUS_CHANGED, &step, &timestamp).await;
+                // Use shared runtime
+                RUNTIME.block_on(async {
+                    let mut retries = 3;
+                    while retries > 0 {
+                        if let Ok(mut client) = client_arc.lock() {
+                            match client.publish("plugin_task_agent", STATUS_CHANGED, &step, &timestamp).await {
+                                Ok(_) => {
+                                    println!("[plugin_task_agent_headless] Successfully published status update");
+                                    break;
+                                }
+                                Err(e) => {
+                                    eprintln!("[plugin_task_agent_headless] Failed to publish status: {}", e);
+                                    retries -= 1;
+                                    if retries > 0 {
+                                        tokio::time::sleep(Duration::from_millis(500)).await;
+                                        // Try to reconnect
+                                        if let Ok(new_client) = WsClient::connect("plugin_task_agent", "ws://127.0.0.1:8081/ws").await {
+                                            *client = new_client;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 });
             }

@@ -17,7 +17,7 @@ use engine_core::plugin_utils;
 use engine_core::plugin_metadata::PluginMetadata;
 use engine_core::plugin_utils::prepare_plugin_binary;
 
-use plugin_core::PluginContext;
+use plugin_core::{ PluginContext, HttpMethod, ApiRequest };
 
 use ws_server::{ handle_socket, Subscribers };
 use ws_server::ws_client::WsClient;
@@ -34,6 +34,9 @@ pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
 
 /// Topic for receiving status change messages.
 pub static STATUS_CHANGED: &str = "StatusMessageChanged";
+
+/// Topic for receiving network connected messages.
+pub static NETWORK_CONNECTED: &str = "NetworkConnected";
 
 /// WebSocket client for the engine.
 pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
@@ -57,12 +60,10 @@ pub async fn create_ws_engine_client() {
 
     println!("ws client for the engine created");
 
-    // Subscribe to the STATUS_CHANGED topic and set up a message handler.
+    // Subscribe only to STATUS_CHANGED topic
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let mut client = client_arc.lock().unwrap();
-        client
-            .subscribe("engine_subscriber", STATUS_CHANGED, "")
-            .await;
+        client.subscribe("engine_subscriber", STATUS_CHANGED, "").await;
         println!("Engine, subscribed to STATUS_CHANGED");
 
         client.on_message(STATUS_CHANGED, |msg| {
@@ -292,111 +293,37 @@ pub async fn start_server_async() {
     let status_plugin = status_plugin.clone();
     let logger = LoggerLoader::get_logger();
 
-    /*
-    tokio::spawn(async move {
-        use std::time::Duration;
-        use tokio::time::sleep;
-        use plugin_core::{ HttpMethod, ApiRequest };
+    // Subscribe to NETWORK_CONNECTED and trigger task agent workflow
+    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+        let mut client = client_arc.lock().unwrap();
+        let task_agent = task_agent.clone();
+        
+        client.subscribe("engine_subscriber", NETWORK_CONNECTED, "").await;
+        println!("Engine, subscribed to NETWORK_CONNECTED");
 
-        loop {
-            if let Some(on_progress_fn) = task_agent.on_progress {
-                let progress_resp_ptr = on_progress_fn();
-                if !progress_resp_ptr.is_null() {
-                    let progress_resp = unsafe { Box::from_raw(progress_resp_ptr) };
+        client.on_message(NETWORK_CONNECTED, move |msg| {
+            println!("[engine] => NETWORK_CONNECTED: {}", msg);
+            
+            if let Some(run_workflow_fn) = task_agent.run_workflow {
+                let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
+                let json_len = json_bytes.len();
+                let body_ptr = Box::into_raw(json_bytes.into_boxed_slice()) as *const u8;
+                
+                let request = ApiRequest {
+                    method: HttpMethod::Post,
+                    path: CString::new("job").unwrap().into_raw(),
+                    headers: std::ptr::null(),
+                    header_count: 0,
+                    body_ptr,
+                    body_len: json_len,
+                    content_type: std::ptr::null(),
+                    query: std::ptr::null(),
+                };
 
-                    let status_json = unsafe {
-                        std::slice::from_raw_parts(progress_resp.body_ptr, progress_resp.body_len)
-                    };
-
-                    let status_text = String::from_utf8_lossy(status_json);
-
-                    logger.log(LogLevel::Debug, &format!("[engine] Progress: {}", status_text));
-
-                    let path_cstr = std::ffi::CString::new("statusmessage").unwrap();
-
-                    let req = ApiRequest {
-                        method: HttpMethod::Post,
-                        path: path_cstr.as_ptr(),
-                        headers: std::ptr::null(),
-                        header_count: 0,
-                        body_ptr: progress_resp.body_ptr,
-                        body_len: progress_resp.body_len,
-                        content_type: progress_resp.content_type,
-                        query: std::ptr::null(),
-                    };
-
-                    (status_plugin.handle_request)(&req);
-                }
+                let _ = run_workflow_fn(&request);
             }
-
-            if let Some(on_complete_fn) = task_agent.on_complete {
-                let done_ptr = on_complete_fn();
-                if !done_ptr.is_null() {
-                    let done_resp = unsafe { Box::from_raw(done_ptr) };
-                    if done_resp.status == 200 {
-                        logger.log(LogLevel::Info, "[engine] Job complete, stopping polling");
-                        break;
-                    }
-                    (task_agent.cleanup)(Box::into_raw(done_resp));
-                }
-            }
-
-            sleep(Duration::from_secs(1)).await;
-        }
-    });
-    */
-    
-    let wifi_plugin = wifi_plugin.clone();
-    let task_agent = task_agent_headless_plugin.clone();
-    tokio::spawn(async move {
-        use std::time::Duration;
-        use tokio::time::sleep;
-        use plugin_core::{ HttpMethod, ApiRequest };
-
-        loop {
-            if let Some(wifi_complete_fn) = wifi_plugin.on_complete {
-                let resp_ptr = wifi_complete_fn();
-                if !resp_ptr.is_null() {
-                    let resp = unsafe { Box::from_raw(resp_ptr) };
-                    if resp.status == 200 {
-                        LoggerLoader::get_logger().log(LogLevel::Info, "WiFi is connected");
-
-                        if let Some(run_workflow_fn) = task_agent.run_workflow {
-                            LoggerLoader::get_logger().log(
-                                LogLevel::Info,
-                                "Triggering task_agent_headless run_workflow"
-                            );
-
-                            let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
-                            let json_len = json_bytes.len();
-                            let body_ptr = Box::into_raw(
-                                json_bytes.into_boxed_slice()
-                            ) as *const u8;
-
-                            let request = ApiRequest {
-                                method: HttpMethod::Post,
-                                path: CString::new("job").unwrap().into_raw(),
-                                headers: std::ptr::null(),
-                                header_count: 0,
-                                body_ptr,
-                                body_len: json_len,
-                                content_type: std::ptr::null(),
-                                query: std::ptr::null(),
-                            };
-
-                            let _ = run_workflow_fn(&request);
-                        }
-
-                        break;
-                    }
-
-                    (wifi_plugin.cleanup)(Box::into_raw(resp));
-                }
-            }
-
-            sleep(Duration::from_secs(1)).await;
-        }
-    });
+        });
+    }
 
     logger.log(LogLevel::Info, "Loading the execution plan");
 

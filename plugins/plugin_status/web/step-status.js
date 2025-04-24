@@ -1,21 +1,43 @@
 const statusContent = document.getElementById('statusContent');
 
-function pollStatus() {
-  fetch('/api/status/statusmessage', { method: 'GET' })
-    .then(response => response.json())
-    .then(message => {
-      console.log('[status] API response:', message);  //  MUST see this in console
+// Create WebSocket connection
+const ws = new WebSocket('ws://localhost:8081/ws');
 
-      if (typeof message.status === 'string') {
-        statusContent.textContent = message.status;
-      }
+// Initialize WebSocket client
+ws.onopen = () => {
+    // Register client name
+    ws.send('register-name:plugin_status');
+    console.log('Connected to WebSocket server');
 
-    })
-    .catch(err => console.error('[status] Failed to fetch status', err))
-    .finally(() => setTimeout(pollStatus, 1000));
-}
+    // Subscribe to StatusMessageReceived topic
+    ws.send('subscribe:StatusMessageReceived');
+    console.log('Subscribed to StatusMessageReceived topic');
+};
 
-// our web app is vanilla JS, and therefore no two way binding possible without a major workaround
-// websocket is not possible because that will require us to host a web server on the rust side
-// for now polling just works fine, and is the easiest solution
-pollStatus();
+// Handle incoming messages
+ws.onmessage = (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        if (data.topic === 'StatusMessageReceived') {
+            // Parse the payload which should contain the status
+            const status = JSON.parse(data.payload);
+            statusContent.textContent = status.status || 'Unknown status';
+        }
+    } catch (err) {
+        console.error('Error processing message:', err);
+        statusContent.textContent = 'Error processing status update';
+    }
+};
+
+// Handle WebSocket errors
+ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+    statusContent.textContent = 'Connection error';
+};
+
+// Handle WebSocket connection close
+ws.onclose = () => {
+    console.log('Disconnected from WebSocket server');
+    statusContent.textContent = 'Connection closed';
+};
+
