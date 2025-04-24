@@ -3,7 +3,6 @@ extern crate plugin_core;
 use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
-use plugin_core::ws_utils;
 
 use std::ffi::{ CString, CStr };
 use std::os::raw::c_char;
