@@ -5,17 +5,17 @@ update_from = "s3"
 update_path_root = "s3://my-bucket/execution_plans/"
 
 [[plugins]]
-name = "plugin_wifi"
-plugin_route = "wifi"
+name = "plugin_example"
+plugin_route = "example"
 version = "3.4"
 plugin_location_type = "s3"
-plugin_base_path = "https://my-bucket.s3.amazonaws.com/plugins/plugin_wifi.dylib"
-team_name = "Edge Connectivity Team"
-engineering_contact_email = "wifi-eng@example.com"
-operation_contact_email = "wifi-ops@example.com"
+plugin_base_path = "https://my-bucket.s3.amazonaws.com/plugins/plugin_example.dylib"
+team_name = "Example Plugin Team"
+engineering_contact_email = "example-eng@example.com"
+operation_contact_email = "example-ops@example.com"
 run_async = false
 visible_in_ui = true
-plugin_description = "Wi-Fi scan and connect flow"
+plugin_description = "This is an example plugin that does not exist"
 
 [[plugins]]
 name = "plugin_settings"
