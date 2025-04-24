@@ -47,7 +47,7 @@ cargo build --manifest-path engine/Cargo.toml $CARGO_FLAG
 echo "Building desktop UI..."
 cargo build --manifest-path engine_desktop_ui/Cargo.toml $CARGO_FLAG
 
-echo "📦 TARGET is: $TARGET"
+echo "TARGET is: $TARGET"
 ls -ld "$TARGET"
 
 # === Create destination folders before rsync ===
