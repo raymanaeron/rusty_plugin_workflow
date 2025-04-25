@@ -38,6 +38,9 @@ pub static STATUS_CHANGED: &str = "StatusMessageChanged";
 /// Topic for receiving network connected messages.
 pub static NETWORK_CONNECTED: &str = "NetworkConnected";
 
+// Topic for receiving switch route messages.
+pub static SWITCH_ROUTE: &str = "SwitchRoute";
+
 /// WebSocket client for the engine.
 pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
 
@@ -60,7 +63,18 @@ pub async fn create_ws_engine_client() {
 
     println!("ws client for the engine created");
 
-    // Subscribe only to STATUS_CHANGED topic
+    // Subscribe to SWITCH_ROUTE topic
+    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+        let mut client = client_arc.lock().unwrap();
+        client.subscribe("engine_subscriber", SWITCH_ROUTE, "").await;
+        println!("Engine, subscribed to SWITCH_ROUTE");
+
+        client.on_message(SWITCH_ROUTE, |msg| {
+            println!("[engine] => SWITCH_ROUTE: {}", msg);
+        });
+    }
+
+    // Subscribe to STATUS_CHANGED topic
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let mut client = client_arc.lock().unwrap();
         client.subscribe("engine_subscriber", STATUS_CHANGED, "").await;

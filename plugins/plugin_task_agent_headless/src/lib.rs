@@ -26,6 +26,9 @@ static PROGRESS_STATE: once_cell::sync::Lazy<Arc<Mutex<String>>> = once_cell::sy
 /// Topic for receiving status change messages.
 pub static STATUS_CHANGED: &str = "StatusMessageChanged";
 
+/// Topic for route switching
+pub static SWITCH_ROUTE: &str = "SwitchRoute";
+
 /// WebSocket client for the plugin.
 pub static PLUGIN_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
 
@@ -178,6 +181,22 @@ extern "C" fn run_workflow(_req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             thread::sleep(Duration::from_secs(2));
+        }
+
+        // After completing all steps, publish route switch
+        if let Some(client_arc) = PLUGIN_WS_CLIENT.get() {
+            let client_arc = client_arc.clone();
+            let timestamp = chrono::Utc::now().to_rfc3339();
+            
+            RUNTIME.block_on(async {
+                if let Ok(mut client) = client_arc.lock() {
+                    if let Err(e) = client.publish("plugin_task_agent", SWITCH_ROUTE, "/settings/web", &timestamp).await {
+                        eprintln!("[plugin_task_agent_headless] Failed to publish route switch: {}", e);
+                    } else {
+                        println!("[plugin_task_agent_headless] Successfully published route switch to /settings/web");
+                    }
+                }
+            });
         }
     });
 
