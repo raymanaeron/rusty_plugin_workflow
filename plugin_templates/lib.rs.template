@@ -25,15 +25,15 @@ static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 
 // Define your data structure
 #[derive(Serialize, Deserialize, Clone, Default)]
-struct {{resource_name}}Data {
+struct {{resource_name}} {
     // Add your fields here
     field1: String,
     field2: bool,
 }
 
 // Shared state
-static STATE: Lazy<Mutex<{{resource_name}}Data>> = Lazy::new(|| {
-    Mutex::new({{resource_name}}Data::default())
+static STATE: Lazy<Mutex<{{resource_name}}>> = Lazy::new(|| {
+    Mutex::new({{resource_name}}::default())
 });
 
 #[ctor::ctor]
@@ -101,7 +101,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
             HttpMethod::Post if path == "{{resource_name}}" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                if let Ok(data) = serde_json::from_slice::<{{resource_name}}Data>(body) {
+                if let Ok(data) = serde_json::from_slice::<{{resource_name}}>(body) {
                     let mut state = STATE.lock().unwrap();
                     *state = data;
                     json_response(201, r#"{"message": "Resource created"}"#)
@@ -112,7 +112,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
             HttpMethod::Put if path == "{{resource_name}}" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                if let Ok(data) = serde_json::from_slice::<{{resource_name}}Data>(body) {
+                if let Ok(data) = serde_json::from_slice::<{{resource_name}}>(body) {
                     let mut state = STATE.lock().unwrap();
                     *state = data;
                     json_response(200, r#"{"message": "Resource updated"}"#)
@@ -123,7 +123,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
             HttpMethod::Delete if path == "{{resource_name}}" => {
                 let mut state = STATE.lock().unwrap();
-                *state = {{resource_name}}Data::default();
+                *state = {{resource_name}}::default();
                 json_response(200, r#"{"message": "Resource reset to defaults"}"#)
             }
 
