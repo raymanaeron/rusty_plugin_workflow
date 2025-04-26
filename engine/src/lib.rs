@@ -438,9 +438,6 @@ pub async fn start_server_async() {
     // To add a new route at runtime:
     RouterManager::add_plugin_route("settings", "settings/web").await;
     
-    // To remove a route at runtime:
-    RouterManager::remove_route("wifi/web").await;
-    
     // To add a static route at runtime:
     RouterManager::add_static_route("/docs", "documentation").await;
     */

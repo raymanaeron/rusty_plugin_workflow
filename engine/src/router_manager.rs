@@ -94,17 +94,4 @@ impl RouterManager {
         );
         println!("Added static route: {}", route);
     }
-
-    /// Removes a route at runtime.
-    /// Note: Current implementation rebuilds router - not ideal for production.
-    pub async fn remove_route(route: &str) {
-        let mut router = ROUTER_MANAGER.write().unwrap();
-        // Create new router without the specified route
-        let new_router = Router::new();
-        
-        // We create a new router and copy all routes except the one we want to remove
-        // In a production environment, you'd want to maintain a map of routes and rebuild more selectively
-        *router = new_router;
-        println!("Removed route: {}", route);
-    }
 }
