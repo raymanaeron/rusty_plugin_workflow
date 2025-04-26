@@ -1,28 +1,55 @@
+//! Plugin Manager Module
+//! 
+//! This module provides functionality for loading and managing plugins at runtime.
+//! It handles plugin lifecycle, registration, and resource management.
+
+// Standard library imports
 use std::sync::Arc;
 use std::ffi::CString;
-use plugin_core::PluginContext;
-use engine_core::{plugin_loader::load_plugin, plugin_registry::PluginRegistry, PluginBinding};
-use engine_core::plugin_utils;
-use libloading::Library;
-use logger::{Logger, LogLevel};
 
+// Internal crate imports
+use plugin_core::PluginContext;
+use engine_core::{
+    plugin_loader::load_plugin,
+    plugin_registry::PluginRegistry,
+    plugin_utils,
+    PluginBinding,
+};
+
+// External crate imports
+use libloading::Library;
+
+/// Manages the lifecycle of plugins including loading, registration, and cleanup.
+/// 
+/// The `PluginManager` maintains a registry of loaded plugins and their associated
+/// dynamic libraries to ensure proper resource management.
 pub struct PluginManager {
     registry: Arc<PluginRegistry>,
-    pub(crate) plugin_libraries: Vec<Library>,  // Made public(crate)
-    logger: Arc<dyn Logger>,
+    pub(crate) plugin_libraries: Vec<Library>,
 }
 
 impl PluginManager {
-    pub fn new(registry: Arc<PluginRegistry>, logger: Arc<dyn Logger>) -> Self {
+    /// Creates a new instance of the plugin manager.
+    /// 
+    /// # Arguments
+    /// * `registry` - A thread-safe reference to the plugin registry
+    pub fn new(registry: Arc<PluginRegistry>) -> Self {
         Self {
             registry,
             plugin_libraries: Vec::new(),
-            logger,
         }
     }
 
+    /// Loads and initializes a plugin from a dynamic library.
+    /// 
+    /// # Arguments
+    /// * `plugin_name` - Name of the plugin to load
+    /// * `config` - Configuration string to pass to the plugin
+    /// 
+    /// # Returns
+    /// * `Option<PluginBinding>` - The plugin binding if successfully loaded, None otherwise
     pub fn load_plugin(&mut self, plugin_name: &str, config: &str) -> Option<PluginBinding> {
-        self.logger.log(LogLevel::Info, &format!("Loading the {} plugin", plugin_name));
+        println!("Loading the {} plugin", plugin_name);
 
         let (plugin, lib) = match load_plugin(plugin_utils::resolve_plugin_filename(plugin_name)) {
             Ok(p) => p,
@@ -32,14 +59,14 @@ impl PluginManager {
             }
         };
 
-        self.logger.log(LogLevel::Info, &format!("Running the {} plugin with a parameter", plugin_name));
+        println!("Running the {} plugin with a parameter", plugin_name);
         let plugin_config = CString::new(config).unwrap();
         let ctx = PluginContext {
             config: plugin_config.as_ptr(),
         };
         (plugin.run)(&ctx);
 
-        self.logger.log(LogLevel::Info, &format!("Registering {} plugin", plugin_name));
+        println!("Registering {} plugin", plugin_name);
         self.plugin_libraries.push(lib);
         let binding = PluginBinding::from(plugin);
         self.registry.register(binding.clone());
@@ -47,7 +74,9 @@ impl PluginManager {
         Some(binding)
     }
 
-    // Add getter for plugin_libraries if needed outside crate
+    /// Returns a mutable reference to the collection of loaded plugin libraries.
+    /// 
+    /// This method is primarily used for internal crate access to manage plugin cleanup.
     pub fn get_plugin_libraries(&mut self) -> &mut Vec<Library> {
         &mut self.plugin_libraries
     }
