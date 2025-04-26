@@ -7,6 +7,7 @@ use std::ffi::{CString, CStr};
 use std::os::raw::c_char;
 use std::ptr;
 use std::process::Command;
+use std::collections::HashMap;
 
 use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
@@ -142,7 +143,7 @@ extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
         Err(_) => return ptr::null_mut(),
     };
 
-    let mut networks = Vec::new();
+    let mut unique_networks: HashMap<String, (NetworkInfo, i32)> = HashMap::new();
 
     if cfg!(target_os = "linux") {
         for line in raw_output.lines() {
@@ -151,21 +152,43 @@ extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
                 continue;
             }
 
-            let ssid = CString::new(fields[0]).unwrap_or_default().into_raw();
-            let bssid = CString::new(fields[1]).unwrap_or_default().into_raw();
+            let ssid = fields[0];
             let signal = fields[2].parse::<i32>().unwrap_or(0);
-            let channel = fields[3].parse::<i32>().unwrap_or(0);
-            let security = CString::new(fields[4]).unwrap_or_default().into_raw();
-            let frequency = fields[5].parse::<f32>().unwrap_or(0.0);
 
-            networks.push(NetworkInfo {
-                ssid,
-                bssid,
-                signal,
-                channel,
-                security,
-                frequency,
-            });
+            // Only keep the strongest signal for each SSID
+            if let Some(&(_, existing_signal)) = unique_networks.get(ssid) {
+                if existing_signal < signal {
+                    let bssid = CString::new(fields[1]).unwrap_or_default().into_raw();
+                    let channel = fields[3].parse::<i32>().unwrap_or(0);
+                    let security = CString::new(fields[4]).unwrap_or_default().into_raw();
+                    let frequency = fields[5].parse::<f32>().unwrap_or(0.0);
+                    let ssid = CString::new(ssid).unwrap_or_default().into_raw();
+
+                    unique_networks.insert(fields[0].to_string(), (NetworkInfo {
+                        ssid,
+                        bssid,
+                        signal,
+                        channel,
+                        security,
+                        frequency,
+                    }, signal));
+                }
+            } else {
+                let bssid = CString::new(fields[1]).unwrap_or_default().into_raw();
+                let channel = fields[3].parse::<i32>().unwrap_or(0);
+                let security = CString::new(fields[4]).unwrap_or_default().into_raw();
+                let frequency = fields[5].parse::<f32>().unwrap_or(0.0);
+                let ssid = CString::new(ssid).unwrap_or_default().into_raw();
+
+                unique_networks.insert(fields[0].to_string(), (NetworkInfo {
+                    ssid,
+                    bssid,
+                    signal,
+                    channel,
+                    security,
+                    frequency,
+                }, signal));
+            }
         }
     } else if cfg!(target_os = "windows") {
         let mut current_ssid = String::new();
@@ -191,21 +214,27 @@ extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
                 }
             } else if line.starts_with("BSSID") {
                 if let Some(bssid_str) = line.split(':').nth(1) {
-                    let bssid = bssid_str.trim().to_string();
+                    // Check if we already have this SSID with a stronger signal
+                    if let Some(&(_, existing_signal)) = unique_networks.get(&current_ssid) {
+                        if existing_signal >= current_signal {
+                            continue;
+                        }
+                    }
+
+                    let bssid = CString::new(bssid_str.trim()).unwrap_or_default().into_raw();
                     let ssid = CString::new(current_ssid.clone()).unwrap_or_default().into_raw();
-                    let bssid = CString::new(bssid).unwrap_or_default().into_raw();
                     let security = CString::new(current_security.clone())
                         .unwrap_or_default()
                         .into_raw();
 
-                    networks.push(NetworkInfo {
+                    unique_networks.insert(current_ssid.clone(), (NetworkInfo {
                         ssid,
                         bssid,
                         signal: current_signal,
                         channel: 0,
                         security,
                         frequency: 0.0,
-                    });
+                    }, current_signal));
                 }
             }
         }
@@ -220,24 +249,36 @@ extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
                 continue;
             }
 
-            let ssid = CString::new(parts[0]).unwrap_or_default().into_raw();
-            let bssid = CString::new(parts[1]).unwrap_or_default().into_raw();
+            let ssid = parts[0];
             let signal = parts[2].parse::<i32>().unwrap_or(0);
+
+            if let Some(&(_, existing_signal)) = unique_networks.get(ssid) {
+                if existing_signal >= signal {
+                    continue;
+                }
+            }
+
+            let bssid = CString::new(parts[1]).unwrap_or_default().into_raw();
             let channel = parts[3].parse::<i32>().unwrap_or(0);
             let security = CString::new(parts[5..].join(" "))
                 .unwrap_or_default()
                 .into_raw();
+            let ssid = CString::new(ssid).unwrap_or_default().into_raw();
 
-            networks.push(NetworkInfo {
+            unique_networks.insert(parts[0].to_string(), (NetworkInfo {
                 ssid,
                 bssid,
                 signal,
                 channel,
                 security,
                 frequency: 0.0,
-            });
+            }, signal));
         }
     }
+
+    let networks: Vec<NetworkInfo> = unique_networks.into_iter()
+        .map(|(_, (network, _))| network)
+        .collect();
 
     let boxed = networks.into_boxed_slice();
     unsafe {
