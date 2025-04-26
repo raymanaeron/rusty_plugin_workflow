@@ -8,6 +8,7 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::process::Command;
 use std::collections::HashMap;
+use std::io::Cursor;
 
 use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
@@ -132,7 +133,7 @@ extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
         Command::new("nmcli").args(["-t", "-f", "SSID,BSSID,SIGNAL,CHAN,SECURITY,FREQ", "dev", "wifi"]).output()
     } else if cfg!(target_os = "macos") {
         Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport")
-            .arg("-s")
+            .args(["-s", "-x"])
             .output()
     } else {
         return ptr::null_mut();
@@ -239,40 +240,53 @@ extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
             }
         }
     } else if cfg!(target_os = "macos") {
-        for (i, line) in raw_output.lines().enumerate() {
-            if i == 0 || line.trim().is_empty() {
-                continue;
-            }
+        match plist::Value::from_reader_xml(Cursor::new(&raw_output)) {
+            Ok(plist::Value::Dictionary(dict)) => {
+                if let Some(plist::Value::Array(networks)) = dict.get("wireless networks") {
+                    for network in networks {
+                        if let plist::Value::Dictionary(network) = network {
+                            let ssid = network.get("SSID_STR")
+                                .and_then(|v| v.as_string())
+                                .unwrap_or("").to_string();
+                            
+                            let signal = network.get("RSSI")
+                                .and_then(|v| v.as_signed_integer())
+                                .map(|v| v as i32)
+                                .unwrap_or(0);
 
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() < 5 {
-                continue;
-            }
+                            let bssid = network.get("BSSID")
+                                .and_then(|v| v.as_string())
+                                .unwrap_or("").to_string();
 
-            let ssid = parts[0];
-            let signal = parts[2].parse::<i32>().unwrap_or(0);
+                            let channel = network.get("CHANNEL")
+                                .and_then(|v| v.as_signed_integer())
+                                .map(|v| v as i32)
+                                .unwrap_or(0);
 
-            if let Some(&(_, existing_signal)) = unique_networks.get(ssid) {
-                if existing_signal >= signal {
-                    continue;
+                            let security = network.get("WPA_IE")
+                                .map(|_| "WPA")
+                                .or_else(|| network.get("RSN_IE").map(|_| "WPA2"))
+                                .unwrap_or("NONE");
+
+                            if !ssid.is_empty() {
+                                let ssid_cstr = CString::new(ssid.clone()).unwrap_or_default().into_raw();
+                                let bssid_cstr = CString::new(bssid).unwrap_or_default().into_raw();
+                                let security_cstr = CString::new(security).unwrap_or_default().into_raw();
+
+                                unique_networks.insert(ssid, (NetworkInfo {
+                                    ssid: ssid_cstr,
+                                    bssid: bssid_cstr,
+                                    signal,
+                                    channel,
+                                    security: security_cstr,
+                                    frequency: 0.0,
+                                }, signal));
+                            }
+                        }
+                    }
                 }
-            }
-
-            let bssid = CString::new(parts[1]).unwrap_or_default().into_raw();
-            let channel = parts[3].parse::<i32>().unwrap_or(0);
-            let security = CString::new(parts[5..].join(" "))
-                .unwrap_or_default()
-                .into_raw();
-            let ssid = CString::new(ssid).unwrap_or_default().into_raw();
-
-            unique_networks.insert(parts[0].to_string(), (NetworkInfo {
-                ssid,
-                bssid,
-                signal,
-                channel,
-                security,
-                frequency: 0.0,
-            }, signal));
+            },
+            _ => {}
         }
     }
 
