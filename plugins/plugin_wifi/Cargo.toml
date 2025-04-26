@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+hex = "0.4"
 plugin_core = { path = "../../plugin_core" }
 axum = { version = "0.7", features = ["macros", "http1", "tokio"] }
 tokio = { version = "1.36", features = ["full"] }

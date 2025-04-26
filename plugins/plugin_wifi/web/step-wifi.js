@@ -54,6 +54,7 @@ export async function activate(container, wsManager) {
         }
     
         connectBtn.disabled = true;
+        resultBox.innerHTML = `<div class="alert alert-info">Connecting to ${ssid}...</div>`;
     
         try {
             const res = await fetch("/api/wifi/network", {
@@ -68,30 +69,28 @@ export async function activate(container, wsManager) {
                 json = await res.json();
             } catch (err) {
                 const fallback = await res.text();
-                throw new Error(fallback); // Will show "Resource not found"
+                throw new Error(fallback);
             }
 
             if (res.ok) {
-                resultBox.innerHTML = `<div class="alert alert-success">${json.message || "Connected successfully"}</div>`;
-
                 // Publish via connection manager
                 const published = wsManager.publish('plugin_wifi', 'NetworkConnected', 
                     { status: 'connected', ssid: ssid }
                 );
 
                 if (published) {
+                    resultBox.innerHTML = `<div class="alert alert-success">Connected! Redirecting...</div>`;
                     console.log("[plugin_wifi] Network status published, navigating...");
-                    setTimeout(() => {
-                        history.pushState({}, "", next_route);
-                        window.dispatchEvent(new PopStateEvent("popstate"));
-                    }, 2000);
                 } else {
+                    resultBox.innerHTML = `<div class="alert alert-warning">Connected, but status update failed. Redirecting...</div>`;
                     console.warn("[plugin_wifi] Publish failed, navigating without status update");
-                    setTimeout(() => {
-                        history.pushState({}, "", next_route);
-                        window.dispatchEvent(new PopStateEvent("popstate"));
-                    }, 1000);
                 }
+
+                // Single navigation point with longer delay to ensure status is processed
+                setTimeout(() => {
+                    history.pushState({}, "", next_route);
+                    window.dispatchEvent(new PopStateEvent("popstate"));
+                }, 3000);
             } else {
                 resultBox.innerHTML = `<div class="alert alert-danger">${json.message || "Connection failed"}</div>`;
             }
