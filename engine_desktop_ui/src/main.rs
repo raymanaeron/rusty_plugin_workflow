@@ -1,8 +1,8 @@
 use engine::start_server_async;
-use std::{thread, time::Duration};
+use std::{ thread, time::Duration };
 
-use tao::event::{Event, StartCause, WindowEvent};
-use tao::event_loop::{ControlFlow, EventLoop};
+use tao::event::{ Event, StartCause, WindowEvent };
+use tao::event_loop::{ ControlFlow, EventLoop };
 use tao::window::WindowBuilder;
 use tao::dpi::LogicalSize;
 
@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rt.block_on(start_server_async());
     });
 
-    wait_for_server(); 
+    wait_for_server();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -41,6 +41,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let webview = WebViewBuilder::new(&window)
         .with_url("http://localhost:8080")?
+        .with_devtools(true)
+        .with_initialization_script(r#"
+            console.log("WebView initialized");
+        "#)
         .build()?;
 
     // Wrap in Option so we can move it out cleanly
@@ -51,10 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match event {
             Event::NewEvents(StartCause::Init) => {}
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => {
+            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
                 *control_flow = ControlFlow::Exit;
 
                 // Take ownership and drop explicitly
