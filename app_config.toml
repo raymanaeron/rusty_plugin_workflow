@@ -1,9 +1,8 @@
 [logging]
-# Setting to file mode for persistent logging
-type = "file"
-threshold = "debug"        # Show all log levels (debug is the lowest valid level)
-file_path = "workflow.log" # Name of the log file
-log_folder = "logs"        # Directory to store logs
+type = "console"
+threshold = "debug"        
+file_path = "workflow.log" 
+log_folder = "logs" 
 max_file_size_mb = 1
 http_endpoint = "https://logs.example.com"
 http_timeout_seconds = 5

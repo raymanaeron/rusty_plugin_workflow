@@ -75,7 +75,7 @@ fn initialize_custom_logger() {
         Ok(_) => log_info!("Logger successfully initialized from config file"),
         Err(e) => {
             // Something went wrong with the config file
-            println!("Error initializing logger from config: {}", e);
+            log_debug!("Error initializing logger from config: {}", Some(e.to_string()));
             // Fall back to console logging
             Logger::init();
             log_error!("Failed to initialize file logger, falling back to console");
@@ -99,7 +99,7 @@ fn initialize_custom_logger() {
 /// Creates and initializes the WebSocket client for the engine.
 /// Sets up subscriptions for status changes and route switching.
 pub async fn create_ws_engine_client() {
-    println!("Creating ws client for the engine");
+    log_debug!("Creating ws client for the engine");
     let url = "ws://127.0.0.1:8081/ws";
 
     // Connect to the WebSocket server.
@@ -109,20 +109,20 @@ pub async fn create_ws_engine_client() {
 
     // Store the WebSocket client in the static variable.
     if ENGINE_WS_CLIENT.set(Arc::new(Mutex::new(client))).is_err() {
-        eprintln!("Failed to set ENGINE_WS_CLIENT: already initialized");
+        log_debug!("Failed to set ENGINE_WS_CLIENT: already initialized", None);
         return;
     }
 
-    println!("ws client for the engine created");
+    log_debug!("ws client for the engine created");
 
     // Subscribe to SWITCH_ROUTE topic
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let mut client = client_arc.lock().unwrap();
         client.subscribe("engine_subscriber", SWITCH_ROUTE, "").await;
-        println!("Engine, subscribed to SWITCH_ROUTE");
+        log_debug!("Engine, subscribed to SWITCH_ROUTE", None);
 
         client.on_message(SWITCH_ROUTE, |msg| {
-            println!("[engine] => SWITCH_ROUTE: {}", msg);
+            log_debug!("[engine] => SWITCH_ROUTE: {}", Some(msg.to_string()));
         });
     }
 
@@ -130,10 +130,10 @@ pub async fn create_ws_engine_client() {
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let mut client = client_arc.lock().unwrap();
         client.subscribe("engine_subscriber", STATUS_CHANGED, "").await;
-        println!("Engine, subscribed to STATUS_CHANGED");
+        log_debug!("Engine, subscribed to STATUS_CHANGED", None);
 
         client.on_message(STATUS_CHANGED, |msg| {
-            println!("[engine] => STATUS_CHANGED: {}", msg);
+            log_debug!("[engine] => STATUS_CHANGED: {}", Some(msg.to_string()));
         });
     }
 }
@@ -157,33 +157,28 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
 
             match ExecutionPlanLoader::load_from_file(plan_path) {
                 Ok(plan) => {
-                    println!(
+                    let plan_type = match plan_status {
+                        PlanLoadSource::Remote(_) => "remote",
+                        PlanLoadSource::LocalFallback(_) => "local fallback",
+                    };
+                    log_debug!(
                         "Execution plan [{}] loaded with {} plugins",
-                        match plan_status {
-                            PlanLoadSource::Remote(_) => "remote",
-                            PlanLoadSource::LocalFallback(_) => "local fallback",
-                        },
-                        plan.plugins.len()
+                        Some(format!("{} {}", plan_type, plan.plugins.len()))
                     );
                     Some((plan_status, plan.plugins))
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse execution plan: {}", e);
+                    log_debug!("Failed to parse execution plan: {}", Some(e.to_string()));
                     None
                 }
             }
         }
         Err(e) => {
-            eprintln!("Failed to resolve execution plan: {}", e);
+            log_debug!("Failed to resolve execution plan: {}", Some(e.to_string()));
             None
         }
     }
 }
-
-//
-// Plugin Management
-// ---------------
-//
 
 /// Loads a plugin from the given path and registers it with the engine.
 /// Stores the plugin library to prevent premature unloading.
@@ -197,7 +192,10 @@ fn load_and_register(
             registry.register(plugin);
             lib_holder.push(lib); // retain library to avoid drop
         }
-        Err(e) => eprintln!("Failed to load plugin from {}: {}", path.display(), e),
+        Err(e) => log_debug!(
+            "Failed to load plugin from {}: {}", 
+            Some(format!("{} {}", path.display(), e))
+        ),
     }
 }
 
@@ -236,7 +234,7 @@ pub async fn start_server_async() {
             );
 
             let listener = TcpListener::bind("127.0.0.1:8081").await.unwrap();
-            println!("[engine] WebSocket server listening at ws://127.0.0.1:8081/ws");
+            log_debug!("[engine] WebSocket server listening at ws://127.0.0.1:8081/ws");
 
             axum::serve(
                 listener,
@@ -274,10 +272,10 @@ pub async fn start_server_async() {
                     let mut client = client_arc.lock().unwrap();
                     
                     client.subscribe("engine_subscriber", NETWORK_CONNECTED, "").await;
-                    println!("Engine, subscribed to NETWORK_CONNECTED");
+                    log_debug!("Engine, subscribed to NETWORK_CONNECTED", None);
 
                     client.on_message(NETWORK_CONNECTED, move |msg| {
-                        println!("[engine] => NETWORK_CONNECTED: {}", msg);
+                        log_debug!("[engine] => NETWORK_CONNECTED: {}", Some(msg.to_string()));
                         
                         if let Some(run_workflow_fn) = task_agent.run_workflow {
                             let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
@@ -306,20 +304,21 @@ pub async fn start_server_async() {
         }
     }
 
-    log_debug!("Core plugins loaded");
+    log_debug!("Core plugins loaded", None);
 
     // Move plugin libraries to holder
     plugin_libraries.extend(plugin_manager.get_plugin_libraries().drain(..));
 
-    log_debug!("Loading the execution plan");
+    log_debug!("Loading the execution plan", None);
 
     let Some((plan_status, plugins)) = run_exection_plan_updater() else {
-        eprintln!("Execution plan loading failed. Cannot continue.");
+        log_debug!("Execution plan loading failed. Cannot continue.", None);
         return;
     };
 
     let allow_write = matches!(plan_status, PlanLoadSource::Remote(_));
 
+    // Modify the error handler for plugin preparation
     for plugin_meta in plugins {
         match prepare_plugin_binary(&plugin_meta, allow_write) {
             Ok(local_path) => load_and_register(local_path, &registry, &mut plugin_libraries),
@@ -329,12 +328,14 @@ pub async fn start_server_async() {
                     PlanLoadSource::LocalFallback(_) => "local fallback plan",
                 };
 
-                eprintln!(
+                log_debug!(
                     "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
-                    plugin_meta.name,
-                    plugin_meta.plugin_location_type,
-                    source,
-                    e
+                    Some(format!("{} {} {} {}", 
+                        plugin_meta.name, 
+                        plugin_meta.plugin_location_type, 
+                        source, 
+                        e
+                    ))
                 );
             }
         }
@@ -395,7 +396,7 @@ pub async fn start_server_async() {
     };
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-    println!("Listening at http://{}", addr);
+    log_debug!("Listening at http://{}", Some(addr.to_string()));
 
     let listener = TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
