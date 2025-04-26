@@ -1,25 +1,41 @@
+//! WiFi Plugin Module
+//! 
+//! This module provides WiFi scanning and connection capabilities as a plugin.
+//! It supports multiple platforms (Windows, Linux, macOS) and handles network
+//! discovery and connection management.
+
 extern crate plugin_core;
 
 mod network_info;
 mod wifi_manager;
 
-use network_info::{ NetworkInfo, to_json };
 use std::ffi::{CString, CStr};
 use std::os::raw::c_char;
 use std::ptr;
+use std::sync::{Arc, Mutex};
+
 use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
-use std::sync::{Arc, Mutex};
+
 use once_cell::sync::Lazy;
 
+use network_info::{ NetworkInfo, to_json };
+
+/// Global flag to track WiFi connection status
 static WIFI_CONNECTED: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new(false)));
 
+/// Plugin initialization handler
+/// Called when the plugin is first loaded
 #[ctor::ctor]
 fn on_load() {
     println!("[plugin_wifi] >>> LOADED");
 }
 
+/// Plugin runtime configuration handler
+/// 
+/// # Arguments
+/// * `ctx` - Pointer to plugin context containing configuration
 extern "C" fn run(ctx: *const PluginContext) {
     println!("[plugin_wifi] - run");
     println!("[plugin_wifi] FINGERPRINT: run = {:p}", run as *const ());

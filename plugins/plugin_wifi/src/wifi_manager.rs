@@ -1,3 +1,12 @@
+//! WiFi Manager Module
+//! 
+//! Provides platform-specific implementations for WiFi operations including:
+//! - Network scanning
+//! - Connection management
+//! - Profile handling (Windows)
+//! - NetworkManager and wpa_supplicant support (Linux)
+//! - Airport configuration (macOS)
+
 use std::process::Command;
 use std::collections::HashMap;
 use std::ffi::CString;
@@ -11,6 +20,15 @@ use std::env;
 
 use crate::network_info::NetworkInfo;
 
+/// Verifies if a WiFi connection was successful on Windows
+/// 
+/// # Arguments
+/// * `ssid` - Name of the network to verify
+/// * `interface` - Name of the wireless interface
+/// 
+/// # Returns
+/// * `true` if connection is verified
+/// * `false` if verification fails
 #[cfg(target_os = "windows")]
 fn verify_wifi_connection(ssid: &str, interface: &str) -> bool {
     thread::sleep(Duration::from_secs(2));
@@ -28,6 +46,18 @@ fn verify_wifi_connection(ssid: &str, interface: &str) -> bool {
     }
 }
 
+/// Implements WiFi connection for Windows platforms
+/// 
+/// Creates and manages Windows wireless profiles for network connection.
+/// Handles profile creation, connection attempts, and verification.
+/// 
+/// # Arguments
+/// * `ssid` - Network name to connect to
+/// * `password` - Network password
+/// 
+/// # Returns
+/// * `true` if connection succeeds
+/// * `false` if any step fails
 #[cfg(target_os = "windows")]
 pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
     println!("[plugin_wifi] Attempting to connect to {} on Windows...", ssid);
@@ -182,6 +212,15 @@ pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
     false
 }
 
+/// Implements WiFi connection for Linux platforms using NetworkManager and wpa_supplicant
+/// 
+/// # Arguments
+/// * `ssid` - Network name to connect to
+/// * `password` - Network password
+/// 
+/// # Returns
+/// * `true` if connection succeeds with either NetworkManager or wpa_supplicant
+/// * `false` if both connection methods fail
 #[cfg(target_os = "linux")]
 pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
     println!("[plugin_wifi] Attempting to connect to {} on Linux...", ssid);
@@ -260,6 +299,15 @@ pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
     }
 }
 
+/// Implements WiFi connection for macOS platforms using networksetup
+/// 
+/// # Arguments
+/// * `ssid` - Network name to connect to
+/// * `password` - Network password
+/// 
+/// # Returns
+/// * `true` if connection succeeds
+/// * `false` if connection fails
 #[cfg(target_os = "macos")]
 pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
     println!("[plugin_wifi] Attempting to connect to {} on macOS...", ssid);
@@ -286,12 +334,27 @@ pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
     }
 }
 
+/// Fallback implementation for unsupported platforms
 #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
 pub fn connect_wifi_impl(_: &str, _: &str) -> bool {
     println!("[plugin_wifi] WiFi connection not available on this platform");
     false
 }
 
+/// Scans for available WiFi networks using platform-specific methods
+/// 
+/// Makes multiple attempts to scan for networks with delays between attempts.
+/// Supports Windows (netsh), Linux (nmcli), and macOS (airport).
+/// 
+/// # Arguments
+/// * `out_count` - Mutable pointer to store the number of networks found
+/// 
+/// # Returns
+/// * Pointer to array of NetworkInfo structures on success
+/// * null pointer if no networks found or on error
+/// 
+/// # Safety
+/// Caller must free the returned memory using Box::from_raw
 pub fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     for attempt in 1..=3 {
         println!("[plugin_wifi] Scan attempt {} of 3", attempt);
@@ -339,6 +402,18 @@ pub fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     ptr::null_mut()
 }
 
+/// Parses platform-specific WiFi scan output into NetworkInfo structures
+/// 
+/// Handles different output formats:
+/// - Windows: netsh text output
+/// - Linux: nmcli colon-separated values
+/// - macOS: airport plist format
+/// 
+/// # Arguments
+/// * `output` - Raw scan output bytes
+/// 
+/// # Returns
+/// Vector of NetworkInfo structures with unique networks
 fn parse_scan_output(output: &[u8]) -> Vec<NetworkInfo> {
     let raw_output = String::from_utf8_lossy(output);
     let mut unique_networks: HashMap<String, (NetworkInfo, i32)> = HashMap::new();
@@ -444,6 +519,7 @@ fn parse_scan_output(output: &[u8]) -> Vec<NetworkInfo> {
                                 .and_then(|v| v.as_string())
                                 .unwrap_or("").to_string();
                             
+
                             let signal = network.get("RSSI")
                                 .and_then(|v| v.as_signed_integer())
                                 .map(|v| v as i32)
