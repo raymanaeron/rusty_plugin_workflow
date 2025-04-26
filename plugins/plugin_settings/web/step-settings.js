@@ -64,7 +64,9 @@ async function loadSettings() {
     }
 }
 
-export async function activate(container) {
+export async function activate(container, wsManager) {
+    wsManager.registerPlugin('plugin_settings');
+    
     // Initialize WebSocket
     initializeWebSocket();
 
@@ -120,4 +122,14 @@ export async function activate(container) {
         };
         setFormData(defaultSettings);
     });
+
+    // Publish settings changes if needed
+    function publishSettingsUpdate(settings) {
+        wsManager.publish('plugin_settings', 'SettingsChanged', settings);
+    }
+
+    // Cleanup on deactivate
+    return () => {
+        wsManager.unregisterPlugin('plugin_settings');
+    };
 }

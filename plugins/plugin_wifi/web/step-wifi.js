@@ -1,32 +1,8 @@
 const next_route = "/status/web";
-let ws; // Declare WebSocket variable in scope
 
-// Initialize WebSocket connection
-function initializeWebSocket() {
-    ws = new WebSocket('ws://localhost:8081/ws');
-    
-    ws.onopen = () => {
-        ws.send('register-name:plugin_wifi');
-        console.log('WiFi plugin connected to WebSocket server');
-    };
-
-    ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-        console.log('Disconnected from WebSocket server');
-    };
-}
-
-// Returns the current timestamp in ISO format
-function getTimestamp() {
-    return new Date().toISOString();
-}
-
-export async function activate(container) {
-    // Initialize WebSocket when the module activates
-    initializeWebSocket();
+export async function activate(container, wsManager) {
+    // Register with connection manager
+    wsManager.registerPlugin('plugin_wifi');
 
     const scanBtn = container.querySelector("#scanBtn");
     const connectBtn = container.querySelector("#connectBtn");
@@ -98,39 +74,19 @@ export async function activate(container) {
             if (res.ok) {
                 resultBox.innerHTML = `<div class="alert alert-success">${json.message || "Connected successfully"}</div>`;
 
-                // Publish network connected message with retries
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    const message = {
-                        publisher_name: "plugin_wifi",
-                        topic: "NetworkConnected",
-                        payload: JSON.stringify({ status: 'connected', ssid: ssid }),
-                        timestamp: getTimestamp()
-                    };
+                // Publish via connection manager
+                const published = wsManager.publish('plugin_wifi', 'NetworkConnected', 
+                    { status: 'connected', ssid: ssid }
+                );
 
-                    let retries = 3;
-                    const publishWithRetry = () => {
-                        try {
-                            console.log(`[publish] plugin_wifi sending to ${message.topic} with payload=${message.payload}`);
-                            ws.send(`publish-json:${JSON.stringify(message)}`);
-                            
-                            // Navigate after successful publish
-                            console.log("[publish] Message sent, navigating to status page...");
-                            setTimeout(() => {
-                                history.pushState({}, "", next_route);
-                                window.dispatchEvent(new PopStateEvent("popstate"));
-                            }, 2000); // Increased timeout for better reliability
-                        } catch (error) {
-                            console.error("[publish] Error sending message:", error);
-                            if (retries > 0) {
-                                retries--;
-                                setTimeout(publishWithRetry, 500);
-                            }
-                        }
-                    };
-
-                    publishWithRetry();
+                if (published) {
+                    console.log("[plugin_wifi] Network status published, navigating...");
+                    setTimeout(() => {
+                        history.pushState({}, "", next_route);
+                        window.dispatchEvent(new PopStateEvent("popstate"));
+                    }, 2000);
                 } else {
-                    console.warn("[publish] WebSocket not ready, navigating without status update");
+                    console.warn("[plugin_wifi] Publish failed, navigating without status update");
                     setTimeout(() => {
                         history.pushState({}, "", next_route);
                         window.dispatchEvent(new PopStateEvent("popstate"));

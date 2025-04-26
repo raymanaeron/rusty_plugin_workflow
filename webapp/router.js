@@ -1,3 +1,5 @@
+import { wsManager } from './websocket_connection_manager.js';
+
 export async function routeTo(path) {
   const container = document.getElementById("content");
   container.innerHTML = `<div class="text-muted">Loading...</div>`;
@@ -48,8 +50,8 @@ export async function routeTo(path) {
     console.log('[Router] Attempting to load JS module from:', jsUrl);
     
     const module = await import(jsUrl);
-    if (typeof module.activate === "function") {
-      await module.activate(container);
+    if (module.activate) {
+      await module.activate(container, wsManager);  // Inject wsManager
     } else {
       console.warn(`Plugin ${pluginName} has no activate() function`);
     }
