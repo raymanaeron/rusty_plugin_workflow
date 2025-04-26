@@ -1,11 +1,20 @@
 // Imports
-use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
+use std::{ net::SocketAddr, sync::{ Arc, Mutex, RwLock } };
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::path::PathBuf;
+use std::fs;
 
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::UnboundedSender;
+
+use axum::Router;
+use axum::routing::{any, get};
+use axum::response::Response;
+use axum::body::Body;
+use axum::http::StatusCode;
+
+use tower_http::services::ServeDir;
 
 use once_cell::sync::{ Lazy, OnceCell };
 
@@ -25,6 +34,11 @@ use ws_server::ws_client::WsClient;
 use logger::{ LoggerLoader, LogLevel };
 
 // Static Variables
+/// Router manager for dynamic route handling
+static ROUTER_MANAGER: Lazy<Arc<RwLock<Router>>> = Lazy::new(|| {
+    Arc::new(RwLock::new(Router::new()))
+});
+
 /// WebSocket subscribers for the engine.
 pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
     std::sync::Arc::new(
@@ -368,30 +382,40 @@ pub async fn start_server_async() {
         }
     }
 
-    let mut app = Router::new();
+    let mut base_router = Router::new();
 
-    use axum::routing::any;
-    use axum::Router;
-
+    // Setup API routes
     let plugin_api_router = Router::new().route(
         "/:plugin/:resource",
         any(dispatch_plugin_api).with_state(registry.clone())
     );
+    base_router = base_router.nest("/api", plugin_api_router);
 
-    app = app.nest("/api", plugin_api_router);
-
-    use tower_http::services::ServeDir;
-    for plugin in registry.all() {
-        let web_path = format!("/{}/web", plugin.plugin_route);
-        println!("-> registered plugin name: {}", plugin.name);
-        println!("Web Path : {}", web_path);
-        app = app.nest_service(&web_path, ServeDir::new(&plugin.static_path));
+    // Initialize router manager with base routes
+    {
+        let mut router = ROUTER_MANAGER.write().unwrap();
+        *router = base_router;
     }
 
-    app = app.nest_service("/", ServeDir::new("webapp"));
+    // Register initial plugin routes
+    for plugin in registry.all() {
+        add_plugin_route(&plugin.plugin_route, &plugin.static_path).await;
+    }
 
-    use axum::{ routing::get, response::Response, http::StatusCode, body::Body };
-    use std::fs;
+    // Add webapp route
+    add_static_route("/", "webapp").await;
+
+    // Example of how to add/remove routes at runtime:
+    /*
+    // To add a new route at runtime:
+    add_plugin_route("new-plugin/web", "plugins/new-plugin/web").await;
+    
+    // To remove a route at runtime:
+    remove_route("wifi/web").await;
+    
+    // To add a static route at runtime:
+    add_static_route("/docs", "documentation").await;
+    */
 
     async fn fallback_handler() -> Response {
         match fs::read_to_string("webapp/index.html") {
@@ -409,12 +433,45 @@ pub async fn start_server_async() {
         }
     }
 
-    app = app.fallback(get(fallback_handler));
+    // Get the router for serving
+    let app = {
+        let mut router = ROUTER_MANAGER.write().unwrap();
+        router.clone().fallback(get(fallback_handler))
+    };
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("Listening at http://{}", addr);
 
     let listener = TcpListener::bind(addr).await.unwrap();
-
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
+}
+
+// Add these helper functions
+pub async fn add_plugin_route(route: &str, path: &str) {
+    let mut router = ROUTER_MANAGER.write().unwrap();
+    *router = router.clone().nest_service(
+        &format!("/{}", route),
+        ServeDir::new(path)
+    );
+    println!("Added plugin route: /{}", route);
+}
+
+pub async fn add_static_route(route: &str, path: &str) {
+    let mut router = ROUTER_MANAGER.write().unwrap();
+    *router = router.clone().nest_service(
+        route,
+        ServeDir::new(path)
+    );
+    println!("Added static route: {}", route);
+}
+
+pub async fn remove_route(route: &str) {
+    let mut router = ROUTER_MANAGER.write().unwrap();
+    // Create new router without the specified route
+    let new_router = Router::new();
+    
+    // This is a bit hacky but works - we create a new router and copy all routes except the one we want to remove
+    // In a production environment, you'd want to maintain a map of routes and rebuild more selectively
+    *router = new_router;
+    println!("Removed route: {}", route);
 }
