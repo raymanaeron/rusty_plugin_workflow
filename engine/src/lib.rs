@@ -1,65 +1,77 @@
-// Imports
-use std::{ net::SocketAddr, sync::{ Arc, Mutex, RwLock } };
-use std::collections::HashMap;
-use std::ffi::CString;
-use std::path::PathBuf;
+//! Engine Core Library
+//! 
+//! This module serves as the main entry point for the plugin-based OOBE engine.
+//! It handles:
+//! - Plugin loading and lifecycle management
+//! - Dynamic route registration 
+//! - WebSocket server and client setup
+//! - REST API request routing
+//! - Static file serving
+//!
+//! # Architecture
+//! 
+//! The engine uses a few key components:
+//! - Router Manager - Handles dynamic route registration/removal
+//! - Plugin Registry - Manages loaded plugins
+//! - WebSocket System - Enables real-time communication
+//! - Execution Plan - Controls plugin loading sequence
+
+// Standard library imports
+use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
 use std::fs;
+use std::path::PathBuf;
+use std::ffi::CString;
 
+// Async runtime imports
 use tokio::net::TcpListener;
-use tokio::sync::mpsc::UnboundedSender;
 
+// Web framework imports
 use axum::Router;
 use axum::routing::{any, get};
 use axum::response::Response;
 use axum::body::Body;
 use axum::http::StatusCode;
 
-use tower_http::services::ServeDir;
-
-use once_cell::sync::{ Lazy, OnceCell };
-
-use engine_core::{ plugin_loader::load_plugin, plugin_registry::PluginRegistry };
-use engine_core::handlers::dispatch_plugin_api;
-use engine_core::execution_plan_updater::{ ExecutionPlanUpdater, PlanLoadSource };
-use engine_core::execution_plan::ExecutionPlanLoader;
-use engine_core::plugin_utils;
-use engine_core::plugin_metadata::PluginMetadata;
-use engine_core::plugin_utils::prepare_plugin_binary;
-
-use plugin_core::{ PluginContext, HttpMethod, ApiRequest };
-
-use ws_server::{ handle_socket, Subscribers };
-use ws_server::ws_client::WsClient;
-
+// Logger imports
 use logger::{ LoggerLoader, LogLevel };
 
-// Static Variables
-/// Router manager for dynamic route handling
-static ROUTER_MANAGER: Lazy<Arc<RwLock<Router>>> = Lazy::new(|| {
-    Arc::new(RwLock::new(Router::new()))
-});
+// Local module declarations
+mod router_manager;
+mod websocket_manager;
 
-/// WebSocket subscribers for the engine.
-pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
-    std::sync::Arc::new(
-        std::sync::Mutex::new(HashMap::<String, Vec<UnboundedSender<String>>>::new())
-    )
-});
+// Local module imports
+use router_manager::RouterManager;
+use websocket_manager::{
+    WS_SUBSCRIBERS, ENGINE_WS_CLIENT,
+    STATUS_CHANGED, NETWORK_CONNECTED, SWITCH_ROUTE
+};
 
-/// Topic for receiving status change messages.
-pub static STATUS_CHANGED: &str = "StatusMessageChanged";
+// Engine core functionality
+use engine_core::{
+    plugin_loader::load_plugin,
+    plugin_registry::PluginRegistry,
+    handlers::dispatch_plugin_api,
+    execution_plan_updater::{ExecutionPlanUpdater, PlanLoadSource},
+    execution_plan::ExecutionPlanLoader,
+    plugin_utils,
+    plugin_metadata::PluginMetadata,
+    plugin_utils::prepare_plugin_binary,
+};
 
-/// Topic for receiving network connected messages.
-pub static NETWORK_CONNECTED: &str = "NetworkConnected";
+// Plugin core types
+use plugin_core::{PluginContext, HttpMethod, ApiRequest};
 
-// Topic for receiving switch route messages.
-pub static SWITCH_ROUTE: &str = "SwitchRoute";
+// WebSocket functionality
+use ws_server::handle_socket;
+use ws_server::ws_client::WsClient;
 
-/// WebSocket client for the engine.
-pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
+//
+// WebSocket Client Management
+// -------------------------
+//
 
-// WebSocket Client Initialization
 /// Creates and initializes the WebSocket client for the engine.
+/// Sets up subscriptions for status changes and route switching.
 pub async fn create_ws_engine_client() {
     println!("Creating ws client for the engine");
     let url = "ws://127.0.0.1:8081/ws";
@@ -100,8 +112,13 @@ pub async fn create_ws_engine_client() {
     }
 }
 
-// Execution Plan Updater
-/// Runs the execution plan updater and returns the plan status and plugins.
+//
+// Execution Plan Management  
+// -----------------------
+//
+
+/// Loads and processes the execution plan that controls plugin loading.
+/// Supports both remote and local fallback plans.
 pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
     let local_path = "execution_plan.toml";
 
@@ -137,8 +154,13 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
     }
 }
 
-// Plugin Loader
-/// Loads and registers a plugin from the given path.
+//
+// Plugin Management
+// ---------------
+//
+
+/// Loads a plugin from the given path and registers it with the engine.
+/// Stores the plugin library to prevent premature unloading.
 fn load_and_register(
     path: PathBuf,
     registry: &Arc<PluginRegistry>,
@@ -153,8 +175,13 @@ fn load_and_register(
     }
 }
 
-// Entry Points
-/// FFI-safe C entry point for Swift, Kotlin, C++, etc.
+//
+// Engine Entry Points
+// ----------------
+//
+
+/// FFI-safe entry point for non-Rust platforms.
+/// Spawns the engine in a new thread with its own runtime.
 #[no_mangle]
 pub extern "C" fn start_oobe_server() {
     std::thread::spawn(|| {
@@ -163,7 +190,8 @@ pub extern "C" fn start_oobe_server() {
     });
 }
 
-/// Native async entry point for Rust-based apps (e.g. desktop, CLI)
+/// Main async entry point for Rust applications.
+/// Initializes all engine components and starts the server.
 pub async fn start_server_async() {
     // Logger Initialization
     LoggerLoader::init("app_config.toml").await;
@@ -393,28 +421,28 @@ pub async fn start_server_async() {
 
     // Initialize router manager with base routes
     {
-        let mut router = ROUTER_MANAGER.write().unwrap();
+        let mut router = RouterManager::get_manager().write().unwrap();
         *router = base_router;
     }
 
     // Register initial plugin routes
     for plugin in registry.all() {
-        add_plugin_route(&plugin.plugin_route, &plugin.static_path).await;
+        RouterManager::add_plugin_route(&plugin.plugin_route, &plugin.static_path).await;
     }
 
     // Add webapp route
-    add_static_route("/", "webapp").await;
+    RouterManager::add_static_route("/", "webapp").await;
 
-    // Example of how to add/remove routes at runtime:
+    // Example of runtime route management:
     /*
     // To add a new route at runtime:
-    add_plugin_route("new-plugin/web", "plugins/new-plugin/web").await;
+    RouterManager::add_plugin_route("settings", "settings/web").await;
     
     // To remove a route at runtime:
-    remove_route("wifi/web").await;
+    RouterManager::remove_route("wifi/web").await;
     
     // To add a static route at runtime:
-    add_static_route("/docs", "documentation").await;
+    RouterManager::add_static_route("/docs", "documentation").await;
     */
 
     async fn fallback_handler() -> Response {
@@ -435,7 +463,7 @@ pub async fn start_server_async() {
 
     // Get the router for serving
     let app = {
-        let mut router = ROUTER_MANAGER.write().unwrap();
+        let router = RouterManager::get_manager().write().unwrap();
         router.clone().fallback(get(fallback_handler))
     };
 
@@ -444,34 +472,4 @@ pub async fn start_server_async() {
 
     let listener = TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
-}
-
-// Add these helper functions
-pub async fn add_plugin_route(route: &str, path: &str) {
-    let mut router = ROUTER_MANAGER.write().unwrap();
-    *router = router.clone().nest_service(
-        &format!("/{}", route),
-        ServeDir::new(path)
-    );
-    println!("Added plugin route: /{}", route);
-}
-
-pub async fn add_static_route(route: &str, path: &str) {
-    let mut router = ROUTER_MANAGER.write().unwrap();
-    *router = router.clone().nest_service(
-        route,
-        ServeDir::new(path)
-    );
-    println!("Added static route: {}", route);
-}
-
-pub async fn remove_route(route: &str) {
-    let mut router = ROUTER_MANAGER.write().unwrap();
-    // Create new router without the specified route
-    let new_router = Router::new();
-    
-    // This is a bit hacky but works - we create a new router and copy all routes except the one we want to remove
-    // In a production environment, you'd want to maintain a map of routes and rebuild more selectively
-    *router = new_router;
-    println!("Removed route: {}", route);
 }
