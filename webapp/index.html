@@ -1,37 +1,38 @@
 <!-- webapp/index.html -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Device Setup</title>
   <link href="/bootstrap.min.css" rel="stylesheet" />
-
   <link rel="stylesheet" href="/styles.css" />
-
 </head>
 
-<body class="bg-light d-flex flex-column min-vh-100">
-  <div class="container-fluid py-3 border-bottom bg-white shadow-sm">
-    <h4 class="m-0">Device Setup</h4>
-  </div>
+<body class="d-flex flex-column">
+  <header class="app-header border-bottom shadow-sm">
+    <div class="container-fluid">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1 class="app-title">Device Setup</h1>
+        <div class="d-none d-sm-block">
+          <button id="exitBtn" class="btn btn-outline-secondary btn-sm">Exit</button>
+        </div>
+      </div>
+    </div>
+  </header>
 
-  <main id="content" class="flex-fill container py-4">
-    <!-- Plugin content will be injected here -->
+  <main class="app-content flex-grow-1">
+    <div id="content" class="plugin-section">
+      <!-- Plugin content injected here -->
+    </div>
   </main>
 
-
-  <div class="container-fluid border-top bg-white py-3">
-    <!--
-    <div class="d-flex justify-content-end">
-      <button id="exitBtn" class="btn btn-outline-secondary">Exit</button>
+  <footer class="border-top py-3 bg-white d-sm-none">
+    <div class="container-fluid">
+      <button id="exitBtnMobile" class="btn btn-outline-secondary w-100">Exit</button>
     </div>
-    -->
-  </div>
+  </footer>
 
   <script type="module" src="/app.js"></script>
-
 </body>
-
 </html>
