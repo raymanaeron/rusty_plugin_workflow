@@ -66,6 +66,7 @@ use plugin_core::{HttpMethod, ApiRequest}; // Remove PluginContext as it's unuse
 use ws_server::handle_socket;
 use ws_server::ws_client::WsClient;
 
+// This is required to import the macros
 initialize_logger_attributes!();
 
 // Custom logger initialization to ensure all logs are displayed
@@ -145,6 +146,8 @@ pub async fn create_ws_engine_client() {
 
 /// Loads and processes the execution plan that controls plugin loading.
 /// Supports both remote and local fallback plans.
+#[log_entry_exit]
+#[measure_time]
 pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
     let local_path = "execution_plan.toml";
 
