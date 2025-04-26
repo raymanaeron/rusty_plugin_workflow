@@ -1,10 +1,17 @@
 [logging]
+# Setting to file mode for persistent logging
 type = "file"
-file_path = "workflow.log"
+threshold = "debug"        # Show all log levels (debug is the lowest valid level)
+file_path = "workflow.log" # Name of the log file
+log_folder = "logs"        # Directory to store logs
+max_file_size_mb = 1
 http_endpoint = "https://logs.example.com"
-threshold = "debug"
-
-[metrics]
-type = "http"
-file_path = "metrics.json"
-http_endpoint = "https://metrics.example.com"
+http_timeout_seconds = 5
+show_filename = true
+show_module = true
+console_colors = true
+log_format = "[{level}] [{timestamp}] {message}"
+timestamp_format = "%Y-%m-%d %H:%M:%S"
+show_level_prefix = true
+buffer_size = 0
+force_flush = true

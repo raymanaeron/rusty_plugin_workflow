@@ -18,7 +18,9 @@ serde_json = "1"
 toml = "0.5"
 once_cell = "1.19"
 chrono = { version = "0.4", features = ["serde", "alloc"] }
-logger = { path = "../logger" }
+uuid = { version = "1.4", features = ["v4"] }
 plugin_core = { path = "../plugin_core" }
 engine_core = { path = "../engine_core" }
 ws_server = { path = "../ws_server"}
+liblogger = { path = "../liblogger", features = ["proc_macros"] }
+liblogger_macros = { path = "../liblogger_macros" }

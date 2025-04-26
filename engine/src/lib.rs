@@ -32,8 +32,8 @@ use axum::response::Response;
 use axum::body::Body;
 use axum::http::StatusCode;
 
-// Logger imports
-use logger::{ LoggerLoader, LogLevel };
+use liblogger::{Logger, log_info, log_warn, log_error, log_debug};
+use liblogger_macros::*;
 
 // Local module declarations
 mod router_manager;
@@ -65,6 +65,31 @@ use plugin_core::{HttpMethod, ApiRequest}; // Remove PluginContext as it's unuse
 // WebSocket functionality
 use ws_server::handle_socket;
 use ws_server::ws_client::WsClient;
+
+initialize_logger_attributes!();
+
+// Custom logger initialization to ensure all logs are displayed
+fn initialize_custom_logger() {
+    // Initialize logger with debug threshold to ensure all logs are shown
+    match Logger::init_with_config_file("app_config.toml") {
+        Ok(_) => log_info!("Logger successfully initialized from config file"),
+        Err(e) => {
+            // Something went wrong with the config file
+            println!("Error initializing logger from config: {}", e);
+            // Fall back to console logging
+            Logger::init();
+            log_error!("Failed to initialize file logger, falling back to console");
+        }
+    }
+    
+    // Print a clear marker to see if logger is working
+    log_info!("======== START LOGGER LOADING TEST ========");
+    log_debug!("Debug logging is enabled");
+    log_info!("Info logging is enabled");
+    log_warn!("Warning logging is enabled");
+    log_error!("Error logging is enabled");
+    log_info!("======== END LOGGER LOADING TEST ========");
+}
 
 //
 // WebSocket Client Management
@@ -194,12 +219,8 @@ pub extern "C" fn start_oobe_server() {
 /// Main async entry point for Rust applications.
 /// Initializes all engine components and starts the server.
 pub async fn start_server_async() {
-    // Logger Initialization
-    LoggerLoader::init("app_config.toml").await;
-    let logger = LoggerLoader::get_logger();
-    logger.log(LogLevel::Info, "Logger initialized");
-    logger.log(LogLevel::Info, "Creating plugin registry");
-
+    initialize_custom_logger();
+    
     // WebSocket Server Initialization
     tokio::spawn({
         let subs = WS_SUBSCRIBERS.clone();
@@ -241,10 +262,10 @@ pub async fn start_server_async() {
     ];
 
     for (plugin_name, config) in plugins_to_load {
-        logger.log(LogLevel::Info, &format!("Loading the {} plugin", plugin_name));
+        log_debug!(&format!("Loading the {} plugin", plugin_name));
         
         if let Some(plugin) = plugin_manager.load_plugin(plugin_name, config) {
-            logger.log(LogLevel::Info, &format!("Registered {}", plugin_name));
+            log_debug!(&format!("Registered {}", plugin_name));
             
             // Special handling for task_agent_headless post-load setup
             if plugin_name == "plugin_task_agent_headless" {
@@ -280,19 +301,17 @@ pub async fn start_server_async() {
                 }
             }
         } else {
-            logger.log(LogLevel::Error, &format!("Failed to load {}", plugin_name));
+            log_debug!( &format!("Failed to load {}", plugin_name));
             return;
         }
     }
 
-    logger.log(LogLevel::Info, "Core plugins loaded");
+    log_debug!("Core plugins loaded");
 
     // Move plugin libraries to holder
     plugin_libraries.extend(plugin_manager.get_plugin_libraries().drain(..));
 
-    let logger = LoggerLoader::get_logger();
-
-    logger.log(LogLevel::Info, "Loading the execution plan");
+    log_debug!("Loading the execution plan");
 
     let Some((plan_status, plugins)) = run_exection_plan_updater() else {
         eprintln!("Execution plan loading failed. Cannot continue.");
