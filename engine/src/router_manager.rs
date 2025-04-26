@@ -16,10 +16,12 @@ static ROUTER_MANAGER: Lazy<Arc<RwLock<Router>>> = Lazy::new(|| {
     Arc::new(RwLock::new(Router::new()))
 });
 
+#[allow(dead_code)]
 pub struct RouterManager {
     registry: Arc<PluginRegistry>,
 }
 
+#[allow(dead_code)]
 impl RouterManager {
     pub fn new(registry: Arc<PluginRegistry>) -> Self {
         Self { registry }
