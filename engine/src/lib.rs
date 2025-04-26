@@ -38,8 +38,10 @@ use logger::{ LoggerLoader, LogLevel };
 // Local module declarations
 mod router_manager;
 mod websocket_manager;
+mod plugin_manager; // Add this line
 
 // Local module imports
+use plugin_manager::PluginManager; // Add this line
 use router_manager::RouterManager;
 use websocket_manager::{
     WS_SUBSCRIBERS, ENGINE_WS_CLIENT,
@@ -53,13 +55,12 @@ use engine_core::{
     handlers::dispatch_plugin_api,
     execution_plan_updater::{ExecutionPlanUpdater, PlanLoadSource},
     execution_plan::ExecutionPlanLoader,
-    plugin_utils,
     plugin_metadata::PluginMetadata,
     plugin_utils::prepare_plugin_binary,
 };
 
 // Plugin core types
-use plugin_core::{PluginContext, HttpMethod, ApiRequest};
+use plugin_core::{HttpMethod, ApiRequest}; // Remove PluginContext as it's unused
 
 // WebSocket functionality
 use ws_server::handle_socket;
@@ -229,157 +230,67 @@ pub async fn start_server_async() {
     // Plugin Registry Initialization
     let registry = Arc::new(PluginRegistry::new());
     let mut plugin_libraries = Vec::new();
+    let mut plugin_manager = PluginManager::new(registry.clone());
 
-    // Plugin Loading
-    logger.log(LogLevel::Info, "Loading the terms plugin");
+    // Core Plugin Loading
+    let plugins_to_load = [
+        ("plugin_terms", "accepted=false"),
+        ("plugin_wifi", "connected=false"),
+        ("plugin_status", "statusmessage=none"),
+        ("plugin_task_agent_headless", "runworkflow=false"),
+    ];
 
-    let (terms_plugin, _terms_lib) = match
-        load_plugin(plugin_utils::resolve_plugin_filename("plugin_terms"))
-    {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("Failed to load terms plugin: {}", e);
+    for (plugin_name, config) in plugins_to_load {
+        logger.log(LogLevel::Info, &format!("Loading the {} plugin", plugin_name));
+        
+        if let Some(plugin) = plugin_manager.load_plugin(plugin_name, config) {
+            logger.log(LogLevel::Info, &format!("Registered {}", plugin_name));
+            
+            // Special handling for task_agent_headless post-load setup
+            if plugin_name == "plugin_task_agent_headless" {
+                let task_agent = plugin.clone();
+                if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+                    let mut client = client_arc.lock().unwrap();
+                    
+                    client.subscribe("engine_subscriber", NETWORK_CONNECTED, "").await;
+                    println!("Engine, subscribed to NETWORK_CONNECTED");
+
+                    client.on_message(NETWORK_CONNECTED, move |msg| {
+                        println!("[engine] => NETWORK_CONNECTED: {}", msg);
+                        
+                        if let Some(run_workflow_fn) = task_agent.run_workflow {
+                            let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
+                            let json_len = json_bytes.len();
+                            let body_ptr = Box::into_raw(json_bytes.into_boxed_slice()) as *const u8;
+                            
+                            let request = ApiRequest {
+                                method: HttpMethod::Post,
+                                path: CString::new("job").unwrap().into_raw(),
+                                headers: std::ptr::null(),
+                                header_count: 0,
+                                body_ptr,
+                                body_len: json_len,
+                                content_type: std::ptr::null(),
+                                query: std::ptr::null(),
+                            };
+
+                            let _ = run_workflow_fn(&request);
+                        }
+                    });
+                }
+            }
+        } else {
+            logger.log(LogLevel::Error, &format!("Failed to load {}", plugin_name));
             return;
         }
-    };
-
-    logger.log(LogLevel::Info, "Running the terms plugin with a parameter");
-    let terms_config = CString::new("accepted=false").unwrap();
-    let terms_ctx = PluginContext {
-        config: terms_config.as_ptr(),
-    };
-    (terms_plugin.run)(&terms_ctx);
-
-    logger.log(LogLevel::Info, "Registering terms plugin");
-    registry.register(terms_plugin.clone());
-    plugin_libraries.push(_terms_lib);
-
-    println!(
-        "[engine] FINGERPRINT: plugin_terms.get_api_resources = {:p}",
-        terms_plugin.get_api_resources as *const ()
-    );
-
-    let mut count: usize = 0;
-    let res_ptr = (terms_plugin.get_api_resources)(&mut count);
-
-    if !res_ptr.is_null() && count > 0 {
-        let res_slice = unsafe { std::slice::from_raw_parts(res_ptr, count) };
-        for r in res_slice {
-            let path = unsafe { std::ffi::CStr::from_ptr(r.path).to_string_lossy() };
-            println!("[engine] Plugin resource advertised: {}", path);
-        }
-    } else {
-        println!("[engine] Plugin returned no resources");
     }
-
-    logger.log(LogLevel::Info, "Loading the wifi plugin");
-
-    let (wifi_plugin, _wifi_lib) = match
-        load_plugin(plugin_utils::resolve_plugin_filename("plugin_wifi"))
-    {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("Failed to load wifi plugin: {}", e);
-            return;
-        }
-    };
-
-    logger.log(LogLevel::Info, "Running the wifi plugin with a parameter");
-    let wifi_config = CString::new("scan=true").unwrap();
-    let wifi_ctx = PluginContext {
-        config: wifi_config.as_ptr(),
-    };
-    (wifi_plugin.run)(&wifi_ctx);
-
-    logger.log(LogLevel::Info, "Registering wifi plugin");
-    plugin_libraries.push(_wifi_lib);
-    registry.register(wifi_plugin.clone());
-
-    logger.log(LogLevel::Info, "Loading the status plugin");
-
-    let (status_plugin, _status_lib) = match
-        load_plugin(plugin_utils::resolve_plugin_filename("plugin_status"))
-    {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("Failed to load status plugin: {}", e);
-            return;
-        }
-    };
-
-    logger.log(LogLevel::Info, "Running the status plugin with a parameter");
-    let status_config = CString::new("scan=true").unwrap();
-    let status_ctx = PluginContext {
-        config: status_config.as_ptr(),
-    };
-    (status_plugin.run)(&status_ctx);
-
-    logger.log(LogLevel::Info, "Registering status plugin");
-    plugin_libraries.push(_status_lib);
-
-    registry.register(status_plugin.clone());
-
-    logger.log(LogLevel::Info, "Loading the task_agent_headless plugin");
-
-    let (task_agent_headless_plugin, _task_agent_headless_lib) = match
-        load_plugin(plugin_utils::resolve_plugin_filename("plugin_task_agent_headless"))
-    {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("Failed to load task_agent_headless plugin: {}", e);
-            return;
-        }
-    };
-
-    logger.log(LogLevel::Info, "Running the task_agent_headless plugin with a parameter");
-    let task_agent_headless_config = CString::new("scan=true").unwrap();
-    let task_agent_headless_ctx = PluginContext {
-        config: task_agent_headless_config.as_ptr(),
-    };
-    (task_agent_headless_plugin.run)(&task_agent_headless_ctx);
-
-    logger.log(LogLevel::Info, "Registering task_agent_headless plugin");
-    plugin_libraries.push(_task_agent_headless_lib);
-
-    registry.register(task_agent_headless_plugin.clone());
 
     logger.log(LogLevel::Info, "Core plugins loaded");
 
-    let task_agent = task_agent_headless_plugin.clone();
-    let _status_plugin = status_plugin.clone();
+    // Move plugin libraries to holder
+    plugin_libraries.extend(plugin_manager.get_plugin_libraries().drain(..));
+
     let logger = LoggerLoader::get_logger();
-
-    // Subscribe to NETWORK_CONNECTED and trigger task agent workflow
-    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        let mut client = client_arc.lock().unwrap();
-        let task_agent = task_agent.clone();
-        
-        client.subscribe("engine_subscriber", NETWORK_CONNECTED, "").await;
-        println!("Engine, subscribed to NETWORK_CONNECTED");
-
-        client.on_message(NETWORK_CONNECTED, move |msg| {
-            println!("[engine] => NETWORK_CONNECTED: {}", msg);
-            
-            if let Some(run_workflow_fn) = task_agent.run_workflow {
-                let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
-                let json_len = json_bytes.len();
-                let body_ptr = Box::into_raw(json_bytes.into_boxed_slice()) as *const u8;
-                
-                let request = ApiRequest {
-                    method: HttpMethod::Post,
-                    path: CString::new("job").unwrap().into_raw(),
-                    headers: std::ptr::null(),
-                    header_count: 0,
-                    body_ptr,
-                    body_len: json_len,
-                    content_type: std::ptr::null(),
-                    query: std::ptr::null(),
-                };
-
-                let _ = run_workflow_fn(&request);
-            }
-        });
-    }
 
     logger.log(LogLevel::Info, "Loading the execution plan");
 

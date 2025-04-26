@@ -59,19 +59,38 @@ impl PluginManager {
             }
         };
 
-        println!("Running the {} plugin with a parameter", plugin_name);
+        // Common logging for all plugins (previously only in terms plugin)
+        println!(
+            "[engine] FINGERPRINT: {}.get_api_resources = {:p}",
+            plugin_name,
+            plugin.get_api_resources as *const ()
+        );
+
+        let mut count: usize = 0;
+        let res_ptr = (plugin.get_api_resources)(&mut count);
+
+        if !res_ptr.is_null() && count > 0 {
+            let res_slice = unsafe { std::slice::from_raw_parts(res_ptr, count) };
+            for r in res_slice {
+                let path = unsafe { std::ffi::CStr::from_ptr(r.path).to_string_lossy() };
+                println!("[engine] Plugin resource advertised: {}", path);
+            }
+        } else {
+            println!("[engine] Plugin returned no resources");
+        }
+
+        // Run plugin with config
         let plugin_config = CString::new(config).unwrap();
         let ctx = PluginContext {
             config: plugin_config.as_ptr(),
         };
         (plugin.run)(&ctx);
 
-        println!("Registering {} plugin", plugin_name);
+        // Store and register
         self.plugin_libraries.push(lib);
-        let binding = PluginBinding::from(plugin);
-        self.registry.register(binding.clone());
+        self.registry.register(plugin.clone());
 
-        Some(binding)
+        Some(plugin)
     }
 
     /// Returns a mutable reference to the collection of loaded plugin libraries.
