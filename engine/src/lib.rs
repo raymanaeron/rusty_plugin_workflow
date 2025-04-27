@@ -142,39 +142,54 @@ pub async fn create_ws_engine_client() {
 
     // Subscribe to WELCOME_COMPLETED topic
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        // Clone the Arc for use in the closure
         let client_for_closure = client_arc.clone();
-        
         {
             let mut client = client_arc.lock().unwrap();
             client.subscribe("engine_subscriber", WELCOME_COMPLETED, "").await;
             log_debug!("Engine, subscribed to WELCOME_COMPLETED", None);
 
-            client.on_message(WELCOME_COMPLETED, move |msg| {
-                log_debug!("[engine] => WELCOME_COMPLETED: {}", Some(msg.to_string()));
-                let timestamp = chrono::Utc::now().to_rfc3339();
+            client.on_message(WELCOME_COMPLETED, move |_msg| {
+                log_debug!("[engine] => WELCOME_COMPLETED: {}", Some("received".to_string()));
 
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Delay WelcomeCompleted
                 std::thread::sleep(std::time::Duration::from_secs(1)); // Delay before publishing SwitchRoute
 
-                let client_arc2 = client_for_closure.clone();
-                let timestamp2 = timestamp.clone();
-                let payload = format!("\"{}\"", "/wifi/web");
-                tokio::spawn(async move {
-                    // Use spawn_blocking to avoid Send issues with MutexGuard
-                    let _ = tokio::task::spawn_blocking(move || {
-                        if let Ok(mut client) = client_arc2.lock() {
-                            // If publish is async, you may need to use a sync version or block_on here
-                            // If publish is async, use a local runtime to block_on
-                            let rt = tokio::runtime::Handle::current();
-                            rt.block_on(client.publish("engine", SWITCH_ROUTE, &payload, &timestamp2));
-                            log_debug!("rust_engine, published SWITCH_ROUTE '/wifi/web'", None);
-                        }
-                    }).await;
-                });
+                // Call the reusable function
+                tokio::spawn(publish_ws_message(
+                    client_for_closure.clone(),
+                    "engine",
+                    SWITCH_ROUTE,
+                    "/wifi/web",
+                ));
             });
         }
     }
+}
+
+/// Utility function to publish a message to a websocket topic using a client.
+/// Handles locking, timestamp, and logging.
+pub async fn publish_ws_message(
+    client_arc: Arc<Mutex<WsClient>>,
+    client_name: &str,
+    topic_name: &str,
+    payload: &str,
+) {
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    let client_name = client_name.to_string();
+    let topic_name = topic_name.to_string();
+    let payload = payload.to_string();
+
+    // Use spawn_blocking to avoid Send issues with MutexGuard
+    tokio::task::spawn_blocking(move || {
+        if let Ok(mut client) = client_arc.lock() {
+            let rt = tokio::runtime::Handle::current();
+            rt.block_on(client.publish(&client_name, &topic_name, &payload, &timestamp));
+            log_debug!(
+                "engine, published {} '{}' to topic '{}'",
+                Some(format!("{} '{}' {}", client_name, payload, topic_name))
+            );
+        }
+    }).await.ok();
 }
 
 //
