@@ -1,4 +1,4 @@
-import { wsManager } from './websocket_connection_manager.js';
+import { appManager } from './app_manager.js';
 
 export async function routeTo(path) {
   const container = document.getElementById("content");
@@ -51,7 +51,7 @@ export async function routeTo(path) {
     
     const module = await import(jsUrl);
     if (module.activate) {
-      await module.activate(container, wsManager);  // Inject wsManager
+      await module.activate(container, appManager);  // Inject appManager
     } else {
       console.warn(`Plugin ${pluginName} has no activate() function`);
     }

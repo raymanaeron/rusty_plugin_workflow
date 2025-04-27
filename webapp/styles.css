@@ -3,8 +3,12 @@
 /* Core styles with mobile-first approach */
 body {
   font-family: "Segoe UI", "Helvetica Neue", sans-serif;
-  background-color: #f8f9fa;
   min-height: 100vh;
+  background: linear-gradient(to bottom right, #f0f7ff, #d6eaff);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
 }
 
 /* Header styles */
@@ -33,9 +37,10 @@ body {
 /* 
   border-radius: 0.375rem;
   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  background-color: #f5f6f7;
 */
 .plugin-section {
-  background-color: #f5f6f7;
+  background: linear-gradient(to bottom right, #f0f7ff, #d6eaff);
   padding: 30px;
   flex: 1;
 }

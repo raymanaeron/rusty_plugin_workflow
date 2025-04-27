@@ -2,18 +2,14 @@
 pub mod ws_client;
 
 use axum::{
-    extract::ws::{Message, WebSocket, WebSocketUpgrade},
+    extract::ws::{ Message, WebSocket, WebSocketUpgrade },
     extract::ConnectInfo,
     response::IntoResponse,
 };
-use futures_util::{SinkExt, StreamExt};
-use serde_json::{json, Value};
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
-use tokio::sync::mpsc::{self, UnboundedSender};
+use futures_util::{ SinkExt, StreamExt };
+use serde_json::{ json, Value };
+use std::{ collections::HashMap, net::SocketAddr, sync::{ Arc, Mutex } };
+use tokio::sync::mpsc::{ self, UnboundedSender };
 
 // Type aliases for topic names and subscriber management
 pub type Topic = String;
@@ -23,7 +19,7 @@ pub type Subscribers = Arc<Mutex<HashMap<Topic, Vec<UnboundedSender<String>>>>>;
 pub async fn handle_socket(
     ws: WebSocketUpgrade,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-    subscribers: Subscribers,
+    subscribers: Subscribers
 ) -> impl IntoResponse {
     println!("[handle_socket] WS connection from {}", addr);
 
@@ -73,7 +69,7 @@ async fn run_connection(socket: WebSocket, subscribers: Subscribers) -> Result<(
                         client_name = rest.trim().to_string();
                         println!("[register-name] => {}", client_name);
 
-                    // Handle topic subscription
+                        // Handle topic subscription
                     } else if let Some(rest) = text.strip_prefix("subscribe:") {
                         let topic = rest.trim().to_string();
                         println!("[subscribe] subscriber_name={}, topic={}", client_name, topic);
@@ -87,7 +83,7 @@ async fn run_connection(socket: WebSocket, subscribers: Subscribers) -> Result<(
 
                         topics_inner.lock().unwrap().push(topic);
 
-                    // Handle topic unsubscription
+                        // Handle topic unsubscription
                     } else if let Some(rest) = text.strip_prefix("unsubscribe:") {
                         let topic = rest.trim().to_string();
                         println!("[unsubscribe] {} unsubscribing from {}", client_name, topic);
@@ -96,38 +92,78 @@ async fn run_connection(socket: WebSocket, subscribers: Subscribers) -> Result<(
                         if let Some(vec) = subs.get_mut(&topic) {
                             vec.retain(|s| !same_channel(s, &tx));
                         }
-                        topics_inner.lock().unwrap().retain(|t| t != &topic);
+                        topics_inner
+                            .lock()
+                            .unwrap()
+                            .retain(|t| t != &topic);
 
-                    // Handle JSON message publishing
+                        // Handle JSON message publishing
                     } else if let Some(rest) = text.strip_prefix("publish-json:") {
                         match serde_json::from_str::<Value>(rest) {
                             Ok(parsed) => {
-                                let topic = parsed["topic"].as_str().unwrap_or("<none>").to_string();
+                                let topic = parsed["topic"]
+                                    .as_str()
+                                    .unwrap_or("<none>")
+                                    .to_string();
                                 let payload = parsed["payload"].as_str().unwrap_or("").to_string();
-                                let publisher = parsed["publisher_name"].as_str().unwrap_or("<unknown>").to_string();
-                                let timestamp = parsed["timestamp"].as_str().unwrap_or("").to_string();
+                                let publisher = parsed["publisher_name"]
+                                    .as_str()
+                                    .unwrap_or("<unknown>")
+                                    .to_string();
+                                let timestamp = parsed["timestamp"]
+                                    .as_str()
+                                    .unwrap_or("")
+                                    .to_string();
 
                                 println!(
                                     "[publish-json] publisher_name={}, topic={}, payload={}, timestamp={}",
-                                    publisher, topic, payload, timestamp
+                                    publisher,
+                                    topic,
+                                    payload,
+                                    timestamp
                                 );
 
-                                let json_payload = json!({
+                                let json_payload =
+                                    json!({
                                     "publisher_name": publisher,
                                     "topic": topic,
                                     "payload": payload,
                                     "timestamp": timestamp
                                 }).to_string();
 
-                                let subs = subscribers_inner.lock().unwrap();
-                                if let Some(sinks) = subs.get(&topic) {
-                                    for s in sinks {
+                                let mut subs = subscribers_inner.lock().unwrap();
+                                for (topic, sinks) in subs.iter() {
+                                    println!(
+                                        "[DEBUG] Topic '{}' has {} subscribers",
+                                        topic,
+                                        sinks.len()
+                                    );
+                                }
+
+                                if let Some(sinks) = subs.get_mut(&topic) {
+                                    println!(
+                                        "[publish-json] Subscribers for topic '{}': {}",
+                                        topic,
+                                        sinks.len()
+                                    );
+
+                                    let mut to_remove = Vec::new();
+                                    for (i, s) in sinks.iter().enumerate() {
                                         if s.send(json_payload.clone()).is_err() {
-                                            eprintln!("[publish-json] Failed to send to subscriber.");
+                                            eprintln!(
+                                                "[publish-json] Failed to send to subscriber."
+                                            );
+                                            to_remove.push(i);
                                         } else {
                                             println!("[publish-json] Sent to topic '{}'", topic);
                                         }
                                     }
+                                    // Remove dead senders (in reverse order to avoid shifting indices)
+                                    for i in to_remove.into_iter().rev() {
+                                        sinks.remove(i);
+                                    }
+                                } else {
+                                    println!("[publish-json] No subscribers for topic '{}'", topic);
                                 }
                             }
                             Err(err) => {

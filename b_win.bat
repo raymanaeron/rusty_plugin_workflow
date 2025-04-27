@@ -13,6 +13,14 @@ set TARGET=target\%MODE%
 echo [BUILD] Mode set to %MODE%
 echo [BUILD] Output path: %TARGET%
 
+REM === Build plugin_welcome ===
+echo Building plugin_welcome...
+cargo build --manifest-path plugins\plugin_welcome\Cargo.toml %CARGO_FLAG%
+if errorlevel 1 (
+    echo Failed to build plugin_welcome.
+    exit /b 1
+)
+
 REM === Build plugin_terms ===
 echo Building plugin_terms...
 cargo build --manifest-path plugins\plugin_terms\Cargo.toml %CARGO_FLAG%
@@ -72,6 +80,13 @@ if errorlevel 1 (
 REM === Copy static web assets ===
 echo Copying root web folder to engine output directory...
 xcopy /E /I /Y webapp %TARGET%\webapp
+
+echo Copying plugins web folder to engine output directory...
+xcopy /E /I /Y plugins\plugin_welcome\web %TARGET%\welcome\web
+if errorlevel 1 (
+    echo Failed to copy plugin_welcome web folder.
+    exit /b 1
+)
 
 echo Copying plugins web folder to engine output directory...
 xcopy /E /I /Y plugins\plugin_terms\web %TARGET%\terms\web

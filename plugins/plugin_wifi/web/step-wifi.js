@@ -1,8 +1,8 @@
 const next_route = "/status/web";
 
-export async function activate(container, wsManager) {
+export async function activate(container, appManager) {
     // Register with connection manager
-    wsManager.registerPlugin('plugin_wifi');
+    appManager.registerPlugin('plugin_wifi');
 
     const scanBtn = container.querySelector("#scanBtn");
     const connectBtn = container.querySelector("#connectBtn");
@@ -74,7 +74,7 @@ export async function activate(container, wsManager) {
 
             if (res.ok) {
                 // Publish via connection manager
-                const published = wsManager.publish('plugin_wifi', 'NetworkConnected', 
+                const published = appManager.publish('plugin_wifi', 'NetworkConnected', 
                     { status: 'connected', ssid: ssid }
                 );
 

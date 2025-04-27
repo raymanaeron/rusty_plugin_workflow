@@ -1,15 +1,15 @@
 //! Engine Core Library
-//! 
+//!
 //! This module serves as the main entry point for the plugin-based OOBE engine.
 //! It handles:
 //! - Plugin loading and lifecycle management
-//! - Dynamic route registration 
+//! - Dynamic route registration
 //! - WebSocket server and client setup
 //! - REST API request routing
 //! - Static file serving
 //!
 //! # Architecture
-//! 
+//!
 //! The engine uses a few key components:
 //! - Router Manager - Handles dynamic route registration/removal
 //! - Plugin Registry - Manages loaded plugins
@@ -27,12 +27,12 @@ use tokio::net::TcpListener;
 
 // Web framework imports
 use axum::Router;
-use axum::routing::{any, get};
+use axum::routing::{ any, get };
 use axum::response::Response;
 use axum::body::Body;
 use axum::http::StatusCode;
 
-use liblogger::{Logger, log_info, log_warn, log_error, log_debug};
+use liblogger::{ Logger, log_info, log_warn, log_error, log_debug };
 use liblogger_macros::*;
 
 // Local module declarations
@@ -44,8 +44,12 @@ mod plugin_manager; // Add this line
 use plugin_manager::PluginManager; // Add this line
 use router_manager::RouterManager;
 use websocket_manager::{
-    WS_SUBSCRIBERS, ENGINE_WS_CLIENT,
-    STATUS_CHANGED, NETWORK_CONNECTED, SWITCH_ROUTE
+    WS_SUBSCRIBERS,
+    ENGINE_WS_CLIENT,
+    WELCOME_COMPLETED,
+    STATUS_CHANGED,
+    NETWORK_CONNECTED,
+    SWITCH_ROUTE,
 };
 
 // Engine core functionality
@@ -53,14 +57,14 @@ use engine_core::{
     plugin_loader::load_plugin,
     plugin_registry::PluginRegistry,
     handlers::dispatch_plugin_api,
-    execution_plan_updater::{ExecutionPlanUpdater, PlanLoadSource},
+    execution_plan_updater::{ ExecutionPlanUpdater, PlanLoadSource },
     execution_plan::ExecutionPlanLoader,
     plugin_metadata::PluginMetadata,
     plugin_utils::prepare_plugin_binary,
 };
 
 // Plugin core types
-use plugin_core::{HttpMethod, ApiRequest}; // Remove PluginContext as it's unused
+use plugin_core::{ HttpMethod, ApiRequest }; // Remove PluginContext as it's unused
 
 // WebSocket functionality
 use ws_server::handle_socket;
@@ -82,7 +86,7 @@ fn initialize_custom_logger() {
             log_error!("Failed to initialize file logger, falling back to console");
         }
     }
-    
+
     // Print a clear marker to see if logger is working
     log_info!("======== START LOGGER LOADING TEST ========");
     log_debug!("Debug logging is enabled");
@@ -104,9 +108,7 @@ pub async fn create_ws_engine_client() {
     let url = "ws://127.0.0.1:8081/ws";
 
     // Connect to the WebSocket server.
-    let client = WsClient::connect("engine", url)
-        .await
-        .expect("Failed to connect WsClient");
+    let client = WsClient::connect("engine", url).await.expect("Failed to connect WsClient");
 
     // Store the WebSocket client in the static variable.
     if ENGINE_WS_CLIENT.set(Arc::new(Mutex::new(client))).is_err() {
@@ -137,10 +139,46 @@ pub async fn create_ws_engine_client() {
             log_debug!("[engine] => STATUS_CHANGED: {}", Some(msg.to_string()));
         });
     }
+
+    // Subscribe to WELCOME_COMPLETED topic
+    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+        // Clone the Arc for use in the closure
+        let client_for_closure = client_arc.clone();
+        
+        {
+            let mut client = client_arc.lock().unwrap();
+            client.subscribe("engine_subscriber", WELCOME_COMPLETED, "").await;
+            log_debug!("Engine, subscribed to WELCOME_COMPLETED", None);
+
+            client.on_message(WELCOME_COMPLETED, move |msg| {
+                log_debug!("[engine] => WELCOME_COMPLETED: {}", Some(msg.to_string()));
+                let timestamp = chrono::Utc::now().to_rfc3339();
+
+                std::thread::sleep(std::time::Duration::from_secs(1)); // Delay WelcomeCompleted
+                std::thread::sleep(std::time::Duration::from_secs(1)); // Delay before publishing SwitchRoute
+
+                let client_arc2 = client_for_closure.clone();
+                let timestamp2 = timestamp.clone();
+                let payload = format!("\"{}\"", "/wifi/web");
+                tokio::spawn(async move {
+                    // Use spawn_blocking to avoid Send issues with MutexGuard
+                    let _ = tokio::task::spawn_blocking(move || {
+                        if let Ok(mut client) = client_arc2.lock() {
+                            // If publish is async, you may need to use a sync version or block_on here
+                            // If publish is async, use a local runtime to block_on
+                            let rt = tokio::runtime::Handle::current();
+                            rt.block_on(client.publish("engine", SWITCH_ROUTE, &payload, &timestamp2));
+                            log_debug!("rust_engine, published SWITCH_ROUTE '/wifi/web'", None);
+                        }
+                    }).await;
+                });
+            });
+        }
+    }
 }
 
 //
-// Execution Plan Management  
+// Execution Plan Management
 // -----------------------
 //
 
@@ -195,10 +233,11 @@ fn load_and_register(
             registry.register(plugin);
             lib_holder.push(lib); // retain library to avoid drop
         }
-        Err(e) => log_debug!(
-            "Failed to load plugin from {}: {}", 
-            Some(format!("{} {}", path.display(), e))
-        ),
+        Err(e) =>
+            log_debug!(
+                "Failed to load plugin from {}: {}",
+                Some(format!("{} {}", path.display(), e))
+            ),
     }
 }
 
@@ -221,7 +260,7 @@ pub extern "C" fn start_oobe_server() {
 /// Initializes all engine components and starts the server.
 pub async fn start_server_async() {
     initialize_custom_logger();
-    
+
     // WebSocket Server Initialization
     tokio::spawn({
         let subs = WS_SUBSCRIBERS.clone();
@@ -256,35 +295,38 @@ pub async fn start_server_async() {
 
     // Core Plugin Loading
     let plugins_to_load = [
+        ("plugin_welcome", "continue=false"),
         ("plugin_terms", "accepted=false"),
         ("plugin_wifi", "connected=false"),
         ("plugin_status", "statusmessage=none"),
         ("plugin_task_agent_headless", "runworkflow=false"),
     ];
 
-    for (plugin_name, config) in plugins_to_load {
+    for (plugin_name, params) in plugins_to_load {
         log_debug!(&format!("Loading the {} plugin", plugin_name));
-        
-        if let Some(plugin) = plugin_manager.load_plugin(plugin_name, config) {
+
+        if let Some(plugin) = plugin_manager.load_plugin(plugin_name, params) {
             log_debug!(&format!("Registered {}", plugin_name));
-            
+
             // Special handling for task_agent_headless post-load setup
             if plugin_name == "plugin_task_agent_headless" {
                 let task_agent = plugin.clone();
                 if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
                     let mut client = client_arc.lock().unwrap();
-                    
+
                     client.subscribe("engine_subscriber", NETWORK_CONNECTED, "").await;
                     log_debug!("Engine, subscribed to NETWORK_CONNECTED", None);
 
                     client.on_message(NETWORK_CONNECTED, move |msg| {
                         log_debug!("[engine] => NETWORK_CONNECTED: {}", Some(msg.to_string()));
-                        
+
                         if let Some(run_workflow_fn) = task_agent.run_workflow {
                             let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
                             let json_len = json_bytes.len();
-                            let body_ptr = Box::into_raw(json_bytes.into_boxed_slice()) as *const u8;
-                            
+                            let body_ptr = Box::into_raw(
+                                json_bytes.into_boxed_slice()
+                            ) as *const u8;
+
                             let request = ApiRequest {
                                 method: HttpMethod::Post,
                                 path: CString::new("job").unwrap().into_raw(),
@@ -302,7 +344,7 @@ pub async fn start_server_async() {
                 }
             }
         } else {
-            log_debug!( &format!("Failed to load {}", plugin_name));
+            log_debug!(&format!("Failed to load {}", plugin_name));
             return;
         }
     }
@@ -333,12 +375,15 @@ pub async fn start_server_async() {
 
                 log_debug!(
                     "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
-                    Some(format!("{} {} {} {}", 
-                        plugin_meta.name, 
-                        plugin_meta.plugin_location_type, 
-                        source, 
-                        e
-                    ))
+                    Some(
+                        format!(
+                            "{} {} {} {}",
+                            plugin_meta.name,
+                            plugin_meta.plugin_location_type,
+                            source,
+                            e
+                        )
+                    )
                 );
             }
         }

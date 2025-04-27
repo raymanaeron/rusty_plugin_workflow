@@ -64,8 +64,8 @@ async function loadSettings() {
     }
 }
 
-export async function activate(container, wsManager) {
-    wsManager.registerPlugin('plugin_settings');
+export async function activate(container, appManager) {
+    appManager.registerPlugin('plugin_settings');
     
     // Initialize WebSocket
     initializeWebSocket();
@@ -125,11 +125,11 @@ export async function activate(container, wsManager) {
 
     // Publish settings changes if needed
     function publishSettingsUpdate(settings) {
-        wsManager.publish('plugin_settings', 'SettingsChanged', settings);
+        appManager.publish('plugin_settings', 'SettingsChanged', settings);
     }
 
     // Cleanup on deactivate
     return () => {
-        wsManager.unregisterPlugin('plugin_settings');
+        appManager.unregisterPlugin('plugin_settings');
     };
 }

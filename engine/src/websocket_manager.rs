@@ -22,3 +22,6 @@ pub static NETWORK_CONNECTED: &str = "NetworkConnected";
 
 /// Topic for receiving switch route messages.
 pub static SWITCH_ROUTE: &str = "SwitchRoute";
+
+/// Topic for receiving welcome completed messages.
+pub static WELCOME_COMPLETED: &str = "WelcomeCompleted";
