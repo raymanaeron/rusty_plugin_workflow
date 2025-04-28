@@ -6,6 +6,7 @@ export async function activate(container, appManager) {
 
     const scanBtn = container.querySelector("#scanBtn");
     const connectBtn = container.querySelector("#connectBtn");
+    const skipBtn = container.querySelector("#skipBtn");
     const resultBox = container.querySelector("#resultBox");
     const networkList = container.querySelector("#networkList");
     const passwordInput = container.querySelector("#password");
@@ -93,6 +94,30 @@ export async function activate(container, appManager) {
         await getNetworkList();
     });
   
+    skipBtn.addEventListener("click", async () => {
+        resultBox.innerHTML = "";
+        skipBtn.disabled = true;
+        
+        // Publish skipped status
+        const published = appManager.publish('plugin_wifi', 'WifiCompleted', 
+            { status: 'skipped' }
+        );
+        
+        if (published) {
+            resultBox.innerHTML = `<div class="alert alert-info">WiFi setup skipped. Redirecting...</div>`;
+            console.log("[plugin_wifi] Network skip published, navigating...");
+        } else {
+            resultBox.innerHTML = `<div class="alert alert-warning">Skip failed to publish. Redirecting anyway...</div>`;
+            console.warn("[plugin_wifi] Skip publish failed");
+        }
+        
+        // Navigate to next route
+        setTimeout(() => {
+            history.pushState({}, "", next_route);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+        }, 2000);
+    });
+  
     connectBtn.addEventListener("click", async () => {
         const ssid = networkList.value;
         const password = passwordInput.value;
@@ -103,11 +128,8 @@ export async function activate(container, appManager) {
             return;
         }
     
-        if (!password) {
-            resultBox.innerHTML = `<div class="alert alert-warning">Please enter a password.</div>`;
-            return;
-        }
-    
+        // Password validation check removed - allow empty passwords
+
         connectBtn.disabled = true;
         resultBox.innerHTML = `<div class="alert alert-info">Connecting to ${ssid}...</div>`;
     
@@ -142,10 +164,12 @@ export async function activate(container, appManager) {
                 }
 
                 // Single navigation point with longer delay to ensure status is processed
+                /*
                 setTimeout(() => {
                     history.pushState({}, "", next_route);
                     window.dispatchEvent(new PopStateEvent("popstate"));
                 }, 3000);
+                */
             } else {
                 resultBox.innerHTML = `<div class="alert alert-danger">${json.message || "Connection failed"}</div>`;
             }
