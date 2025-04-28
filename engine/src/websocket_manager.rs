@@ -25,3 +25,6 @@ pub static SWITCH_ROUTE: &str = "SwitchRoute";
 
 /// Topic for receiving welcome completed messages.
 pub static WELCOME_COMPLETED: &str = "WelcomeCompleted";
+
+/// Topic for receiving network connected messages.
+pub static WIFI_COMPLETED : &str = "WifiCompleted";

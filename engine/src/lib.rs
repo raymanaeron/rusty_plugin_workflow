@@ -70,6 +70,7 @@ use websocket_manager::{
     WS_SUBSCRIBERS,
     ENGINE_WS_CLIENT,
     WELCOME_COMPLETED,
+    WIFI_COMPLETED,
     STATUS_CHANGED,
     NETWORK_CONNECTED,
     SWITCH_ROUTE,
@@ -169,7 +170,7 @@ pub async fn create_ws_engine_client() {
 
     // Subscribe to WELCOME_COMPLETED topic
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        let client_for_closure = client_arc.clone();
+        let client_for_welcome = client_arc.clone();
         {
             let mut client = client_arc.lock().unwrap();
             client.subscribe("engine_subscriber", WELCOME_COMPLETED, "").await;
@@ -178,15 +179,34 @@ pub async fn create_ws_engine_client() {
             client.on_message(WELCOME_COMPLETED, move |_msg| {
                 log_debug!("[engine] => WELCOME_COMPLETED: {}", Some("received".to_string()));
 
-                std::thread::sleep(std::time::Duration::from_secs(1)); // Delay WelcomeCompleted
-                std::thread::sleep(std::time::Duration::from_secs(1)); // Delay before publishing SwitchRoute
-
                 // Call the reusable function
                 tokio::spawn(publish_ws_message(
-                    client_for_closure.clone(),
+                    client_for_welcome.clone(),
                     "engine",
                     SWITCH_ROUTE,
                     "/wifi/web",
+                ));
+            });
+        }
+    }
+
+    // Subscribe to WIFI_COMPLETED topic
+    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+        let client_for_wifi = client_arc.clone();
+        {
+            let mut client = client_arc.lock().unwrap();
+            client.subscribe("engine_subscriber", WIFI_COMPLETED, "").await;
+            log_debug!("Engine, subscribed to WIFI_COMPLETED", None);
+
+            client.on_message(WIFI_COMPLETED, move |_msg| {
+                log_debug!("[engine] => WIFI_COMPLETED: {}", Some("received".to_string()));
+
+                // Call the reusable function
+                tokio::spawn(publish_ws_message(
+                    client_for_wifi.clone(),
+                    "engine",
+                    SWITCH_ROUTE,
+                    "/status/web",
                 ));
             });
         }

@@ -122,7 +122,7 @@ export async function activate(container, appManager) {
 
             if (res.ok) {
                 // Publish via connection manager
-                const published = appManager.publish('plugin_wifi', 'NetworkConnected', 
+                const published = appManager.publish('plugin_wifi', 'WifiCompleted', 
                     { status: 'connected', ssid: ssid }
                 );
 
