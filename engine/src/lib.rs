@@ -1,20 +1,43 @@
-//! Engine Core Library
+//! # Engine Core Library
 //!
-//! This module serves as the main entry point for the plugin-based OOBE engine.
-//! It handles:
-//! - Plugin loading and lifecycle management
-//! - Dynamic route registration
-//! - WebSocket server and client setup
-//! - REST API request routing
-//! - Static file serving
+//! This crate is the main entry point for the plugin-based OOBE (Out-Of-Box Experience) engine.
+//! It provides the runtime and infrastructure for loading plugins, managing routes, handling WebSocket
+//! and REST API communication, and serving static files for the web UI.
 //!
-//! # Architecture
+//! ## Features
+//! - **Plugin loading and lifecycle management:** Dynamically loads plugins and manages their state.
+//! - **Dynamic route registration:** Allows plugins to register and remove HTTP routes at runtime.
+//! - **WebSocket server and client setup:** Enables real-time communication between engine, plugins, and web UI.
+//! - **REST API request routing:** Handles API requests and dispatches them to plugins.
+//! - **Static file serving:** Serves the web application and plugin static assets.
 //!
-//! The engine uses a few key components:
-//! - Router Manager - Handles dynamic route registration/removal
-//! - Plugin Registry - Manages loaded plugins
-//! - WebSocket System - Enables real-time communication
-//! - Execution Plan - Controls plugin loading sequence
+//! ## Architecture
+//! - **Router Manager:** Handles dynamic route registration/removal.
+//! - **Plugin Registry:** Manages loaded plugins and their metadata.
+//! - **WebSocket System:** Enables real-time communication for status and control messages.
+//! - **Execution Plan:** Controls plugin loading sequence and configuration.
+//!
+//! ## Entry Points
+//! - [`start_oobe_server`] - FFI-safe entry point for non-Rust platforms (spawns a new thread).
+//! - [`start_server_async`] - Main async entry point for Rust applications (starts the engine).
+//!
+//! ## Usage
+//! The engine is typically started via `start_oobe_server()` (for FFI) or `start_server_async().await` (for Rust).
+//! Plugins are loaded according to the execution plan, and the web UI is served at `http://127.0.0.1:8080/`.
+//!
+//! ## Modules
+//! - [`router_manager`] - Dynamic HTTP route management.
+//! - [`plugin_manager`] - Plugin loading and registry.
+//! - [`websocket_manager`] - WebSocket topics and client/server state.
+//!
+//! ## Example
+//! ```no_run
+//! use engine::start_server_async;
+//! #[tokio::main]
+//! async fn main() {
+//!     start_server_async().await;
+//! }
+//! ```
 
 // Standard library imports
 use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
@@ -74,6 +97,9 @@ use ws_server::ws_client::WsClient;
 initialize_logger_attributes!();
 
 // Custom logger initialization to ensure all logs are displayed
+/// Initializes the custom logger for the engine.
+/// Attempts to load configuration from `app_config.toml`, falls back to console logging if unavailable.
+/// Prints test log messages at all levels.
 fn initialize_custom_logger() {
     // Initialize logger with debug threshold to ensure all logs are shown
     match Logger::init_with_config_file("app_config.toml") {
@@ -103,6 +129,7 @@ fn initialize_custom_logger() {
 
 /// Creates and initializes the WebSocket client for the engine.
 /// Sets up subscriptions for status changes and route switching.
+/// This should be called once at startup.
 pub async fn create_ws_engine_client() {
     log_debug!("Creating ws client for the engine");
     let url = "ws://127.0.0.1:8081/ws";
@@ -168,6 +195,12 @@ pub async fn create_ws_engine_client() {
 
 /// Utility function to publish a message to a websocket topic using a client.
 /// Handles locking, timestamp, and logging.
+/// 
+/// # Arguments
+/// * `client_arc` - Arc-wrapped Mutex of the WebSocket client.
+/// * `client_name` - Name of the client (e.g., "engine").
+/// * `topic_name` - WebSocket topic to publish to.
+/// * `payload` - Message payload (as string).
 pub async fn publish_ws_message(
     client_arc: Arc<Mutex<WsClient>>,
     client_name: &str,
@@ -183,7 +216,7 @@ pub async fn publish_ws_message(
     tokio::task::spawn_blocking(move || {
         if let Ok(mut client) = client_arc.lock() {
             let rt = tokio::runtime::Handle::current();
-            rt.block_on(client.publish(&client_name, &topic_name, &payload, &timestamp));
+            let _ = rt.block_on(client.publish(&client_name, &topic_name, &payload, &timestamp));
             log_debug!(
                 "engine, published {} '{}' to topic '{}'",
                 Some(format!("{} '{}' {}", client_name, payload, topic_name))
@@ -199,6 +232,7 @@ pub async fn publish_ws_message(
 
 /// Loads and processes the execution plan that controls plugin loading.
 /// Supports both remote and local fallback plans.
+/// Returns the plan source and a vector of plugin metadata if successful.
 #[log_entry_exit]
 #[measure_time]
 pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
@@ -238,6 +272,11 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
 
 /// Loads a plugin from the given path and registers it with the engine.
 /// Stores the plugin library to prevent premature unloading.
+///
+/// # Arguments
+/// * `path` - Path to the plugin binary.
+/// * `registry` - Shared plugin registry.
+/// * `lib_holder` - Vector holding loaded plugin libraries.
 fn load_and_register(
     path: PathBuf,
     registry: &Arc<PluginRegistry>,
@@ -263,6 +302,7 @@ fn load_and_register(
 
 /// FFI-safe entry point for non-Rust platforms.
 /// Spawns the engine in a new thread with its own runtime.
+/// This is the recommended entry point for C/C++ or other FFI consumers.
 #[no_mangle]
 pub extern "C" fn start_oobe_server() {
     std::thread::spawn(|| {
@@ -273,6 +313,7 @@ pub extern "C" fn start_oobe_server() {
 
 /// Main async entry point for Rust applications.
 /// Initializes all engine components and starts the server.
+/// This function should be called from a Tokio runtime.
 pub async fn start_server_async() {
     initialize_custom_logger();
 

@@ -3,7 +3,6 @@ extern crate plugin_core;
 use plugin_core::{
     ApiRequest, ApiResponse, HttpMethod, PluginContext, Resource,
     declare_plugin,
-    error_response,
     response_utils::{json_response, method_not_allowed_response},
     resource_utils::static_resource,
     cleanup_response,
@@ -26,15 +25,8 @@ static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 // Define your data structure
 #[derive(Serialize, Deserialize, Clone, Default)]
 struct WelcomeMessage {
-    // Add your fields here
-    field1: String,
-    field2: bool,
+    message: String
 }
-
-// Shared state
-static STATE: Lazy<Mutex<WelcomeMessage>> = Lazy::new(|| {
-    Mutex::new(WelcomeMessage::default())
-});
 
 #[ctor::ctor]
 fn on_load() {
@@ -94,8 +86,6 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
         match request.method {
             HttpMethod::Get if path == "welcomemessage" => {
-                // let current = STATE.lock().unwrap().clone();
-                // let json = serde_json::to_string(&current).unwrap();
                 let json = r#"{"message": "Welcome to generic device. Let's setup this device."}"#;
                 json_response(200, &json)
             }
