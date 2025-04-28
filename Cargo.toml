@@ -2,7 +2,7 @@
 members = [
     "engine", "engine_core",
     "plugin_core", "plugins/plugin_terms",
-    "plugins/plugin_wifi", "ws_server", "liblogger", "liblogger_macros", "plugins/plugin_welcome",
+    "plugins/plugin_wifi", "ws_server", "liblogger", "liblogger_macros", "plugins/plugin_welcome", "plugins/plugin_execplan",
     "engine_desktop_ui", "plugins/plugin_status", "plugins/plugin_task_agent_headless", "plugins/plugin_settings"]
 resolver = "2"
 

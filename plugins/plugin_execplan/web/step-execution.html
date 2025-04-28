@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>execution Plugin UI</title>
+  <script type="module" src="./step-execution.js"></script>
+</head>
+<body>
+  <div class="container mt-4">
+    <h2>execution Configuration</h2>
+    
+    <form id="dataForm" class="mt-4">
+        <div class="mb-3">
+            <label for="field1" class="form-label">Field 1</label>
+            <input type="text" class="form-control" id="field1">
+        </div>
+
+        <div class="mb-3 form-check form-switch">
+            <input type="checkbox" class="form-check-input" id="field2">
+            <label class="form-check-label" for="field2">Field 2</label>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Save</button>
+            <button type="button" class="btn btn-secondary ms-2" id="resetBtn">Reset to Defaults</button>
+        </div>
+    </form>
+
+    <div id="statusMessage" class="alert mt-3" style="display: none;"></div>
+</div>
+</body>
+</html>

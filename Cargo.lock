@@ -2239,6 +2239,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "plugin_execplan"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "chrono",
+ "ctor",
+ "once_cell",
+ "plugin_core",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower 0.4.13",
+ "ws_server",
+]
+
+[[package]]
 name = "plugin_settings"
 version = "0.1.0"
 dependencies = [
