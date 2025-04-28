@@ -22,3 +22,8 @@ cc = "1.0"
 
 [lib]
 crate-type = ["cdylib", "staticlib", "rlib"]
+
+[package.metadata.macos]
+frameworks = ["CoreWLAN", "CoreLocation", "SystemConfiguration"]
+plist = "src/Info.plist"
+entitlements = "src/entitlements.plist"

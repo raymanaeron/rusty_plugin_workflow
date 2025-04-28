@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSLocationUsageDescription</key>
+    <string>This app needs access to your location to scan for WiFi networks.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app needs access to your location to scan for WiFi networks.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>This app needs access to your location to scan for WiFi networks.</string>
+    <key>NSLocationTemporaryUsageDescriptionDictionary</key>
+    <dict>
+        <key>WiFiScan</key>
+        <string>This app needs access to your location to scan for WiFi networks.</string>
+    </dict>
+</dict>
+</plist>

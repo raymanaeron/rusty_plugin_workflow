@@ -386,13 +386,13 @@ pub fn scan(out_count: *mut usize) -> *mut NetworkInfo {
 
                     println!(
                         "[plugin_wifi] Network {}: SSID: {}, BSSID: {}, Signal: {}, Channel: {}, Security: {}",
-                        i, ssid, bssid, network.signal_strength, network.channel, security
+                        i, ssid, bssid, network.signalStrength, network.channel, security
                     );
 
                     results.push(NetworkInfo {
                         ssid: CString::new(ssid).unwrap().into_raw(),
                         bssid: CString::new(bssid).unwrap().into_raw(),
-                        signal: network.signal_strength,
+                        signal: network.signalStrength,
                         channel: network.channel,
                         security: CString::new(security).unwrap().into_raw(),
                         frequency: 0.0, // Frequency is not provided by CoreWLAN
@@ -577,18 +577,18 @@ fn parse_scan_output(output: &[u8]) -> Vec<NetworkInfo> {
         .collect()
 }
 
-#[repr(C)]
-#[derive(Clone)]
-struct WiFiNetwork {
-    ssid: *const i8,
-    bssid: *const i8,
-    signal_strength: i32,
-    channel: i32,
-    security: *const i8,
-}
-
 #[cfg(target_os = "macos")]
 extern "C" {
     fn scan_wifi_networks(out_count: *mut usize) -> *mut WiFiNetwork;
     fn free_wifi_networks(networks: *mut WiFiNetwork, count: usize);
+}
+
+#[repr(C)]
+#[derive(Debug)]
+struct WiFiNetwork {
+    ssid: *const i8,
+    bssid: *const i8,
+    signalStrength: i32,
+    channel: i32,
+    security: *const i8,
 }
