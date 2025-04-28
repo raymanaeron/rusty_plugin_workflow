@@ -7,7 +7,7 @@
 extern crate plugin_core;
 
 mod network_info;
-mod wifi_manager;
+pub mod wifi_manager_cp;
 
 use std::ffi::{CString, CStr};
 use std::os::raw::c_char;
@@ -108,11 +108,11 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 }
 
 extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
-    wifi_manager::scan(out_count)
+    wifi_manager_cp::scan(out_count)
 }
 
 fn connect_to_network(ssid: &str, password: &str) -> *mut ApiResponse {
-    let success = wifi_manager::connect_wifi_impl(ssid, password);
+    let success = wifi_manager_cp::connect_wifi(ssid, password);
     
     {
         let mut flag = WIFI_CONNECTED.lock().unwrap();
