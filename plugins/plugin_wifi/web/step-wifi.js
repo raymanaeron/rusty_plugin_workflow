@@ -12,12 +12,17 @@ export async function activate(container, appManager) {
     const scanStatus = container.querySelector("#scanStatus");
     const networkListBox = container.querySelector("#networkListBox");
 
-    // Helper to map signal (0-100, higher is better) to icon filename
+    // Helper to map signal strength (typically negative dBm values) to icon filename
     function getSignalIconName(signal) {
-        // Assume signal is 0-100, where 100 is best
-        if (signal >= 80) return "/wifi/web/icons/wifi-strong.svg";
-        if (signal >= 60) return "/wifi/web/icons/wifi-good.svg";
-        if (signal >= 40) return "/wifi/web/icons/wifi-fair.svg";
+        // Signal strength is typically in dBm (-30 to -90)
+        // Higher (less negative) values mean stronger signal
+        // Strong: -30 to -50 dBm
+        // Good: -50 to -60 dBm
+        // Fair: -60 to -70 dBm
+        // Weak: less than -70 dBm
+        if (signal >= -50) return "/wifi/web/icons/wifi-strong.svg";
+        if (signal >= -60) return "/wifi/web/icons/wifi-good.svg";
+        if (signal >= -70) return "/wifi/web/icons/wifi-fair.svg";
         return "/wifi/web/icons/wifi-weak.svg";
     }
 
