@@ -25,29 +25,29 @@ static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 
 // Define your data structure - using CamelCase for type name
 #[derive(Serialize, Deserialize, Clone, Default)]
-struct {{resource_name_camel}} {
+struct User {
     id: String,
     field1: String,
     field2: bool,
 }
 
 // Shared state - using a HashMap to store multiple items by ID
-static STATE: Lazy<Mutex<std::collections::HashMap<String, {{resource_name_camel}}>>> = Lazy::new(|| {
+static STATE: Lazy<Mutex<std::collections::HashMap<String, User>>> = Lazy::new(|| {
     Mutex::new(std::collections::HashMap::new())
 });
 
 #[ctor::ctor]
 fn on_load() {
-    println!("[{{plugin_name}}] >>> LOADED");
+    println!("[plugin_login] >>> LOADED");
 }
 
 pub async fn create_ws_plugin_client() {
-    if let Ok(client) = WsClient::connect("{{plugin_name}}", "ws://127.0.0.1:8081/ws").await {
+    if let Ok(client) = WsClient::connect("plugin_login", "ws://127.0.0.1:8081/ws").await {
         let client = Arc::new(Mutex::new(client));
         
         if let Ok(mut ws_client) = client.lock() {
-            ws_client.subscribe("{{plugin_name}}", "{{resource_name_camel}}Updated", "").await;
-            println!("[{{plugin_name}}] Subscribed to {{resource_name_camel}}Updated");
+            ws_client.subscribe("plugin_login", "UserUpdated", "").await;
+            println!("[plugin_login] Subscribed to UserUpdated");
         }
         
         unsafe {
@@ -57,14 +57,14 @@ pub async fn create_ws_plugin_client() {
 }
 
 extern "C" fn run(_ctx: *const PluginContext) {
-    println!("[{{plugin_name}}] - run");
+    println!("[plugin_login] - run");
     RUNTIME.block_on(async {
         create_ws_plugin_client().await;
     });
 }
 
 extern "C" fn get_static_content_path() -> *const c_char {
-    CString::new("{{plugin_route}}/web").unwrap().into_raw()
+    CString::new("login/web").unwrap().into_raw()
 }
 
 extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
@@ -74,7 +74,7 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
         HttpMethod::Put,
         HttpMethod::Delete,
     ];
-    let slice = static_resource("{{resource_name}}", &METHODS);
+    let slice = static_resource("user", &METHODS);
     unsafe { *out_len = slice.len(); }
     slice.as_ptr()
 }
@@ -92,7 +92,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             CStr::from_ptr(request.path).to_str().unwrap_or("<invalid>")
         };
 
-        // Extract ID from path if present (format: "{{resource_name}}/ID")
+        // Extract ID from path if present (format: "user/ID")
         let path_parts: Vec<&str> = path.split('/').collect();
         let (resource_path, id_opt) = if path_parts.len() >= 2 {
             (path_parts[0], Some(path_parts[1]))
@@ -102,7 +102,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
         match request.method {
             // GET: List all resources or get a specific one by ID
-            HttpMethod::Get if resource_path == "{{resource_name}}" => {
+            HttpMethod::Get if resource_path == "user" => {
                 let state = STATE.lock().unwrap();
                 
                 // If ID is provided, return that specific resource
@@ -121,9 +121,9 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             // POST: Create a new resource
-            HttpMethod::Post if resource_path == "{{resource_name}}" => {
+            HttpMethod::Post if resource_path == "user" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                if let Ok(mut data) = serde_json::from_slice::<{{resource_name_camel}}>(body) {
+                if let Ok(mut data) = serde_json::from_slice::<User>(body) {
                     let mut state = STATE.lock().unwrap();
                     
                     // If ID is empty, generate one
@@ -158,8 +158,8 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                                 if let Ok(mut ws_client) = client.lock() {
                                     let rt = tokio::runtime::Handle::current();
                                     let _ = rt.block_on(ws_client.publish(
-                                        "{{plugin_name}}", 
-                                        "{{resource_name_camel}}Updated", 
+                                        "plugin_login", 
+                                        "UserUpdated", 
                                         &payload,
                                         &timestamp_clone
                                     ));
@@ -180,10 +180,10 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             // PUT: Update a resource (complete replacement)
-            HttpMethod::Put if resource_path == "{{resource_name}}" => {
+            HttpMethod::Put if resource_path == "user" => {
                 if let Some(id) = id_opt {
                     let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                    if let Ok(mut data) = serde_json::from_slice::<{{resource_name_camel}}>(body) {
+                    if let Ok(mut data) = serde_json::from_slice::<User>(body) {
                         let mut state = STATE.lock().unwrap();
                         
                         // Ensure the ID in the URL matches the resource
@@ -212,8 +212,8 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                                         if let Ok(mut ws_client) = client.lock() {
                                             let rt = tokio::runtime::Handle::current();
                                             let _ = rt.block_on(ws_client.publish(
-                                                "{{plugin_name}}", 
-                                                "{{resource_name_camel}}Updated", 
+                                                "plugin_login", 
+                                                "UserUpdated", 
                                                 &payload,
                                                 &timestamp_clone
                                             ));
@@ -235,7 +235,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             // DELETE: Remove a resource
-            HttpMethod::Delete if resource_path == "{{resource_name}}" => {
+            HttpMethod::Delete if resource_path == "user" => {
                 let mut state = STATE.lock().unwrap();
                 
                 if let Some(id) = id_opt {
@@ -262,8 +262,8 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                                     if let Ok(mut ws_client) = client.lock() {
                                         let rt = tokio::runtime::Handle::current();
                                         let _ = rt.block_on(ws_client.publish(
-                                            "{{plugin_name}}", 
-                                            "{{resource_name_camel}}Updated", 
+                                            "plugin_login", 
+                                            "UserUpdated", 
                                             &payload,
                                             &timestamp_clone
                                         ));
@@ -293,8 +293,8 @@ extern "C" fn cleanup(resp: *mut ApiResponse) {
 }
 
 declare_plugin!(
-    "{{plugin_name}}",
-    "{{plugin_route}}",
+    "plugin_login",
+    "login",
     run,
     get_static_content_path,
     get_api_resources,

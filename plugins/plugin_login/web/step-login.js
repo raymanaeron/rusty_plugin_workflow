@@ -1,7 +1,7 @@
 export async function activate(container, appManager) {
     // Register with app manager
-    appManager.registerPlugin('{{plugin_name}}');
-    console.log('Plugin activated: {{plugin_name}}');
+    appManager.registerPlugin('plugin_login');
+    console.log('Plugin activated: plugin_login');
     
     // Get UI elements
     const statusContent = container.querySelector('#statusContent');
@@ -13,7 +13,7 @@ export async function activate(container, appManager) {
     // Example: GET data from API
     async function getData() {
         try {
-            const response = await fetch('/api/{{plugin_route}}/{{resource_name}}');
+            const response = await fetch('/api/login/user');
             if (response.ok) {
                 const data = await response.json();
                 console.log('Data loaded:', data);
@@ -31,7 +31,7 @@ export async function activate(container, appManager) {
     // Example: POST data to API
     async function postData(payload) {
         try {
-            const response = await fetch('/api/{{plugin_route}}/{{resource_name}}', {
+            const response = await fetch('/api/login/user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -54,7 +54,7 @@ export async function activate(container, appManager) {
     // Example: PUT data to API (update)
     async function putData(id, payload) {
         try {
-            const response = await fetch(`/api/{{plugin_route}}/{{resource_name}}/${id}`, {
+            const response = await fetch(`/api/login/user/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -77,7 +77,7 @@ export async function activate(container, appManager) {
     // Example: PATCH data to API (partial update)
     async function patchData(id, partialPayload) {
         try {
-            const response = await fetch(`/api/{{plugin_route}}/{{resource_name}}/${id}`, {
+            const response = await fetch(`/api/login/user/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(partialPayload)
@@ -114,15 +114,15 @@ export async function activate(container, appManager) {
     if (skipBtn) {
         skipBtn.addEventListener('click', async () => {
             // Publish via connection manager using CamelCased event topic
-            const published = appManager.publish('{{plugin_name}}', '{{resource_name_camel}}Completed', 
+            const published = appManager.publish('plugin_login', 'UserCompleted', 
                 { status: 'skipped' }
             );
             
             if (published) {
-                console.log("[{{plugin_name}}] Skip status published");
+                console.log("[plugin_login] Skip status published");
                 resultBox.innerHTML = '<div class="alert alert-info">Setup skipped. Redirecting...</div>';
             } else {
-                console.warn("[{{plugin_name}}] Skip publish failed");
+                console.warn("[plugin_login] Skip publish failed");
                 resultBox.innerHTML = '<div class="alert alert-warning">Failed to publish skip status</div>';
             }
         });
@@ -132,20 +132,20 @@ export async function activate(container, appManager) {
     if (continueBtn) {
         continueBtn.addEventListener('click', async () => {
             // Publish completion event using CamelCased event topic
-            const published = appManager.publish('{{plugin_name}}', '{{resource_name_camel}}Completed', 
+            const published = appManager.publish('plugin_login', 'UserCompleted', 
                 { status: 'completed' }
             );
             
             if (published) {
-                console.log("[{{plugin_name}}] Completion status published");
+                console.log("[plugin_login] Completion status published");
             } else {
-                console.warn("[{{plugin_name}}] Completion publish failed");
+                console.warn("[plugin_login] Completion publish failed");
             }
         });
     }
 
     // Return cleanup function at module level
     return () => {
-        appManager.unregisterPlugin('{{plugin_name}}');
+        appManager.unregisterPlugin('plugin_login');
     };
 }

@@ -1,5 +1,5 @@
 [package]
-name = "{{plugin_name}}"
+name = "plugin_login"
 version = "0.1.0"
 edition = "2021"
 
