@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Device Setup")
+        .with_title("OOBE SDK")
         .with_inner_size(LogicalSize::new(1024.0, 768.0))
         .build(&event_loop)?;
 

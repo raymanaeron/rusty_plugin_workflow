@@ -10,25 +10,69 @@ export async function activate(container, appManager) {
     const networkList = container.querySelector("#networkList");
     const passwordInput = container.querySelector("#password");
     const scanStatus = container.querySelector("#scanStatus");
-  
-    scanBtn.addEventListener("click", async () => {
+    const networkListBox = container.querySelector("#networkListBox");
+
+    // Helper to map signal (0-100, higher is better) to icon filename
+    function getSignalIconName(signal) {
+        // Assume signal is 0-100, where 100 is best
+        if (signal >= 80) return "/wifi/web/icons/wifi-strong.svg";
+        if (signal >= 60) return "/wifi/web/icons/wifi-good.svg";
+        if (signal >= 40) return "/wifi/web/icons/wifi-fair.svg";
+        return "/wifi/web/icons/wifi-weak.svg";
+    }
+
+    async function getNetworkList() {
         resultBox.innerHTML = "";
         scanStatus.textContent = "Scanning...";
         scanBtn.disabled = true;
-    
+
         try {
             const res = await fetch("/api/wifi/network");
             if (!res.ok) throw new Error(`Scan failed (${res.status})`);
-            const networks = await res.json();
-    
-            networkList.innerHTML = `<option value="" disabled selected>-- Choose a network --</option>`;
-            networks.forEach(n => {
-                const opt = document.createElement("option");
-                opt.value = n.ssid;
-                opt.textContent = `${n.ssid} (${n.signal} dBm)`;
-                networkList.appendChild(opt);
-            });
-    
+            let networks = await res.json();
+
+            // Filter out networks with no SSID
+            networks = networks.filter(n => n.ssid && n.ssid.trim() !== "");
+
+            // Replace dropdown with custom list
+            const listBox = networkListBox;
+            listBox.innerHTML = "";
+            connectBtn.disabled = true; // Disable connect by default after scan
+            if (networks.length === 0) {
+                listBox.innerHTML = `<li class="list-group-item text-muted">No networks found</li>`;
+            } else {
+                networks.forEach(n => {
+                    console.log(n);
+                    const iconPath = getSignalIconName(n.signal);
+                    const li = document.createElement("li");
+                    li.className = "list-group-item d-flex align-items-center";
+                    li.tabIndex = 0;
+                    li.setAttribute("role", "option");
+                    li.setAttribute("data-ssid", n.ssid);
+                    li.innerHTML = `
+                        <img src="${iconPath}" alt="signal" style="height:1.5em;width:auto;margin-right:0.75em;flex-shrink:0;">
+                        <span class="flex-grow-1">${n.ssid}</span>
+                        <span class="text-muted small ms-2">
+                          ${typeof n.signal === "number" ? n.signal + " dBm" : ""}
+                        </span>
+                        <span class="text-muted small ms-2">${n.security || ""}</span>
+                    `;
+                    li.addEventListener("click", () => {
+                        // Remove selection from others
+                        listBox.querySelectorAll(".active").forEach(el => el.classList.remove("active"));
+                        li.classList.add("active");
+                        networkList.value = n.ssid;
+                        connectBtn.disabled = false; // Enable connect when selected
+                    });
+                    li.addEventListener("keydown", (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            li.click();
+                        }
+                    });
+                    listBox.appendChild(li);
+                });
+            }
+
             scanStatus.textContent = `Found ${networks.length} network(s)`;
         } catch (err) {
             scanStatus.textContent = "Scan failed";
@@ -36,6 +80,10 @@ export async function activate(container, appManager) {
         } finally {
             scanBtn.disabled = false;
         }
+    }
+
+    scanBtn.addEventListener("click", async () => {
+        await getNetworkList();
     });
   
     connectBtn.addEventListener("click", async () => {
@@ -100,4 +148,10 @@ export async function activate(container, appManager) {
             connectBtn.disabled = false;
         }
     });
+
+    // On page load, ensure connect button is disabled
+    connectBtn.disabled = true;
+
+    // Scan for networks as soon as the controls are ready
+    await getNetworkList();
 }

@@ -4,16 +4,22 @@
 
   <div class="row mb-3 align-items-center">
     <div class="col-auto">
-      <button id="scanBtn" class="btn btn-outline-primary">Scan</button>
+      <button id="scanBtn" class="btn btn-outline-primary">
+        <img src="/wifi/web/icons/wifi-scan.svg" alt="Scan" style="height:1.5em;width:auto;vertical-align:middle;">
+      </button>
     </div>
     <div class="col text-muted" id="scanStatus"></div>
   </div>
 
   <div class="mb-4">
-    <label for="networkList" class="form-label fw-semibold">Available Networks</label>
-    <select id="networkList" class="form-select shadow-sm">
-      <option value="" disabled selected>-- Choose a network --</option>
-    </select>
+    <label for="networkListBox" class="form-label fw-semibold">Available Networks</label>
+    <ul id="networkListBox"
+        class="list-group shadow-sm"
+        style="min-height: 10em; max-height: 16em; width: 100%; overflow-y: auto;">
+      <li class="list-group-item text-muted">-- Choose a network --</li>
+    </ul>
+    <input type="hidden" id="networkList" />
+    <div class="form-text">Tap to select a network. Scroll for more.</div>
   </div>
 
   <div class="mb-4">
