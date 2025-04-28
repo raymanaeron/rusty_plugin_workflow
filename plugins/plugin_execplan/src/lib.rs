@@ -25,15 +25,15 @@ static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 
 // Define your data structure
 #[derive(Serialize, Deserialize, Clone, Default)]
-struct blueprint {
+struct BluePrint {
     // Add your fields here
     field1: String,
     field2: bool,
 }
 
 // Shared state
-static STATE: Lazy<Mutex<blueprint>> = Lazy::new(|| {
-    Mutex::new(blueprint::default())
+static STATE: Lazy<Mutex<BluePrint>> = Lazy::new(|| {
+    Mutex::new(BluePrint::default())
 });
 
 #[ctor::ctor]
@@ -46,8 +46,8 @@ pub async fn create_ws_plugin_client() {
         let client = Arc::new(Mutex::new(client));
         
         if let Ok(mut ws_client) = client.lock() {
-            ws_client.subscribe("plugin_execplan", "blueprintUpdated", "").await;
-            println!("[plugin_execplan] Subscribed to blueprintUpdated");
+            ws_client.subscribe("plugin_execplan", "BluePrinttUpdated", "").await;
+            println!("[plugin_execplan] Subscribed to BluePrintUpdated");
         }
         
         unsafe {
@@ -101,7 +101,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
             HttpMethod::Post if path == "blueprint" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                if let Ok(data) = serde_json::from_slice::<blueprint>(body) {
+                if let Ok(data) = serde_json::from_slice::<BluePrint>(body) {
                     let mut state = STATE.lock().unwrap();
                     *state = data;
                     json_response(201, r#"{"message": "Resource created"}"#)
@@ -112,7 +112,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
             HttpMethod::Put if path == "blueprint" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                if let Ok(data) = serde_json::from_slice::<blueprint>(body) {
+                if let Ok(data) = serde_json::from_slice::<BluePrint>(body) {
                     let mut state = STATE.lock().unwrap();
                     *state = data;
                     json_response(200, r#"{"message": "Resource updated"}"#)
@@ -123,7 +123,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
             HttpMethod::Delete if path == "blueprint" => {
                 let mut state = STATE.lock().unwrap();
-                *state = blueprint::default();
+                *state = BluePrint::default();
                 json_response(200, r#"{"message": "Resource reset to defaults"}"#)
             }
 
