@@ -41,6 +41,11 @@ export async function activate(container, appManager) {
             if (networks.length === 0) {
                 listBox.innerHTML = `<li class="list-group-item text-muted">No networks found</li>`;
             } else {
+                /*
+                    <span class="text-muted small ms-2">
+                        ${typeof n.signal === "number" ? n.signal + " dBm" : ""}
+                    </span>
+                */
                 networks.forEach(n => {
                     console.log(n);
                     const iconPath = getSignalIconName(n.signal);
@@ -52,9 +57,6 @@ export async function activate(container, appManager) {
                     li.innerHTML = `
                         <img src="${iconPath}" alt="signal" style="height:1.5em;width:auto;margin-right:0.75em;flex-shrink:0;">
                         <span class="flex-grow-1">${n.ssid}</span>
-                        <span class="text-muted small ms-2">
-                          ${typeof n.signal === "number" ? n.signal + " dBm" : ""}
-                        </span>
                         <span class="text-muted small ms-2">${n.security || ""}</span>
                     `;
                     li.addEventListener("click", () => {
