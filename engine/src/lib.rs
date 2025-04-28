@@ -206,7 +206,7 @@ pub async fn create_ws_engine_client() {
                     client_for_wifi.clone(),
                     "engine",
                     SWITCH_ROUTE,
-                    "/status/web",
+                    "/execution/web",
                 ));
             });
         }
@@ -372,8 +372,9 @@ pub async fn start_server_async() {
     // Core Plugin Loading
     let plugins_to_load = [
         ("plugin_welcome", "continue=false"),
-        ("plugin_terms", "accepted=false"),
         ("plugin_wifi", "connected=false"),
+        ("plugin_execplan", "hasupdate=true"),
+        ("plugin_terms", "accepted=false"),
         ("plugin_status", "statusmessage=none"),
         ("plugin_task_agent_headless", "runworkflow=false"),
     ];

@@ -1,32 +1,25 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>execution Plugin UI</title>
-  <script type="module" src="./step-execution.js"></script>
-</head>
-<body>
-  <div class="container mt-4">
-    <h2>execution Configuration</h2>
-    
-    <form id="dataForm" class="mt-4">
-        <div class="mb-3">
-            <label for="field1" class="form-label">Field 1</label>
-            <input type="text" class="form-control" id="field1">
+<div class="plugin-section vh-100 d-flex flex-column">
+    <h5 class="plugin-title mb-4" style="align-self: flex-start;">Check Execution Plan</h5>
+    <div class="flex-grow-1 d-flex flex-column align-items-center">
+        <!-- Card docked at top, full width, fixed height, with minimal Bootstrap shadow -->
+        <div class="card w-100 mb-3 shadow-sm" style="height: 320px; border-radius: 0; margin-top: 0;">
+            <div class="card-body h-100 d-flex flex-column justify-content-center align-items-center">
+                <!-- Spinner -->
+                <div class="d-flex justify-content-center align-items-center mb-4" style="height: 80px;">
+                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <!-- Status message -->
+                <div id="statusContent" class="mb-4 text-center w-100">
+                    <!-- Status message goes here -->
+                </div>
+            </div>
         </div>
-
-        <div class="mb-3 form-check form-switch">
-            <input type="checkbox" class="form-check-input" id="field2">
-            <label class="form-check-label" for="field2">Field 2</label>
-        </div>
-
-        <div class="mt-4">
-            <button type="submit" class="btn btn-primary" id="submitBtn">Save</button>
-            <button type="button" class="btn btn-secondary ms-2" id="resetBtn">Reset to Defaults</button>
-        </div>
-    </form>
-
-    <div id="statusMessage" class="alert mt-3" style="display: none;"></div>
+        <!-- Continue button -->
+        <button id="continueBtn" type="button" class="btn btn-primary w-100 mt-3" disabled>
+            Continue
+        </button>
+    </div>
 </div>
-</body>
-</html>
+<script type="module" src="./step-execution.js"></script>

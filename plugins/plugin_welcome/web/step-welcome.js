@@ -25,7 +25,7 @@ export async function activate(container, appManager) {
         if (!res.ok) throw new Error(`Fetch welcome message failed (${res.status})`);
         const welcomeMsg = await res.json();
 
-        welcomeContent.innerHTML = `<h1><p>${welcomeMsg.message}</p>`;
+        welcomeContent.innerHTML = `<p>${welcomeMsg.message}</p>`;
         console.log(welcomeMsg.message);
     }
 

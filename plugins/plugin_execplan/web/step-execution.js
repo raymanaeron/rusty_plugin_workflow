@@ -1,126 +1,58 @@
-let ws;
+export async function activate(container, appManager) {
+    appManager.registerPlugin('plugin_execplan');
+    console.log('Plugin activated: plugin_execplan');
+    const statusContent = container.querySelector('#statusContent');
+    const continueBtn = container.querySelector('#continueBtn');
+    // Spinner element (assume only one spinner in the container)
+    const spinner = container.querySelector('.spinner-border');
+    // Add a placeholder for the done icon
+    let doneIcon = null;
 
-// Initialize WebSocket connection
-function initializeWebSocket() {
-    ws = new WebSocket('ws://localhost:8081/ws');
-    
-    ws.onopen = () => {
-        ws.send('register-name:execution_ui');
-        console.log('[execution] Connected to WebSocket server');
-    };
+    // Status messages to display
+    const messages = [
+        "Checking for updated execution plan..",
+        "Execution plan update required..",
+        "Downloading new execution plan and related plugins..",
+        "Download completed..",
+        "Applying new execution plan..",
+        "New execution plan is ready..",
+        "Please press the Continue button to proceed.."
+    ];
 
-    ws.onerror = (error) => {
-        console.error('[execution] WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-        console.log('[execution] Disconnected from WebSocket server');
-        setTimeout(initializeWebSocket, 2000);
-    };
-}
-
-// Get form data
-function getFormData() {
-    // Implement form data collection based on your UI
-    return {
-        field1: document.getElementById('field1').value,
-        field2: document.getElementById('field2').checked,
-    };
-}
-
-// Set form data
-function setFormData(data) {
-    // Implement form data setting based on your UI
-    document.getElementById('field1').value = data.field1;
-    document.getElementById('field2').checked = data.field2;
-}
-
-// Show status message
-function showStatus(message, isError = false) {
-    const statusEl = document.getElementById('statusMessage');
-    statusEl.textContent = message;
-    statusEl.className = `alert mt-3 ${isError ? 'alert-danger' : 'alert-success'}`;
-    statusEl.style.display = 'block';
-    setTimeout(() => statusEl.style.display = 'none', 3000);
-}
-
-// Load current data
-async function loadData() {
-    try {
-        const response = await fetch('/api/execution/blueprint');
-        if (response.ok) {
-            const data = await response.json();
-            setFormData(data);
+    let step = 0;
+    function updateStatus() {
+        if (statusContent) statusContent.textContent = messages[step];
+        if (step === messages.length - 1) {
+            // Last message: enable button and hide spinner
+            if (continueBtn) continueBtn.disabled = false;
+            if (spinner) spinner.style.display = "none";
+            // Show done icon in place of spinner
+            if (!doneIcon) {
+                doneIcon = document.createElement('img');
+                doneIcon.src = '/execution/web/icons/exec-plan-done.svg';
+                doneIcon.alt = 'Execution Plan Done';
+                doneIcon.style.width = '3rem';
+                doneIcon.style.height = '3rem';
+                // Insert the icon where the spinner was
+                spinner.parentNode.insertBefore(doneIcon, spinner);
+            }
+            doneIcon.style.display = "";
         } else {
-            showStatus('Failed to load data', true);
+            // Spinner should be visible and button disabled while messages are updating
+            if (spinner) spinner.style.display = "";
+            if (continueBtn) continueBtn.disabled = true;
+            // Hide done icon if present
+            if (doneIcon) doneIcon.style.display = "none";
+            setTimeout(() => {
+                step++;
+                updateStatus();
+            }, 2000);
         }
-    } catch (error) {
-        console.error('Error loading data:', error);
-        showStatus('Error loading data', true);
     }
-}
+    updateStatus();
 
-export async function activate(container) {
-    // Initialize WebSocket
-    initializeWebSocket();
-
-    // Load current data
-    await loadData();
-
-    // Handle form submission
-    const form = container.querySelector('#dataForm');
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const data = getFormData();
-
-        try {
-            const response = await fetch('/api/execution/blueprint', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            });
-
-            if (response.ok) {
-                showStatus('Data saved successfully');
-
-                // Publish update event
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    const message = {
-                        publisher_name: "execution_ui",
-                        topic: "blueprintUpdated",
-                        payload: JSON.stringify(data),
-                        timestamp: new Date().toISOString()
-                    };
-                    ws.send(`publish-json:${JSON.stringify(message)}`);
-                }
-            } else {
-                showStatus('Failed to save data', true);
-            }
-        } catch (error) {
-            console.error('Error saving data:', error);
-            showStatus('Error saving data', true);
-        }
-    });
-
-    // Handle reset button
-    const resetBtn = container.querySelector('#resetBtn');
-    resetBtn.addEventListener('click', async () => {
-        try {
-            const response = await fetch('/api/execution/blueprint', {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                await loadData();
-                showStatus('Data reset to defaults');
-            } else {
-                showStatus('Failed to reset data', true);
-            }
-        } catch (error) {
-            console.error('Error resetting data:', error);
-            showStatus('Error resetting data', true);
-        }
-    });
+    // Return cleanup function at module level
+    return () => {
+        appManager.unregisterPlugin('plugin_execplan');
+    };
 }

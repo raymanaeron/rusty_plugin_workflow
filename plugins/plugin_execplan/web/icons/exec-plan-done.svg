@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Notebook (yellow, no rounded corners) -->
+  <rect x="8" y="12" width="48" height="40" fill="#FFD600" stroke="#BFA100" stroke-width="2"/>
+  <rect x="14" y="18" width="36" height="28" fill="#FFF8E1"/>
+  <!-- Notebook lines -->
+  <line x1="18" y1="24" x2="46" y2="24" stroke="#FFE082" stroke-width="2"/>
+  <line x1="18" y1="30" x2="46" y2="30" stroke="#FFE082" stroke-width="2"/>
+  <line x1="18" y1="36" x2="46" y2="36" stroke="#FFE082" stroke-width="2"/>
+  <line x1="18" y1="42" x2="46" y2="42" stroke="#FFE082" stroke-width="2"/>
+  <!-- Blue checkmark -->
+  <polyline points="22,36 30,44 44,28" fill="none" stroke="#1976D2" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
