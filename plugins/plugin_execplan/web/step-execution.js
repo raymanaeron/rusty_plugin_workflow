@@ -16,7 +16,7 @@ export async function activate(container, appManager) {
         "Download completed..",
         "Applying new execution plan..",
         "New execution plan is ready..",
-        "Please press the Continue button to proceed.."
+        "Press the [Continue] button to proceed.."
     ];
 
     let step = 0;

@@ -25,7 +25,11 @@ export async function activate(container, appManager) {
         if (!res.ok) throw new Error(`Fetch welcome message failed (${res.status})`);
         const welcomeMsg = await res.json();
 
-        welcomeContent.innerHTML = `<p>${welcomeMsg.message}</p>`;
+        // Update only the #welcomeText div, not the whole #welcomeContent
+        const welcomeText = welcomeContent.querySelector('#welcomeText');
+        if (welcomeText) {
+            welcomeText.textContent = welcomeMsg.message;
+        }
         console.log(welcomeMsg.message);
     }
 
