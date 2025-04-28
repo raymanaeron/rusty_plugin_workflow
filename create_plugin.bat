@@ -37,30 +37,8 @@ powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-template.html') -replace 
 REM Process JS
 powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-template.js') -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' -replace '{{plugin_name}}','%PLUGIN_NAME%' | Set-Content '%TARGET_DIR%\web\step-%PLUGIN_ROUTE%.js'"
 
-REM Create README.md
-@echo # Plugin: %PLUGIN_NAME% > "%TARGET_DIR%\README.md"
-@echo. >> "%TARGET_DIR%\README.md"
-@echo Route: `%PLUGIN_ROUTE%` >> "%TARGET_DIR%\README.md"
-@echo Resource: `%RESOURCE_NAME%` >> "%TARGET_DIR%\README.md"
-@echo. >> "%TARGET_DIR%\README.md"
-@echo ## File Structure >> "%TARGET_DIR%\README.md"
-@echo. >> "%TARGET_DIR%\README.md"
-@echo ```  >> "%TARGET_DIR%\README.md"
-@echo plugins/ >> "%TARGET_DIR%\README.md"
-@echo └── %PLUGIN_NAME%/ >> "%TARGET_DIR%\README.md"
-@echo     ├── src/ >> "%TARGET_DIR%\README.md"
-@echo     │   └── lib.rs >> "%TARGET_DIR%\README.md"
-@echo     ├── web/ >> "%TARGET_DIR%\README.md"
-@echo     │   ├── step-%PLUGIN_ROUTE%.html >> "%TARGET_DIR%\README.md"
-@echo     │   └── step-%PLUGIN_ROUTE%.js >> "%TARGET_DIR%\README.md"
-@echo     └── Cargo.toml >> "%TARGET_DIR%\README.md"
-@echo ```  >> "%TARGET_DIR%\README.md"
-@echo. >> "%TARGET_DIR%\README.md"
-@echo ## Core Plugin Usage >> "%TARGET_DIR%\README.md"
-@echo. >> "%TARGET_DIR%\README.md"
-@echo To load this plugin in your engine/lib.rs: >> "%TARGET_DIR%\README.md"
-@echo - Add it as a core plugin like other plugins >> "%TARGET_DIR%\README.md"
-@echo - Or use execution plan loader with metadata from the plan >> "%TARGET_DIR%\README.md"
+REM Process README from the template file instead of creating it from scratch
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\README_template.md') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\README.md'"
 
 echo ✅ Plugin %PLUGIN_NAME% scaffolded under %TARGET_DIR%
 

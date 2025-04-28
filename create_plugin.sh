@@ -42,32 +42,11 @@ sed -e "s/{{plugin_route}}/$PLUGIN_ROUTE/g" \
     -e "s/{{plugin_name}}/$PLUGIN_NAME/g" \
     "$TEMPLATE_DIR/step-template.js" > "$TARGET_DIR/web/step-$PLUGIN_ROUTE.js"
 
-# README
-cat <<EOF > "$TARGET_DIR/README.md"
-# Plugin: $PLUGIN_NAME
-
-Route: \`$PLUGIN_ROUTE\`  
-Resource: \`$RESOURCE_NAME\`
-
-## File Structure
-
-\`\`\`
-plugins/
-└── $PLUGIN_NAME/
-    ├── src/
-    │   └── lib.rs
-    ├── web/
-    │   ├── step-$PLUGIN_ROUTE.html
-    │   └── step-$PLUGIN_ROUTE.js
-    └── Cargo.toml
-\`\`\`
-
-## Core Plugin Usage
-
-To load this plugin in your engine/lib.rs:
-- Add it as a core plugin like other plugins
-- Or use execution plan loader with metadata from the plan
-
-EOF
+# Process README from template instead of creating it from scratch
+sed -e "s/{{plugin_name}}/$PLUGIN_NAME/g" \
+    -e "s/{{plugin_route}}/$PLUGIN_ROUTE/g" \
+    -e "s/{{resource_name}}/$RESOURCE_NAME/g" \
+    -e "s/{{resource_name_camel}}/$RESOURCE_NAME_CAMEL/g" \
+    "$TEMPLATE_DIR/README_template.md" > "$TARGET_DIR/README.md"
 
 echo "✅ Plugin $PLUGIN_NAME scaffolded under $TARGET_DIR"
