@@ -18,7 +18,7 @@ fn wait_for_server() {
         if TcpStream::connect("127.0.0.1:8080").is_ok() {
             return;
         }
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(1000));
     }
 
     eprintln!("Warning: Server did not become available in time.");

@@ -9,14 +9,10 @@
 
 use std::process::Command;
 use std::collections::HashMap;
-use std::ffi::CString;
-use std::io::Cursor;
-use std::ptr;
-use hex;
+use std::ffi::{CString, CStr};
 use std::thread;
 use std::time::Duration;
-use std::fs;
-use std::env;
+use std::ptr;
 
 use crate::network_info::NetworkInfo;
 
@@ -129,11 +125,11 @@ pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
 
     println!("[plugin_wifi] Generated profile XML:\n{}", profile_xml);
 
-    let temp_dir = env::temp_dir();
+    let temp_dir = std::env::temp_dir();
     let temp_path = temp_dir.join(format!("{}_{}.xml", ssid, std::process::id()));
     let temp_path_str = temp_path.to_string_lossy();
 
-    if let Err(e) = fs::write(&temp_path, profile_xml) {
+    if let Err(e) = std::fs::write(&temp_path, profile_xml) {
         println!("[plugin_wifi] Failed to write profile: {}", e);
         return false;
     }
@@ -149,7 +145,7 @@ pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
         ])
         .output();
 
-    let _ = fs::remove_file(&temp_path);
+    let _ = std::fs::remove_file(&temp_path);
 
     match profile_cmd {
         Ok(output) => {
@@ -258,7 +254,7 @@ pub fn connect_wifi_impl(ssid: &str, password: &str) -> bool {
 
             match std::str::from_utf8(&output.stdout) {
                 Ok(config) => {
-                    match fs::write("/tmp/wpa_supplicant.conf", config) {
+                    match std::fs::write("/tmp/wpa_supplicant.conf", config) {
                         Ok(_) => {
                             match Command::new("wpa_supplicant")
                                 .args(["-B", "-i", "wlan0", "-c", "/tmp/wpa_supplicant.conf"])
@@ -370,16 +366,52 @@ pub fn scan(out_count: *mut usize) -> *mut NetworkInfo {
                 .args(["-t", "-f", "SSID,BSSID,SIGNAL,CHAN,SECURITY,FREQ,FLAGS", "dev", "wifi"])
                 .output()
         } else if cfg!(target_os = "macos") {
-            Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport")
-                .args(["-s", "-x"])
-                .output()
+            unsafe {
+                let networks = scan_wifi_networks(out_count);
+                if networks.is_null() {
+                    println!("[plugin_wifi] No networks found.");
+                    return ptr::null_mut();
+                }
+
+                let count = *out_count;
+                println!("[plugin_wifi] Found {} networks.", count);
+
+                let mut results = Vec::with_capacity(count);
+
+                for i in 0..count {
+                    let network = networks.add(i).read();
+                    let ssid = CStr::from_ptr(network.ssid).to_string_lossy().into_owned();
+                    let bssid = CStr::from_ptr(network.bssid).to_string_lossy().into_owned();
+                    let security = CStr::from_ptr(network.security).to_string_lossy().into_owned();
+
+                    println!(
+                        "[plugin_wifi] Network {}: SSID: {}, BSSID: {}, Signal: {}, Channel: {}, Security: {}",
+                        i, ssid, bssid, network.signal_strength, network.channel, security
+                    );
+
+                    results.push(NetworkInfo {
+                        ssid: CString::new(ssid).unwrap().into_raw(),
+                        bssid: CString::new(bssid).unwrap().into_raw(),
+                        signal: network.signal_strength,
+                        channel: network.channel,
+                        security: CString::new(security).unwrap().into_raw(),
+                        frequency: 0.0, // Frequency is not provided by CoreWLAN
+                    });
+                }
+
+                free_wifi_networks(networks, count);
+                let boxed_results = results.into_boxed_slice();
+                return Box::into_raw(boxed_results) as *mut NetworkInfo;
+            }
         } else {
             return ptr::null_mut();
         };
 
         match output {
             Ok(out) => {
+                println!("[plugin_wifi] Raw command output: {}", String::from_utf8_lossy(&out.stdout));
                 let networks = parse_scan_output(&out.stdout);
+                println!("[plugin_wifi] Parsed networks: {:?}", networks);
                 if !networks.is_empty() {
                     let boxed = networks.into_boxed_slice();
                     unsafe {
@@ -509,62 +541,54 @@ fn parse_scan_output(output: &[u8]) -> Vec<NetworkInfo> {
                 }
             }
         }
-    } else if cfg!(target_os = "macos") {  // Removed extra parenthesis here
-        match plist::Value::from_reader_xml(Cursor::new(output)) {
-            Ok(plist::Value::Dictionary(dict)) => {
-                if let Some(plist::Value::Array(networks)) = dict.get("wireless networks") {
-                    for network in networks {
-                        if let plist::Value::Dictionary(network) = network {
-                            let ssid = network.get("SSID_STR")
-                                .and_then(|v| v.as_string())
-                                .unwrap_or("").to_string();
-                            
+    } else if cfg!(target_os = "macos") {
+        for line in raw_output.lines() {
+            // Parse each line of the macOS output
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            if fields.len() < 5 {
+                continue; // Skip lines with insufficient data
+            }
 
-                            let signal = network.get("RSSI")
-                                .and_then(|v| v.as_signed_integer())
-                                .map(|v| v as i32)
-                                .unwrap_or(0);
+            let ssid = fields[0].to_string();
+            let bssid = fields[1].to_string();
+            let signal = fields[2].parse::<i32>().unwrap_or(0);
+            let channel = fields[3].parse::<i32>().unwrap_or(0);
+            let security = fields[4].to_string();
 
-                            let bssid = network.get("BSSID")
-                                .and_then(|v| v.as_string())
-                                .unwrap_or("").to_string();
+            if !ssid.is_empty() {
+                let ssid_cstr = CString::new(ssid.clone()).unwrap_or_default().into_raw();
+                let bssid_cstr = CString::new(bssid).unwrap_or_default().into_raw();
+                let security_cstr = CString::new(security).unwrap_or_default().into_raw();
 
-                            let channel = network.get("CHANNEL")
-                                .and_then(|v| v.as_signed_integer())
-                                .map(|v| v as i32)
-                                .unwrap_or(0);
-
-                            let security = network.get("WPA_IE")
-                                .map(|_| "WPA")
-                                .or_else(|| network.get("RSN_IE").map(|_| "WPA2"))
-                                .unwrap_or("NONE");
-
-                            if !ssid.is_empty() {
-                                let ssid_cstr = CString::new(ssid.clone()).unwrap_or_default().into_raw();
-                                let bssid_cstr = CString::new(bssid).unwrap_or_default().into_raw();
-                                let security_cstr = CString::new(security).unwrap_or_default().into_raw();
-
-                                unique_networks.insert(ssid, (NetworkInfo {
-                                    ssid: ssid_cstr,
-                                    bssid: bssid_cstr,
-                                    signal,
-                                    channel,
-                                    security: security_cstr,
-                                    frequency: 0.0,
-                                }, signal));
-                            }
-                        }
-                    }
-                }
-            },
-            Err(e) => {
-                println!("[plugin_wifi] Failed to parse plist: {}", e);
-            },
-            _ => {}
+                unique_networks.insert(ssid.clone(), (NetworkInfo {
+                    ssid: ssid_cstr,
+                    bssid: bssid_cstr,
+                    signal,
+                    channel,
+                    security: security_cstr,
+                    frequency: 0.0, // Frequency is not provided by macOS output
+                }, signal));
+            }
         }
     }
 
     unique_networks.into_iter()
         .map(|(_, (network, _))| network)
         .collect()
+}
+
+#[repr(C)]
+#[derive(Clone)]
+struct WiFiNetwork {
+    ssid: *const i8,
+    bssid: *const i8,
+    signal_strength: i32,
+    channel: i32,
+    security: *const i8,
+}
+
+#[cfg(target_os = "macos")]
+extern "C" {
+    fn scan_wifi_networks(out_count: *mut usize) -> *mut WiFiNetwork;
+    fn free_wifi_networks(networks: *mut WiFiNetwork, count: usize);
 }

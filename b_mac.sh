@@ -22,7 +22,7 @@ echo "Building plugin_wifi..."
 cargo build --manifest-path plugins/plugin_wifi/Cargo.toml $CARGO_FLAG
 
 echo "Building plugin_execution..."
-cargo build --manifest-path plugins/plugin_execution/Cargo.toml $CARGO_FLAG
+cargo build --manifest-path plugins/plugin_execplan/Cargo.toml $CARGO_FLAG
 
 echo "Building plugin_terms..."
 cargo build --manifest-path plugins/plugin_terms/Cargo.toml $CARGO_FLAG
@@ -63,7 +63,7 @@ rsync -a webapp/ "$TARGET/webapp/"
 echo "Copying plugins web folder to engine output directory..."
 rsync -a plugins/plugin_welcome/web/ "$TARGET/welcome/web/"
 rsync -a plugins/plugin_wifi/web/ "$TARGET/wifi/web/"
-rsync -a plugins/plugin_execution/web/ "$TARGET/welcome/web/"
+rsync -a plugins/plugin_execplan/web/ "$TARGET/welcome/web/"
 rsync -a plugins/plugin_terms/web/ "$TARGET/terms/web/"
 rsync -a plugins/plugin_settings/web/ "$TARGET/settings/web/"
 rsync -a plugins/plugin_status/web/ "$TARGET/status/web/"
@@ -74,7 +74,7 @@ rsync -a plugins/plugin_task_agent_headless/web/ "$TARGET/taskagent/web/"
 echo "Copying plugin shared libraries to engine output directory..."
 cp "$TARGET/libplugin_welcome.dylib" "$TARGET/plugin_welcome.dylib"
 cp "$TARGET/libplugin_wifi.dylib" "$TARGET/plugin_wifi.dylib"
-cp "$TARGET/libplugin_execution.dylib" "$TARGET/plugin_execution.dylib"
+cp "$TARGET/libplugin_execplan.dylib" "$TARGET/plugin_execplan.dylib"
 cp "$TARGET/libplugin_terms.dylib" "$TARGET/plugin_terms.dylib"
 cp "$TARGET/libplugin_settings.dylib" "$TARGET/plugin_settings.dylib"
 cp "$TARGET/libplugin_status.dylib" "$TARGET/plugin_status.dylib"

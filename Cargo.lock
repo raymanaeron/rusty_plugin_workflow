@@ -2341,8 +2341,10 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
+ "cc",
  "ctor",
  "hex",
+ "objc",
  "once_cell",
  "plist",
  "plugin_core",

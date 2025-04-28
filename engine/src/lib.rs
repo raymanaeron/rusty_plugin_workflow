@@ -44,6 +44,7 @@ use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
 use std::fs;
 use std::path::PathBuf;
 use std::ffi::CString;
+use std::time::Duration;
 
 // Async runtime imports
 use tokio::net::TcpListener;
@@ -137,6 +138,9 @@ pub async fn create_ws_engine_client() {
 
     // Connect to the WebSocket server.
     let client = WsClient::connect("engine", url).await.expect("Failed to connect WsClient");
+
+    // Add a 1-second sleep
+    tokio::time::sleep(Duration::from_secs(1)).await;
 
     // Store the WebSocket client in the static variable.
     if ENGINE_WS_CLIENT.set(Arc::new(Mutex::new(client))).is_err() {
