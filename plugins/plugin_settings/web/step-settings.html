@@ -1,11 +1,117 @@
 <div class="plugin-section">
     <h5 class="plugin-title">Device Settings</h5>
     <div class="flex-grow-1 d-flex flex-column align-items-center">
-        <!-- Card docked at top, full width, fixed height, with minimal Bootstrap shadow -->
-        <div class="card w-100 mb-3 shadow-sm" style="height: 320px; border-radius: 0; margin-top: 0;">
+        <div class="card w-100 mb-3 shadow-sm" style="border-radius: 0; margin-top: 0;">
             <div style="margin: 30px;">
+                <style>
+                    /* Custom styling for form switches to make them more proportionate */
+                    .form-switch .form-check-input {
+                        width: 3em;
+                        height: 1.5em;
+                        margin-top: 0.25em;
+                    }
+                    .form-switch .form-check-label {
+                        padding-top: 0.25em;
+                        font-size: 1rem;
+                    }
+                    /* Ensure consistent vertical alignment */
+                    .form-check {
+                        padding-top: 0.5rem;
+                        padding-bottom: 0.5rem;
+                    }
+                </style>
+                <div class="settings-container overflow-auto">
+                    <!-- General Section -->
+                    <h6 class="border-bottom pb-2 mb-3">General</h6>
+                    <div class="mb-3">
+                        <label for="deviceName" class="form-label">Device Name</label>
+                        <input type="text" class="form-control" id="deviceName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="language" class="form-label">Language</label>
+                        <select class="form-select" id="language">
+                            <option value="en-US">English (US)</option>
+                            <option value="en-UK">English (UK)</option>
+                            <option value="es-ES">Spanish</option>
+                            <option value="fr-FR">French</option>
+                            <option value="de-DE">German</option>
+                            <option value="it-IT">Italian</option>
+                            <option value="ja-JP">Japanese</option>
+                            <option value="zh-CN">Chinese (Simplified)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="region" class="form-label">Region</label>
+                        <select class="form-select" id="region">
+                            <option value="us">United States</option>
+                            <option value="ca">Canada</option>
+                            <option value="uk">United Kingdom</option>
+                            <option value="de">Germany</option>
+                            <option value="fr">France</option>
+                            <option value="jp">Japan</option>
+                            <option value="au">Australia</option>
+                            <option value="in">India</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="timeZone" class="form-label">Time Zone</label>
+                        <select class="form-select" id="timeZone">
+                            <option value="GMT-8">Pacific Time (GMT-8)</option>
+                            <option value="GMT-7">Mountain Time (GMT-7)</option>
+                            <option value="GMT-6">Central Time (GMT-6)</option>
+                            <option value="GMT-5">Eastern Time (GMT-5)</option>
+                            <option value="GMT">Greenwich Mean Time (GMT)</option>
+                            <option value="GMT+1">Central European Time (GMT+1)</option>
+                            <option value="GMT+8">China Standard Time (GMT+8)</option>
+                            <option value="GMT+9">Japan Standard Time (GMT+9)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="autoUpdate">
+                        <label class="form-check-label" for="autoUpdate">Automatic Software Update</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amazonEmail" class="form-label">Amazon Account Email</label>
+                        <input type="email" class="form-control" id="amazonEmail">
+                        <div id="emailFeedback" class="invalid-feedback">
+                            Please enter a valid email address.
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="shareMetrics">
+                        <label class="form-check-label" for="shareMetrics">Share Device Metrics</label>
+                    </div>
 
+                    <!-- Echo Section -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Echo</h6>
+                    <div class="mb-3">
+                        <label for="wakeWord" class="form-label">Wake Word</label>
+                        <input type="text" class="form-control" id="wakeWord" value="Alexa">
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="micEnabled">
+                        <label class="form-check-label" for="micEnabled">Microphone</label>
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="dropInCalling">
+                        <label class="form-check-label" for="dropInCalling">Drop In / Calling</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="displaySettings" class="form-label">Display Settings (Echo Show)</label>
+                        <select class="form-select" id="displaySettings">
+                            <option value="brightness">Brightness</option>
+                            <option value="ambientClock">Ambient Clock</option>
+                            <option value="photoSlideshow">Photo Slideshow</option>
+                        </select>
+                    </div>
 
+                    <!-- Automation Section -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Automation</h6>
+                    <div class="mb-3 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="frustrationFreeAutomation">
+                        <label class="form-check-label" for="frustrationFreeAutomation">Enable Frustration Free Automation</label>
+                    </div>
+                </div>
 
                 <!-- Clear and Submit buttons stretched to the width of the view but have about 15px gap in between them-->
                 <div class="d-flex w-100 mb-3 mx-auto" style="gap: 15px;">
