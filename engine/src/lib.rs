@@ -56,6 +56,8 @@ use axum::response::Response;
 use axum::body::Body;
 use axum::http::StatusCode;
 
+use once_cell::sync::Lazy;
+
 use liblogger::{ Logger, log_info, log_warn, log_error, log_debug };
 use liblogger_macros::*;
 
@@ -79,6 +81,9 @@ use websocket_manager::{
     NETWORK_CONNECTED,
     SWITCH_ROUTE,
 };
+
+// Variable defining route destination after login completion
+static ROUTE_AFTER_LOGIN: Lazy<Mutex<&str>> = Lazy::new(|| Mutex::new("/provision/web"));
 
 // Engine core functionality
 use engine_core::{
@@ -152,8 +157,10 @@ pub async fn create_ws_engine_client() {
             }
             Err(e) => {
                 retries += 1;
-                log_debug!("Failed to connect WsClient (attempt {}/{}) : {}", 
-                    Some(format!("{} {} {}", retries, MAX_RETRIES, e.to_string())));
+                log_debug!(
+                    "Failed to connect WsClient (attempt {}/{}) : {}",
+                    Some(format!("{} {} {}", retries, MAX_RETRIES, e.to_string()))
+                );
                 if retries < MAX_RETRIES {
                     tokio::time::sleep(Duration::from_millis(500)).await;
                 }
@@ -165,7 +172,10 @@ pub async fn create_ws_engine_client() {
     let client = match client {
         Some(c) => c,
         None => {
-            log_error!("Failed to connect to WebSocket server after {} attempts. Exiting.", Some(MAX_RETRIES.to_string()));
+            log_error!(
+                "Failed to connect to WebSocket server after {} attempts. Exiting.",
+                Some(MAX_RETRIES.to_string())
+            );
             return;
         }
     };
@@ -213,12 +223,14 @@ pub async fn create_ws_engine_client() {
                 log_debug!("[engine] => WELCOME_COMPLETED: {}", Some("received".to_string()));
 
                 // Call the reusable function
-                tokio::spawn(publish_ws_message(
-                    client_for_welcome.clone(),
-                    "engine",
-                    SWITCH_ROUTE,
-                    "/wifi/web",
-                ));
+                tokio::spawn(
+                    publish_ws_message(
+                        client_for_welcome.clone(),
+                        "engine",
+                        SWITCH_ROUTE,
+                        "/wifi/web"
+                    )
+                );
             });
         }
     }
@@ -236,12 +248,14 @@ pub async fn create_ws_engine_client() {
                 log_debug!("[engine] => WIFI_COMPLETED: {}", Some("received".to_string()));
 
                 // Call the reusable function
-                tokio::spawn(publish_ws_message(
-                    client_for_wifi.clone(),
-                    "engine",
-                    SWITCH_ROUTE,
-                    "/execution/web",
-                ));
+                tokio::spawn(
+                    publish_ws_message(
+                        client_for_wifi.clone(),
+                        "engine",
+                        SWITCH_ROUTE,
+                        "/execution/web"
+                    )
+                );
             });
         }
     }
@@ -259,12 +273,14 @@ pub async fn create_ws_engine_client() {
                 log_debug!("[engine] => EXECPLAN_COMPLETED: {}", Some(msg.to_string()));
 
                 // Call the reusable function
-                tokio::spawn(publish_ws_message(
-                    client_for_execplan.clone(),
-                    "engine",
-                    SWITCH_ROUTE,
-                    "/login/web",
-                ));
+                tokio::spawn(
+                    publish_ws_message(
+                        client_for_execplan.clone(),
+                        "engine",
+                        SWITCH_ROUTE,
+                        "/login/web"
+                    )
+                );
             });
         }
     }
@@ -282,12 +298,14 @@ pub async fn create_ws_engine_client() {
                 log_debug!("[engine] => LOGIN_COMPLETED: {}", Some(msg.to_string()));
 
                 // Call the reusable function
-                tokio::spawn(publish_ws_message(
-                    client_for_login.clone(),
-                    "engine",
-                    SWITCH_ROUTE,
-                    "/provision/web",
-                ));
+                tokio::spawn(
+                    publish_ws_message(
+                        client_for_login.clone(),
+                        "engine",
+                        SWITCH_ROUTE,
+                        *ROUTE_AFTER_LOGIN.lock().unwrap()
+                    )
+                );
             });
         }
     }
@@ -305,12 +323,14 @@ pub async fn create_ws_engine_client() {
                 log_debug!("[engine] => PROVISION_COMPLETED: {}", Some(msg.to_string()));
 
                 // Call the reusable function
-                tokio::spawn(publish_ws_message(
-                    client_for_provision.clone(),
-                    "engine",
-                    SWITCH_ROUTE,
-                    "/status/web",
-                ));
+                tokio::spawn(
+                    publish_ws_message(
+                        client_for_provision.clone(),
+                        "engine",
+                        SWITCH_ROUTE,
+                        "/status/web"
+                    )
+                );
             });
         }
     }
@@ -318,7 +338,7 @@ pub async fn create_ws_engine_client() {
 
 /// Utility function to publish a message to a websocket topic using a client.
 /// Handles locking, timestamp, and logging.
-/// 
+///
 /// # Arguments
 /// * `client_arc` - Arc-wrapped Mutex of the WebSocket client.
 /// * `client_name` - Name of the client (e.g., "engine").
@@ -328,7 +348,7 @@ pub async fn publish_ws_message(
     client_arc: Arc<Mutex<WsClient>>,
     client_name: &str,
     topic_name: &str,
-    payload: &str,
+    payload: &str
 ) {
     let timestamp = chrono::Utc::now().to_rfc3339();
     let client_name = client_name.to_string();
@@ -336,16 +356,20 @@ pub async fn publish_ws_message(
     let payload = payload.to_string();
 
     // Use spawn_blocking to avoid Send issues with MutexGuard
-    tokio::task::spawn_blocking(move || {
-        if let Ok(mut client) = client_arc.lock() {
-            let rt = tokio::runtime::Handle::current();
-            let _ = rt.block_on(client.publish(&client_name, &topic_name, &payload, &timestamp));
-            log_debug!(
-                "engine, published {} '{}' to topic '{}'",
-                Some(format!("{} '{}' {}", client_name, payload, topic_name))
-            );
-        }
-    }).await.ok();
+    tokio::task
+        ::spawn_blocking(move || {
+            if let Ok(mut client) = client_arc.lock() {
+                let rt = tokio::runtime::Handle::current();
+                let _ = rt.block_on(
+                    client.publish(&client_name, &topic_name, &payload, &timestamp)
+                );
+                log_debug!(
+                    "engine, published {} '{}' to topic '{}'",
+                    Some(format!("{} '{}' {}", client_name, payload, topic_name))
+                );
+            }
+        }).await
+        .ok();
 }
 
 //
@@ -378,17 +402,21 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                         "Execution plan [{}] loaded with {} plugins",
                         Some(format!("{} {}", plan_type, plan.plugins.len()))
                     );
-                    
+
                     // Log details for each plugin in the execution plan
                     for (idx, plugin) in plan.plugins.iter().enumerate() {
-                        let run_after_event_name = plugin.run_after_event_name.as_deref().unwrap_or("None");
-                        let completed_event_name = plugin.completed_event_name.as_deref().unwrap_or("None");
-                        let plugin_description = if plugin.plugin_description.is_empty() { 
-                            "None" 
-                        } else { 
-                            &plugin.plugin_description 
+                        let run_after_event_name = plugin.run_after_event_name
+                            .as_deref()
+                            .unwrap_or("None");
+                        let completed_event_name = plugin.completed_event_name
+                            .as_deref()
+                            .unwrap_or("None");
+                        let plugin_description = if plugin.plugin_description.is_empty() {
+                            "None"
+                        } else {
+                            &plugin.plugin_description
                         };
-                        
+
                         let plugin_details = format!(
                             "Plugin[{}] Details:\n  name: {}\n  route: {}\n  version: {}\n  location_type: {}\n  base_path: {}\n  team: {}\n  eng_contact: {}\n  ops_contact: {}\n  run_async: {}\n  visible_in_ui: {}\n  description: {}\n  run_after_event: {}\n  completed_event: {}",
                             idx,
@@ -406,10 +434,18 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                             run_after_event_name,
                             completed_event_name
                         );
-                        
+
                         log_debug!("{}", Some(plugin_details));
+
+                        // This is an example of how you will load a dynamic plugin right after a system event
+                        // Lets figure out if our dynamically loaded plugin should be the one to run after login
+                        // If so then we route this plugin right after LoginCompleted
+                        if run_after_event_name == "LoginCompleted" {
+                            log_debug!("Plugin name: {} - LoginCompleted event found in execution plan", Some(plugin.name.clone()));
+                            *ROUTE_AFTER_LOGIN.lock().unwrap() = Box::leak((plugin.plugin_route.clone() + "/web").into_boxed_str());
+                        }
                     }
-                    
+
                     Some((plan_status, plan.plugins))
                 }
                 Err(e) => {
