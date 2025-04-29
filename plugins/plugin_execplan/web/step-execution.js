@@ -45,7 +45,7 @@ export async function activate(container, appManager) {
             setTimeout(() => {
                 step++;
                 updateStatus();
-            }, 100);
+            }, 2000);
         }
     }
     updateStatus();
