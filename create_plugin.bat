@@ -40,7 +40,7 @@ powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-template.js') -replace '{
 REM Process README from the template file instead of creating it from scratch
 powershell -Command "(Get-Content '%TEMPLATE_DIR%\README_template.md') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\README.md'"
 
-echo ✅ Plugin %PLUGIN_NAME% scaffolded under %TARGET_DIR%
+echo Plugin %PLUGIN_NAME% scaffolded under %TARGET_DIR%
 
 goto :eof
 

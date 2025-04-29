@@ -45,6 +45,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM === Build plugin_provisioning ===
+echo Building plugin_provisioning...
+cargo build --manifest-path plugins\plugin_provisioning\Cargo.toml %CARGO_FLAG%
+if errorlevel 1 (
+    echo Failed to build plugin_provisioning.
+    exit /b 1
+)
+
 REM === Build plugin_terms ===
 echo Building plugin_terms...
 cargo build --manifest-path plugins\plugin_terms\Cargo.toml %CARGO_FLAG%
@@ -121,6 +129,13 @@ echo Copying plugins web folder to engine output directory...
 xcopy /E /I /Y plugins\plugin_login\web %TARGET%\login\web
 if errorlevel 1 (
     echo Failed to copy plugin_login web folder.
+    exit /b 1
+)
+
+echo Copying plugins web folder to engine output directory...
+xcopy /E /I /Y plugins\plugin_provisioning\web %TARGET%\provision\web
+if errorlevel 1 (
+    echo Failed to copy plugin_provisioning web folder.
     exit /b 1
 )
 

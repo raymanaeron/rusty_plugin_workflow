@@ -74,6 +74,7 @@ use websocket_manager::{
     WIFI_COMPLETED,
     EXECPLAN_COMPLETED,
     LOGIN_COMPLETED,
+    PROVISION_COMPLETED,
     STATUS_CHANGED,
     NETWORK_CONNECTED,
     SWITCH_ROUTE,
@@ -260,6 +261,29 @@ pub async fn create_ws_engine_client() {
                     client_for_login.clone(),
                     "engine",
                     SWITCH_ROUTE,
+                    "/provision/web",
+                ));
+            });
+        }
+    }
+
+    // Subscribe to PROVISION_COMPLETED topic
+    // Route next to /status/web
+    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+        let client_for_provision = client_arc.clone();
+        {
+            let mut client = client_arc.lock().unwrap();
+            client.subscribe("engine_subscriber", PROVISION_COMPLETED, "").await;
+            log_debug!("Engine, subscribed to PROVISION_COMPLETED", None);
+
+            client.on_message(PROVISION_COMPLETED, move |msg| {
+                log_debug!("[engine] => PROVISION_COMPLETED: {}", Some(msg.to_string()));
+
+                // Call the reusable function
+                tokio::spawn(publish_ws_message(
+                    client_for_provision.clone(),
+                    "engine",
+                    SWITCH_ROUTE,
                     "/status/web",
                 ));
             });
@@ -429,6 +453,7 @@ pub async fn start_server_async() {
         ("plugin_wifi", "connected=false"),
         ("plugin_execplan", "hasupdate=true"),
         ("plugin_login", "isloggedin=false"),
+        ("plugin_provisioning", "isprovisioned=false"),
         ("plugin_terms", "accepted=false"),
         ("plugin_status", "statusmessage=none"),
         ("plugin_task_agent_headless", "runworkflow=false"),

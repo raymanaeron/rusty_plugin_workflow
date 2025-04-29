@@ -49,4 +49,4 @@ sed -e "s/{{plugin_name}}/$PLUGIN_NAME/g" \
     -e "s/{{resource_name_camel}}/$RESOURCE_NAME_CAMEL/g" \
     "$TEMPLATE_DIR/README_template.md" > "$TARGET_DIR/README.md"
 
-echo "✅ Plugin $PLUGIN_NAME scaffolded under $TARGET_DIR"
+echo "Plugin $PLUGIN_NAME scaffolded under $TARGET_DIR"
