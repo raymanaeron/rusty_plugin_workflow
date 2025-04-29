@@ -25,14 +25,14 @@ static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 
 // Define your data structure - using CamelCase for type name
 #[derive(Serialize, Deserialize, Clone, Default)]
-struct User {
+struct Userprofile {
     id: String,
     field1: String,
     field2: bool,
 }
 
 // Shared state - using a HashMap to store multiple items by ID
-static STATE: Lazy<Mutex<std::collections::HashMap<String, User>>> = Lazy::new(|| {
+static STATE: Lazy<Mutex<std::collections::HashMap<String, Userprofile>>> = Lazy::new(|| {
     Mutex::new(std::collections::HashMap::new())
 });
 
@@ -46,8 +46,8 @@ pub async fn create_ws_plugin_client() {
         let client = Arc::new(Mutex::new(client));
         
         if let Ok(mut ws_client) = client.lock() {
-            ws_client.subscribe("plugin_login", "UserUpdated", "").await;
-            println!("[plugin_login] Subscribed to UserUpdated");
+            ws_client.subscribe("plugin_login", "UserprofileUpdated", "").await;
+            println!("[plugin_login] Subscribed to UserprofileUpdated");
         }
         
         unsafe {
@@ -74,7 +74,7 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
         HttpMethod::Put,
         HttpMethod::Delete,
     ];
-    let slice = static_resource("user", &METHODS);
+    let slice = static_resource("userprofile", &METHODS);
     unsafe { *out_len = slice.len(); }
     slice.as_ptr()
 }
@@ -92,7 +92,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             CStr::from_ptr(request.path).to_str().unwrap_or("<invalid>")
         };
 
-        // Extract ID from path if present (format: "user/ID")
+        // Extract ID from path if present (format: "userprofile/ID")
         let path_parts: Vec<&str> = path.split('/').collect();
         let (resource_path, id_opt) = if path_parts.len() >= 2 {
             (path_parts[0], Some(path_parts[1]))
@@ -102,7 +102,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
         match request.method {
             // GET: List all resources or get a specific one by ID
-            HttpMethod::Get if resource_path == "user" => {
+            HttpMethod::Get if resource_path == "userprofile" => {
                 let state = STATE.lock().unwrap();
                 
                 // If ID is provided, return that specific resource
@@ -121,9 +121,9 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             // POST: Create a new resource
-            HttpMethod::Post if resource_path == "user" => {
+            HttpMethod::Post if resource_path == "userprofile" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                if let Ok(mut data) = serde_json::from_slice::<User>(body) {
+                if let Ok(mut data) = serde_json::from_slice::<Userprofile>(body) {
                     let mut state = STATE.lock().unwrap();
                     
                     // If ID is empty, generate one
@@ -159,7 +159,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                                     let rt = tokio::runtime::Handle::current();
                                     let _ = rt.block_on(ws_client.publish(
                                         "plugin_login", 
-                                        "UserUpdated", 
+                                        "UserprofileUpdated", 
                                         &payload,
                                         &timestamp_clone
                                     ));
@@ -180,10 +180,10 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             // PUT: Update a resource (complete replacement)
-            HttpMethod::Put if resource_path == "user" => {
+            HttpMethod::Put if resource_path == "userprofile" => {
                 if let Some(id) = id_opt {
                     let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                    if let Ok(mut data) = serde_json::from_slice::<User>(body) {
+                    if let Ok(mut data) = serde_json::from_slice::<Userprofile>(body) {
                         let mut state = STATE.lock().unwrap();
                         
                         // Ensure the ID in the URL matches the resource
@@ -213,7 +213,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                                             let rt = tokio::runtime::Handle::current();
                                             let _ = rt.block_on(ws_client.publish(
                                                 "plugin_login", 
-                                                "UserUpdated", 
+                                                "UserprofileUpdated", 
                                                 &payload,
                                                 &timestamp_clone
                                             ));
@@ -235,7 +235,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             // DELETE: Remove a resource
-            HttpMethod::Delete if resource_path == "user" => {
+            HttpMethod::Delete if resource_path == "userprofile" => {
                 let mut state = STATE.lock().unwrap();
                 
                 if let Some(id) = id_opt {
@@ -263,7 +263,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                                         let rt = tokio::runtime::Handle::current();
                                         let _ = rt.block_on(ws_client.publish(
                                             "plugin_login", 
-                                            "UserUpdated", 
+                                            "UserprofileUpdated", 
                                             &payload,
                                             &timestamp_clone
                                         ));
@@ -281,38 +281,6 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                     state.clear();
                     json_response(200, r#"{"message": "All resources deleted"}"#)
                 }
-            }
-
-            // In the handle_request function, add a new route for validating Amazon tokens:
-            HttpMethod::Post if resource_path == "user/validate-amazon" => {
-                let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                if let Ok(auth_data) = serde_json::from_slice::<AmazonAuthData>(body) {
-                    // Validate the Amazon token
-                    // In a real implementation, you'd verify the token with Amazon's API
-                    
-                    // For this example, we'll simulate validation
-                    let user = User {
-                        id: format!("amzn_{}", auth_data.user_profile.user_id),
-                        field1: auth_data.user_profile.name.clone(),
-                        field2: true,
-                    };
-                    
-                    // Store the user in our state
-                    let mut state = STATE.lock().unwrap();
-                    state.insert(user.id.clone(), user.clone());
-                    
-                    // Return success
-                    json_response(200, &serde_json::to_string(&user).unwrap())
-                } else {
-                    error_response(400, "Invalid auth data")
-                }
-            }
-
-            // And add a session check endpoint:
-            HttpMethod::Get if resource_path == "user/session" => {
-                // In a real implementation, you would validate a session token
-                // For this example, we'll return a dummy response
-                json_response(200, r#"{"authenticated": false, "userName": null}"#)
             }
 
             _ => method_not_allowed_response(request.method, request.path),
@@ -333,17 +301,3 @@ declare_plugin!(
     handle_request,
     cleanup
 );
-
-// Add a new struct for Amazon auth data
-#[derive(Serialize, Deserialize, Clone, Default)]
-struct AmazonUserProfile {
-    user_id: String,
-    name: String,
-    email: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Default)]
-struct AmazonAuthData {
-    access_token: String,
-    user_profile: AmazonUserProfile,
-}
