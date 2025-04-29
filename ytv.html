@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>YouTube Custom Player</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #121212;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #player {
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            width: 640px;
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            background: #333;
+            border: none;
+            padding: 10px 15px;
+            color: #fff;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        .progress-container {
+            width: 100%;
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            height: 8px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 0;
+            height: 100%;
+            background: #f00;
+            transition: width 0.2s;
+        }
+
+        #timeDisplay {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        input[type=range] {
+            width: 100px;
+        }
+
+        input[type=number] {
+            width: 80px;
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Custom YouTube Player</h1>
+
+    <div id="player"></div>
+
+    <div class="controls">
+        <div class="buttons">
+            <button onclick="togglePlay()" id="playPauseBtn">▶️ Play</button>
+            <button onclick="rewind10()">⏪ Rewind 10s</button>
+            <button onclick="forward10()">⏩ Forward 10s</button>
+        </div>
+
+        <div class="progress-container" onclick="seekOnClick(event)">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div id="timeDisplay">0:00 / 0:00</div>
+
+        <div class="volume-control">
+            <button onclick="toggleMute()" id="muteBtn">🔊</button>
+            <input type="range" id="volumeSlider" min="0" max="100" step="1" onchange="changeVolume()" />
+        </div>
+
+        <div class="buttons">
+            <input type="number" id="jumpInput" placeholder="Seconds" />
+            <button onclick="jumpTo()">Jump</button>
+        </div>
+    </div>
+
+    <script>
+        var player;
+        var updateInterval;
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '390',
+                width: '640',
+                videoId: 'KBs63IWzS6E',
+                playerVars: {
+                    controls: 0,
+                    modestbranding: 1,
+                    rel: 0,
+                    fs: 0,
+                    iv_load_policy: 3,
+                    disablekb: 1,
+                    playsinline: 1
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            updateInterval = setInterval(updateProgress, 1000);
+            document.getElementById('volumeSlider').value = player.getVolume();
+        }
+
+        function onPlayerStateChange(event) {
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            if (event.data == YT.PlayerState.PLAYING) {
+                playPauseBtn.textContent = '⏸️ Pause';
+            } else {
+                playPauseBtn.textContent = '▶️ Play';
+            }
+        }
+
+        function togglePlay() {
+            const state = player.getPlayerState();
+            if (state == YT.PlayerState.PLAYING) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
+        }
+
+        function rewind10() {
+            const currentTime = player.getCurrentTime();
+            player.seekTo(Math.max(currentTime - 10, 0), true);
+        }
+
+        function forward10() {
+            const currentTime = player.getCurrentTime();
+            player.seekTo(currentTime + 10, true);
+        }
+
+        function updateProgress() {
+            if (player && player.getDuration) {
+                const currentTime = player.getCurrentTime();
+                const duration = player.getDuration();
+                const percentage = (currentTime / duration) * 100;
+                document.getElementById('progressBar').style.width = percentage + "%";
+                document.getElementById('timeDisplay').textContent = formatTime(currentTime) + " / " + formatTime(duration);
+            }
+        }
+
+        function seekOnClick(event) {
+            const container = event.currentTarget;
+            const rect = container.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const width = rect.width;
+            const percentage = clickX / width;
+            const duration = player.getDuration();
+            player.seekTo(percentage * duration, true);
+        }
+
+        function changeVolume() {
+            const volume = document.getElementById('volumeSlider').value;
+            player.setVolume(volume);
+            updateMuteButton();
+        }
+
+        function toggleMute() {
+            if (player.isMuted()) {
+                player.unMute();
+            } else {
+                player.mute();
+            }
+            updateMuteButton();
+        }
+
+        function updateMuteButton() {
+            const muteBtn = document.getElementById('muteBtn');
+            if (player.isMuted() || player.getVolume() == 0) {
+                muteBtn.textContent = "🔇";
+            } else {
+                muteBtn.textContent = "🔊";
+            }
+        }
+
+        function jumpTo() {
+            const seconds = parseInt(document.getElementById('jumpInput').value);
+            if (!isNaN(seconds)) {
+                player.seekTo(seconds, true);
+            }
+        }
+
+        function formatTime(seconds) {
+            seconds = Math.floor(seconds);
+            const minutes = Math.floor(seconds / 60);
+            let secs = seconds % 60;
+            if (secs < 10) secs = "0" + secs;
+            return minutes + ":" + secs;
+        }
+
+        // Load YouTube IFrame Player API dynamically
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    </script>
+</body>
+
+</html>
