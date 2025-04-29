@@ -139,11 +139,36 @@ pub async fn create_ws_engine_client() {
     log_debug!("Creating ws client for the engine");
     let url = "ws://127.0.0.1:8081/ws";
 
-    // Connect to the WebSocket server.
-    let client = WsClient::connect("engine", url).await.expect("Failed to connect WsClient");
+    // Connect to the WebSocket server with retries.
+    let mut retries = 0;
+    const MAX_RETRIES: u8 = 5;
+    let mut client = None;
 
-    // Add a 1-second sleep
-    tokio::time::sleep(Duration::from_secs(1)).await;
+    while retries < MAX_RETRIES {
+        match WsClient::connect("engine", url).await {
+            Ok(connected_client) => {
+                client = Some(connected_client);
+                break;
+            }
+            Err(e) => {
+                retries += 1;
+                log_debug!("Failed to connect WsClient (attempt {}/{}) : {}", 
+                    Some(format!("{} {} {}", retries, MAX_RETRIES, e.to_string())));
+                if retries < MAX_RETRIES {
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+                }
+            }
+        }
+    }
+
+    // Check if we successfully connected after retries
+    let client = match client {
+        Some(c) => c,
+        None => {
+            log_error!("Failed to connect to WebSocket server after {} attempts. Exiting.", Some(MAX_RETRIES.to_string()));
+            return;
+        }
+    };
 
     // Store the WebSocket client in the static variable.
     if ENGINE_WS_CLIENT.set(Arc::new(Mutex::new(client))).is_err() {
