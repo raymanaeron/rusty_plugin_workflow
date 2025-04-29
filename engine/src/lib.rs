@@ -437,12 +437,17 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
 
                         log_debug!("{}", Some(plugin_details));
 
-                        // This is an example of how you will load a dynamic plugin right after a system event
-                        // Lets figure out if our dynamically loaded plugin should be the one to run after login
-                        // If so then we route this plugin right after LoginCompleted
+                        // This code determines which plugin should be loaded after the login event
+                        // We search for plugins configured to run after LoginCompleted
+                        // The selected plugin's route will be used for navigation after login
                         if run_after_event_name == "LoginCompleted" {
-                            log_debug!("Plugin name: {} - LoginCompleted event found in execution plan", Some(plugin.name.clone()));
-                            *ROUTE_AFTER_LOGIN.lock().unwrap() = Box::leak((plugin.plugin_route.clone() + "/web").into_boxed_str());
+                            log_debug!(
+                                "Plugin name: {} - LoginCompleted event found in execution plan",
+                                Some(plugin.name.clone())
+                            );
+                            *ROUTE_AFTER_LOGIN.lock().unwrap() = Box::leak(
+                                (plugin.plugin_route.clone() + "/web").into_boxed_str()
+                            );
                         }
                     }
 
