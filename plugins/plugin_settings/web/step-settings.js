@@ -1,4 +1,10 @@
 export async function activate(container, appManager) {
+    // Check if container has been properly initialized
+    if (!container) {
+        console.error('Container is null or undefined');
+        return;
+    }
+    
     // Register with app manager
     appManager.registerPlugin('plugin_settings');
     console.log('Plugin activated: plugin_settings');
@@ -7,6 +13,13 @@ export async function activate(container, appManager) {
     const submitBtn = container.querySelector('#submitBtn');
     const clearBtn = container.querySelector('#clearBtn');
 
+    // Check for critical elements
+    if (!submitBtn || !clearBtn) {
+        console.error('Critical UI elements not found in container:', 
+            { submitBtn: !!submitBtn, clearBtn: !!clearBtn });
+        return;
+    }
+    
     // Define the device settings data structure
     const deviceSettings = {
         general: {

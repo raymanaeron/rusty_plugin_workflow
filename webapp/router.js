@@ -56,11 +56,61 @@ export async function routeTo(path) {
       console.warn(`Plugin ${pluginName} has no activate() function`);
     }
   } catch (err) {
-    console.error('[Router] Error details:', err);
-    container.innerHTML = `<div class="alert alert-danger">
-      Failed to load plugin view.<br>
-      ${err.message}<br>
-      <small class="text-muted">Check browser console for details.</small>
-    </div>`;
+    console.error('[Router] Error loading plugin:', err);
+    
+    // Detailed error logging to help diagnose WebView vs Browser differences
+    console.error('[Router] Error details:', {
+      message: err.message,
+      stack: err.stack,
+      pluginName,
+      documentReady: document.readyState,
+      containerExists: !!container,
+      isWebView: !!(window.webkit || window.android)
+    });
+    
+    // Use a safer approach to render the error that doesn't rely on innerHTML
+    try {
+      // Clear container first
+      while (container.firstChild) {
+        container.removeChild(container.firstChild);
+      }
+      
+      // Create alert div
+      const alertDiv = document.createElement('div');
+      alertDiv.className = 'alert alert-danger';
+      
+      // Add error message text
+      const errorText = document.createTextNode('Failed to load plugin view.');
+      alertDiv.appendChild(errorText);
+      
+      // Add line break
+      alertDiv.appendChild(document.createElement('br'));
+      
+      // Add error message
+      const messageText = document.createTextNode(err.message || 'Unknown error');
+      alertDiv.appendChild(messageText);
+      
+      // Add line break
+      alertDiv.appendChild(document.createElement('br'));
+      
+      // Add small text for console info
+      const small = document.createElement('small');
+      small.className = 'text-muted';
+      small.textContent = 'Check browser console for details.';
+      alertDiv.appendChild(small);
+      
+      // Append to container
+      container.appendChild(alertDiv);
+    } catch (renderErr) {
+      // Absolute fallback if DOM manipulation fails
+      console.error('[Router] Failed to render error message:', renderErr);
+      
+      // Try the simplest possible approach
+      try {
+        container.textContent = `Error: ${err.message || 'Unknown error'}`;
+      } catch (finalErr) {
+        console.error('[Router] Critical error in error handling:', finalErr);
+      }
+    }
   }
 }

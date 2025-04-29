@@ -199,6 +199,7 @@ pub async fn create_ws_engine_client() {
         });
     }
 
+    /*
     // Subscribe to STATUS_CHANGED topic
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let mut client = client_arc.lock().unwrap();
@@ -209,6 +210,7 @@ pub async fn create_ws_engine_client() {
             log_debug!("[engine] => STATUS_CHANGED: {}", Some(msg.to_string()));
         });
     }
+    */
 
     // Subscribe to WELCOME_COMPLETED topic
     // Route next to /wifi/web
@@ -546,6 +548,8 @@ pub async fn start_server_async() {
     let mut plugin_manager = PluginManager::new(registry.clone());
 
     // Core Plugin Loading
+    // ("plugin_status", "statusmessage=none"),
+    // ("plugin_task_agent_headless", "runworkflow=false"),
     let plugins_to_load = [
         ("plugin_welcome", "continue=false"),
         ("plugin_wifi", "connected=false"),
@@ -553,8 +557,6 @@ pub async fn start_server_async() {
         ("plugin_login", "isloggedin=false"),
         ("plugin_provisioning", "isprovisioned=false"),
         ("plugin_terms", "accepted=false"),
-        ("plugin_status", "statusmessage=none"),
-        ("plugin_task_agent_headless", "runworkflow=false"),
     ];
 
     for (plugin_name, params) in plugins_to_load {
