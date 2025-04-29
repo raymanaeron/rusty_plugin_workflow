@@ -40,6 +40,12 @@ pub struct PluginMetadata {
     /// Optional description of the plugin’s purpose or function.
     #[serde(default)]
     pub plugin_description: String,
+
+    /// Specify this in the toml so that the engine knows when to run this plugin.
+    pub run_after_event_name: Option<String>,
+
+    /// Specify this in the toml so that the engine knows that you are done
+    pub completed_event_name: Option<String>,
 }
 
 /// Default value for `visible_in_ui` field (true).

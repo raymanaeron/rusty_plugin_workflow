@@ -378,6 +378,38 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                         "Execution plan [{}] loaded with {} plugins",
                         Some(format!("{} {}", plan_type, plan.plugins.len()))
                     );
+                    
+                    // Log details for each plugin in the execution plan
+                    for (idx, plugin) in plan.plugins.iter().enumerate() {
+                        let run_after_event_name = plugin.run_after_event_name.as_deref().unwrap_or("None");
+                        let completed_event_name = plugin.completed_event_name.as_deref().unwrap_or("None");
+                        let plugin_description = if plugin.plugin_description.is_empty() { 
+                            "None" 
+                        } else { 
+                            &plugin.plugin_description 
+                        };
+                        
+                        let plugin_details = format!(
+                            "Plugin[{}] Details:\n  name: {}\n  route: {}\n  version: {}\n  location_type: {}\n  base_path: {}\n  team: {}\n  eng_contact: {}\n  ops_contact: {}\n  run_async: {}\n  visible_in_ui: {}\n  description: {}\n  run_after_event: {}\n  completed_event: {}",
+                            idx,
+                            plugin.name,
+                            plugin.plugin_route,
+                            plugin.version,
+                            plugin.plugin_location_type,
+                            plugin.plugin_base_path,
+                            plugin.team_name,
+                            plugin.engineering_contact_email,
+                            plugin.operation_contact_email,
+                            plugin.run_async,
+                            plugin.visible_in_ui,
+                            plugin_description,
+                            run_after_event_name,
+                            completed_event_name
+                        );
+                        
+                        log_debug!("{}", Some(plugin_details));
+                    }
+                    
                     Some((plan_status, plan.plugins))
                 }
                 Err(e) => {

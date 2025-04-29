@@ -24,6 +24,7 @@ impl ExecutionPlanLoader {
         let plan: PluginExecutionPlan = toml::from_str(&content)?;
 
         Self::validate_general(&plan.general)?;
+        
         for (idx, plugin) in plan.plugins.iter().enumerate() {
             Self::validate_plugin(plugin, idx)?;
         }
@@ -81,6 +82,25 @@ impl ExecutionPlanLoader {
                 "Plugin at index {} is missing 'operation_contact_email'",
                 index
             ).into());
+        }
+        // Validate optional run_after_event_name if present
+        if let Some(event_name) = &plugin.run_after_event_name {
+            if event_name.trim().is_empty() {
+                return Err(format!(
+                    "Plugin at index {} has empty 'run_after_event_name'",
+                    index
+                ).into());
+            }
+        }
+
+        // Validate optional completed_event_name if present
+        if let Some(event_name) = &plugin.completed_event_name {
+            if event_name.trim().is_empty() {
+                return Err(format!(
+                    "Plugin at index {} has empty 'completed_event_name'",
+                    index
+                ).into());
+            }
         }
 
         Ok(())

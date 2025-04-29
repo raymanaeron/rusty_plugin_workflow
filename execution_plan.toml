@@ -6,6 +6,7 @@ update_path_root = "s3://my-bucket/execution_plans/"
 
 [[plugins]]
 name = "plugin_example"
+plugin_description = "This is an example plugin that does not exist"
 plugin_route = "example"
 version = "3.4"
 plugin_location_type = "s3"
@@ -15,10 +16,12 @@ engineering_contact_email = "example-eng@example.com"
 operation_contact_email = "example-ops@example.com"
 run_async = false
 visible_in_ui = true
-plugin_description = "This is an example plugin that does not exist"
+run_after_event_name = "TermsCompleted"
+completed_event_name = "ExampleCompleted"
 
 [[plugins]]
 name = "plugin_settings"
+plugin_description = "Collect device specific user settings"
 plugin_route = "settings"
 version = "1.1"
 plugin_location_type = "local"
@@ -28,4 +31,6 @@ engineering_contact_email = "kindle-settings-eng@example.com"
 operation_contact_email = "kindle-settings-ops@example.com"
 run_async = false
 visible_in_ui = true
-plugin_description = "Collect device specific user settings"
+run_after_event_name = "LoginCompleted"
+completed_event_name = "SettingsCompleted"
+

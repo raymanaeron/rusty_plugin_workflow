@@ -379,6 +379,8 @@ plugin_location_type = "local"
 plugin_base_path = "./plugins"
 run_async = true
 visible_in_ui = true
+run_after_event_name = "WelcomeCompleted"
+completed_event_name = "WifiCompleted"
 ```
 
 Each plugin is loaded from `plugin_base_path` and initialized in the same way as static plugins. Conditional loading, version pinning, or remote fetching (e.g., via S3) can be implemented with no change to engine logic.
