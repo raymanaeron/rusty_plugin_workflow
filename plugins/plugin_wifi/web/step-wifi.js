@@ -98,7 +98,7 @@ export async function activate(container, appManager) {
         resultBox.innerHTML = "";
         skipBtn.disabled = true;
         
-        // Publish skipped status
+        // Tell the engine that we are done now
         const published = appManager.publish('plugin_wifi', 'WifiCompleted', 
             { status: 'skipped' }
         );

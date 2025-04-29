@@ -24,6 +24,9 @@ cargo build --manifest-path plugins/plugin_wifi/Cargo.toml $CARGO_FLAG
 echo "Building plugin_execution..."
 cargo build --manifest-path plugins/plugin_execplan/Cargo.toml $CARGO_FLAG
 
+echo "Building plugin_login..."
+cargo build --manifest-path plugins/plugin_login/Cargo.toml $CARGO_FLAG
+
 echo "Building plugin_terms..."
 cargo build --manifest-path plugins/plugin_terms/Cargo.toml $CARGO_FLAG
 
@@ -50,6 +53,7 @@ echo "Creating plugin destination folders..."
 mkdir -p "$TARGET/welcome/web"
 mkdir -p "$TARGET/wifi/web"
 mkdir -p "$TARGET/execution/web"
+mkdir -p "$TARGET/login/web"
 mkdir -p "$TARGET/terms/web"
 mkdir -p "$TARGET/settings/web"
 mkdir -p "$TARGET/status/web"
@@ -64,6 +68,7 @@ echo "Copying plugins web folder to engine output directory..."
 rsync -a plugins/plugin_welcome/web/ "$TARGET/welcome/web/"
 rsync -a plugins/plugin_wifi/web/ "$TARGET/wifi/web/"
 rsync -a plugins/plugin_execplan/web/ "$TARGET/execution/web/"
+rsync -a plugins/plugin_login/web/ "$TARGET/login/web/"
 rsync -a plugins/plugin_terms/web/ "$TARGET/terms/web/"
 rsync -a plugins/plugin_settings/web/ "$TARGET/settings/web/"
 rsync -a plugins/plugin_status/web/ "$TARGET/status/web/"
@@ -75,6 +80,7 @@ echo "Copying plugin shared libraries to engine output directory..."
 cp "$TARGET/libplugin_welcome.dylib" "$TARGET/plugin_welcome.dylib"
 cp "$TARGET/libplugin_wifi.dylib" "$TARGET/plugin_wifi.dylib"
 cp "$TARGET/libplugin_execplan.dylib" "$TARGET/plugin_execplan.dylib"
+cp "$TARGET/libplugin_login.dylib" "$TARGET/plugin_login.dylib"
 cp "$TARGET/libplugin_terms.dylib" "$TARGET/plugin_terms.dylib"
 cp "$TARGET/libplugin_settings.dylib" "$TARGET/plugin_settings.dylib"
 cp "$TARGET/libplugin_status.dylib" "$TARGET/plugin_status.dylib"

@@ -28,3 +28,9 @@ pub static WELCOME_COMPLETED: &str = "WelcomeCompleted";
 
 /// Topic for receiving network connected messages.
 pub static WIFI_COMPLETED : &str = "WifiCompleted";
+
+/// Topic for receiving execution plan completed messages.
+pub static EXECPLAN_COMPLETED : &str = "ExecutionPlanCompleted";
+
+/// Topic for receiving login completed messages.
+pub static LOGIN_COMPLETED : &str = "LoginCompleted";

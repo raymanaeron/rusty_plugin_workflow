@@ -72,6 +72,8 @@ use websocket_manager::{
     ENGINE_WS_CLIENT,
     WELCOME_COMPLETED,
     WIFI_COMPLETED,
+    EXECPLAN_COMPLETED,
+    LOGIN_COMPLETED,
     STATUS_CHANGED,
     NETWORK_CONNECTED,
     SWITCH_ROUTE,
@@ -173,6 +175,7 @@ pub async fn create_ws_engine_client() {
     }
 
     // Subscribe to WELCOME_COMPLETED topic
+    // Route next to /wifi/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let client_for_welcome = client_arc.clone();
         {
@@ -195,6 +198,7 @@ pub async fn create_ws_engine_client() {
     }
 
     // Subscribe to WIFI_COMPLETED topic
+    // Route next to /execution/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let client_for_wifi = client_arc.clone();
         {
@@ -211,6 +215,52 @@ pub async fn create_ws_engine_client() {
                     "engine",
                     SWITCH_ROUTE,
                     "/execution/web",
+                ));
+            });
+        }
+    }
+
+    // Subscribe to EXECPLAN_COMPLETED topic
+    // Route next to /login/web
+    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+        let client_for_execplan = client_arc.clone();
+        {
+            let mut client = client_arc.lock().unwrap();
+            client.subscribe("engine_subscriber", EXECPLAN_COMPLETED, "").await;
+            log_debug!("Engine, subscribed to EXECPLAN_COMPLETED", None);
+
+            client.on_message(EXECPLAN_COMPLETED, move |msg| {
+                log_debug!("[engine] => EXECPLAN_COMPLETED: {}", Some(msg.to_string()));
+
+                // Call the reusable function
+                tokio::spawn(publish_ws_message(
+                    client_for_execplan.clone(),
+                    "engine",
+                    SWITCH_ROUTE,
+                    "/login/web",
+                ));
+            });
+        }
+    }
+
+    // Subscribe to LOGIN_COMPLETED topic
+    // Route next to /status/web
+    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+        let client_for_login = client_arc.clone();
+        {
+            let mut client = client_arc.lock().unwrap();
+            client.subscribe("engine_subscriber", LOGIN_COMPLETED, "").await;
+            log_debug!("Engine, subscribed to UserCompleted", None);
+
+            client.on_message(LOGIN_COMPLETED, move |msg| {
+                log_debug!("[engine] => LOGIN_COMPLETED: {}", Some(msg.to_string()));
+
+                // Call the reusable function
+                tokio::spawn(publish_ws_message(
+                    client_for_login.clone(),
+                    "engine",
+                    SWITCH_ROUTE,
+                    "/status/web",
                 ));
             });
         }
@@ -378,6 +428,7 @@ pub async fn start_server_async() {
         ("plugin_welcome", "continue=false"),
         ("plugin_wifi", "connected=false"),
         ("plugin_execplan", "hasupdate=true"),
+        ("plugin_login", "isloggedin=false"),
         ("plugin_terms", "accepted=false"),
         ("plugin_status", "statusmessage=none"),
         ("plugin_task_agent_headless", "runworkflow=false"),

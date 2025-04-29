@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication Callback</title>
+  <script>
+    // This page is the OAuth redirect target
+    // It will extract tokens from the URL and pass them back to the parent window
+    window.onload = function() {
+      // Parse URL parameters or hash fragment
+      const params = new URLSearchParams(
+        window.location.hash 
+          ? window.location.hash.substring(1) 
+          : window.location.search
+      );
+      
+      // Redirect back to the login page with the token
+      if (window.opener) {
+        // If opened in a popup, send message to parent
+        window.opener.postMessage({
+          source: 'amazon-login',
+          payload: Object.fromEntries(params)
+        }, '*');
+        window.close();
+      } else {
+        // If not a popup, redirect
+        window.location.href = '/login/web?' + params.toString();
+      }
+    };
+  </script>
+</head>
+<body>
+  <div style="text-align: center; margin-top: 50px;">
+    <p>Authentication in progress...</p>
+  </div>
+</body>
+</html>

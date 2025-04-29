@@ -283,6 +283,38 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                 }
             }
 
+            // In the handle_request function, add a new route for validating Amazon tokens:
+            HttpMethod::Post if resource_path == "user/validate-amazon" => {
+                let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
+                if let Ok(auth_data) = serde_json::from_slice::<AmazonAuthData>(body) {
+                    // Validate the Amazon token
+                    // In a real implementation, you'd verify the token with Amazon's API
+                    
+                    // For this example, we'll simulate validation
+                    let user = User {
+                        id: format!("amzn_{}", auth_data.user_profile.user_id),
+                        field1: auth_data.user_profile.name.clone(),
+                        field2: true,
+                    };
+                    
+                    // Store the user in our state
+                    let mut state = STATE.lock().unwrap();
+                    state.insert(user.id.clone(), user.clone());
+                    
+                    // Return success
+                    json_response(200, &serde_json::to_string(&user).unwrap())
+                } else {
+                    error_response(400, "Invalid auth data")
+                }
+            }
+
+            // And add a session check endpoint:
+            HttpMethod::Get if resource_path == "user/session" => {
+                // In a real implementation, you would validate a session token
+                // For this example, we'll return a dummy response
+                json_response(200, r#"{"authenticated": false, "userName": null}"#)
+            }
+
             _ => method_not_allowed_response(request.method, request.path),
         }
     }
@@ -301,3 +333,17 @@ declare_plugin!(
     handle_request,
     cleanup
 );
+
+// Add a new struct for Amazon auth data
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct AmazonUserProfile {
+    user_id: String,
+    name: String,
+    email: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct AmazonAuthData {
+    access_token: String,
+    user_profile: AmazonUserProfile,
+}

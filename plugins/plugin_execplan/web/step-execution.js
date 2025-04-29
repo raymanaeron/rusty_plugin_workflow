@@ -3,9 +3,8 @@ export async function activate(container, appManager) {
     console.log('Plugin activated: plugin_execplan');
     const statusContent = container.querySelector('#statusContent');
     const continueBtn = container.querySelector('#continueBtn');
-    // Spinner element (assume only one spinner in the container)
     const spinner = container.querySelector('.spinner-border');
-    // Add a placeholder for the done icon
+
     let doneIcon = null;
 
     // Status messages to display
@@ -50,7 +49,26 @@ export async function activate(container, appManager) {
         }
     }
     updateStatus();
-
+    
+    // Continue button click handler
+    if (continueBtn) {
+        continueBtn.addEventListener('click', () => {
+            // Publish completion event
+            const published = appManager.publish('plugin_execplan', 'ExecutionPlanCompleted', 
+                { status: 'completed' }
+            );
+            
+            if (published) {
+                console.log("[plugin_execplan] Completion status published");
+                statusContent.innerHTML = '<div class="alert alert-success">Setup complete! Redirecting...</div>';
+                continueBtn.disabled = true;
+            } else {
+                console.warn("[plugin_execplan] Completion publish failed");
+                statusContent.innerHTML = '<div class="alert alert-warning">Failed to complete. Please try again.</div>';
+            }
+        });
+    }
+    
     // Return cleanup function at module level
     return () => {
         appManager.unregisterPlugin('plugin_execplan');

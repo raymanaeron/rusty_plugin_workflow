@@ -1,0 +1,17 @@
+/* Login plugin styles */
+.login-view {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+#amazon-login-button {
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
