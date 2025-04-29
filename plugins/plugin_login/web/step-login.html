@@ -1,36 +1,38 @@
 <div class="plugin-section">
-  <h5 class="plugin-title">{{plugin_route | capitalize}} Setup</h5>
-  
-  <div class="row mb-3 align-items-center">
-    <div class="col-auto">
-      <button id="actionBtn" class="btn btn-outline-primary">
-        <img src="/login/web/icons/action-icon.svg" alt="Action" style="height:1.5em;width:auto;vertical-align:middle;">
-      </button>
+  <h5 class="plugin-title">Sign in</h5>
+  <div class="flex-grow-1 d-flex flex-column align-items-center">
+    <!-- Card docked at top, full width, fixed height, with minimal Bootstrap shadow -->
+    <div class="card w-100 mb-3 shadow-sm" style="height: 320px; border-radius: 0; margin-top: 0;">
+      <div style="margin: 30px;">
+        <!-- Username/email address -->
+        <div class="mb-3 w-100">
+          <label for="inputUsername" class="form-label">Username or Email</label>
+          <input type="text" class="form-control" id="inputUsername" autocomplete="username"
+            placeholder="Enter username or email">
+        </div>
+        <!-- Password -->
+        <div class="mb-3 w-100">
+          <label for="inputPassword" class="form-label">Password</label>
+          <input type="password" class="form-control" id="inputPassword" autocomplete="current-password"
+            placeholder="Enter password">
+        </div>
+        <!-- Clear and Submit buttons stretched to the width of the view but have about 15px gap in between them-->
+        <div class="d-flex w-100 mb-3 mx-auto" style="gap: 15px;">
+          <button id="clearBtn" type="button" class="btn btn-outline-secondary flex-fill">Clear</button>
+          <button id="submitBtn" type="button" class="btn btn-primary flex-fill">Submit</button>
+        </div>
+        <!-- Status message -->
+        <div id="statusContent" class="mb-4 text-center w-100" style="min-height: 24px;">
+          Please enter your credentials to sign in.
+        </div>
+      </div>
+
+      <div class="w-100 text-center mb-3" style="max-width: 500px; margin-left: auto; margin-right: auto;">
+        <a href="#" id="forgotPasswordLink">Forgot Password</a>
+        <span class="mx-2">|</span>
+        <a href="#" id="signUpLink">Sign Up</a>
+      </div>
     </div>
-    <div class="col text-muted" id="statusContent"></div>
   </div>
-  
-  <div class="mb-4">
-    <label for="itemListBox" class="form-label fw-semibold">Available Items</label>
-    <ul id="itemListBox"
-        class="list-group shadow-sm"
-        style="min-height: 10em; max-height: 16em; width: 100%; overflow-y: auto;">
-      <li class="list-group-item text-muted">-- Choose an item --</li>
-    </ul>
-    <input type="hidden" id="selectedItem" />
-    <div class="form-text">Tap to select an item. Scroll for more.</div>
-  </div>
-  
-  <div class="mb-4">
-    <label for="inputValue" class="form-label fw-semibold">Input Value</label>
-    <input type="text" id="inputValue" class="form-control shadow-sm" placeholder="Enter value" />
-  </div>
-  
-  <div class="mt-4 d-flex" style="gap: 15px;">
-    <button id="skipBtn" class="btn btn-secondary flex-grow-1">Skip</button>
-    <button id="continueBtn" class="btn btn-primary flex-grow-1">Continue</button>
-  </div>
-  
-  <div id="resultBox" class="mt-4 text-center"></div>
 </div>
 <script type="module" src="./step-login.js"></script>

@@ -5,10 +5,10 @@ export async function activate(container, appManager) {
     
     // Get UI elements
     const statusContent = container.querySelector('#statusContent');
-    const actionBtn = container.querySelector('#actionBtn');
-    const skipBtn = container.querySelector('#skipBtn');
-    const continueBtn = container.querySelector('#continueBtn');
-    const resultBox = container.querySelector('#resultBox');
+    const submitBtn = container.querySelector('#submitBtn');
+    const clearBtn = container.querySelector('#clearBtn');
+    const forgotPasswordLink = container.querySelector('#forgotPasswordLink');
+    const signUpLink = container.querySelector('#signUpLink');
     
     // Example: GET data from API
     async function getData() {
@@ -97,50 +97,38 @@ export async function activate(container, appManager) {
         }
     }
     
-    // Example: Action button handler
-    if (actionBtn) {
-        actionBtn.addEventListener('click', async () => {
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            // Clear the status content
+            // Clear username and password fields
+            const usernameField = container.querySelector('#inputUsername');
+            const passwordField = container.querySelector('#inputPassword');
+            if (usernameField) usernameField.value = '';
+            if (passwordField) passwordField.value = '';
+            if (statusContent) statusContent.innerHTML = '';
+        });
+    }
+
+    if (submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+            // Get values from input fields
+            const usernameField = container.querySelector('#usernameField');
+            const passwordField = container.querySelector('#passwordField');
+            const username = usernameField ? usernameField.value : '';
+            const password = passwordField ? passwordField.value : '';
+
+            // Example: POST data to API
             try {
-                resultBox.innerHTML = '<div class="alert alert-info">Processing...</div>';
-                const result = await getData();
-                resultBox.innerHTML = '<div class="alert alert-success">Action completed!</div>';
+                const payload = { username, password };
+                const response = await postData(payload);
+                statusContent.innerHTML = `Login successful: ${response.message}`;
             } catch (error) {
-                resultBox.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+                statusContent.innerHTML = `Login failed: ${error.message}`;
             }
-        });
-    }
-    
-    // Example: Skip button handler
-    if (skipBtn) {
-        skipBtn.addEventListener('click', async () => {
-            // Publish via connection manager using CamelCased event topic
-            const published = appManager.publish('plugin_login', 'UserprofileCompleted', 
-                { status: 'skipped' }
-            );
-            
-            if (published) {
-                console.log("[plugin_login] Skip status published");
-                resultBox.innerHTML = '<div class="alert alert-info">Setup skipped. Redirecting...</div>';
-            } else {
-                console.warn("[plugin_login] Skip publish failed");
-                resultBox.innerHTML = '<div class="alert alert-warning">Failed to publish skip status</div>';
-            }
-        });
-    }
-    
-    // Example: Continue button handler
-    if (continueBtn) {
-        continueBtn.addEventListener('click', async () => {
-            // Publish completion event using CamelCased event topic
-            const published = appManager.publish('plugin_login', 'UserprofileCompleted', 
+
+            const published = appManager.publish('plugin_login', 'LoginCompleted', 
                 { status: 'completed' }
             );
-            
-            if (published) {
-                console.log("[plugin_login] Completion status published");
-            } else {
-                console.warn("[plugin_login] Completion publish failed");
-            }
         });
     }
 

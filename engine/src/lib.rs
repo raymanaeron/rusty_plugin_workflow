@@ -250,7 +250,7 @@ pub async fn create_ws_engine_client() {
         {
             let mut client = client_arc.lock().unwrap();
             client.subscribe("engine_subscriber", LOGIN_COMPLETED, "").await;
-            log_debug!("Engine, subscribed to UserCompleted", None);
+            log_debug!("Engine, subscribed to LOGIN_COMPLETED", None);
 
             client.on_message(LOGIN_COMPLETED, move |msg| {
                 log_debug!("[engine] => LOGIN_COMPLETED: {}", Some(msg.to_string()));
