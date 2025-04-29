@@ -1,52 +1,19 @@
-<div class="container mt-4">
-  <h2>Device Settings</h2>
-  
-  <form id="settingsForm" class="mt-4">
-      <div class="mb-3">
-          <label for="timezone" class="form-label">Timezone</label>
-          <select class="form-select" id="timezone">
-              <option value="UTC">UTC</option>
-              <option value="America/New_York">Eastern Time</option>
-              <option value="America/Chicago">Central Time</option>
-              <option value="America/Denver">Mountain Time</option>
-              <option value="America/Los_Angeles">Pacific Time</option>
-          </select>
-      </div>
+<div class="plugin-section">
+    <h5 class="plugin-title">Device Settings</h5>
+    <div class="flex-grow-1 d-flex flex-column align-items-center">
+        <!-- Card docked at top, full width, fixed height, with minimal Bootstrap shadow -->
+        <div class="card w-100 mb-3 shadow-sm" style="height: 320px; border-radius: 0; margin-top: 0;">
+            <div style="margin: 30px;">
 
-      <div class="mb-3">
-          <label for="language" class="form-label">Language</label>
-          <select class="form-select" id="language">
-              <option value="en-US">English (US)</option>
-              <option value="es-ES">Español</option>
-              <option value="fr-FR">Français</option>
-              <option value="de-DE">Deutsch</option>
-          </select>
-      </div>
 
-      <div class="mb-3 form-check form-switch">
-          <input type="checkbox" class="form-check-input" id="metricsEnabled">
-          <label class="form-check-label" for="metricsEnabled">Enable Metrics Collection</label>
-      </div>
 
-      <div class="mb-3 form-check form-switch">
-          <input type="checkbox" class="form-check-input" id="copySettings">
-          <label class="form-check-label" for="copySettings">Copy Settings to Other Devices</label>
-      </div>
-
-      <div class="mb-3">
-          <label for="theme" class="form-label">Theme</label>
-          <select class="form-select" id="theme">
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="auto">System Default</option>
-          </select>
-      </div>
-
-      <div class="mt-4">
-          <button type="submit" class="btn btn-primary" id="submitBtn">Save Settings</button>
-          <button type="button" class="btn btn-secondary ms-2" id="clearBtn">Clear</button>
-      </div>
-  </form>
-
-  <div id="statusMessage" class="alert mt-3" style="display: none;"></div>
+                <!-- Clear and Submit buttons stretched to the width of the view but have about 15px gap in between them-->
+                <div class="d-flex w-100 mb-3 mx-auto" style="gap: 15px;">
+                    <button id="clearBtn" type="button" class="btn btn-outline-secondary flex-fill">Reset</button>
+                    <button id="submitBtn" type="button" class="btn btn-primary flex-fill">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+<script type="module" src="./step-settings.js"></script>
