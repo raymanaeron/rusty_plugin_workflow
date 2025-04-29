@@ -86,7 +86,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
         match request.method {
             HttpMethod::Get if path == "welcomemessage" => {
-                let json = r#"{"message": "Welcome to generic device. Let's setup this device."}"#;
+                let json = r#"{"message": "Welcome. We will guide you through a quick setup so you can immediately explore everything this device offers."}"#;
                 json_response(200, &json)
             }
 

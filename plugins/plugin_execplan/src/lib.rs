@@ -44,12 +44,12 @@ fn on_load() {
 pub async fn create_ws_plugin_client() {
     if let Ok(client) = WsClient::connect("plugin_execplan", "ws://127.0.0.1:8081/ws").await {
         let client = Arc::new(Mutex::new(client));
-        
+        /*
         if let Ok(mut ws_client) = client.lock() {
-            ws_client.subscribe("plugin_execplan", "BluePrinttUpdated", "").await;
-            println!("[plugin_execplan] Subscribed to BluePrintUpdated");
+            //ws_client.subscribe("plugin_execplan", "BluePrinttUpdated", "").await;
+            //println!("[plugin_execplan] Subscribed to BluePrintUpdated");
         }
-        
+        */
         unsafe {
             PLUGIN_WS_CLIENT = Some(client);
         }
