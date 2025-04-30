@@ -20,10 +20,20 @@
                         padding-top: 0.5rem;
                         padding-bottom: 0.5rem;
                     }
+                    /* Darker section header border */
+                    .section-header {
+                        border-bottom: 2px solid #343a40 !important;
+                    }
+                    .settings-container {
+                        overflow: auto;
+                        margin: 10px;
+                        padding-left: 8px;
+                        padding-right: 8px;
+                    }
                 </style>
                 <div class="settings-container overflow-auto" style="margin: 10px;">
                     <!-- General Section -->
-                    <h6 class="border-bottom pb-2 mb-3">General</h6>
+                    <h6 class="section-header pb-2 mb-3"><b>General</b></h6>
                     <div class="mb-3">
                         <label for="deviceName" class="form-label">Device Name</label>
                         <input type="text" class="form-control" id="deviceName">
@@ -84,7 +94,7 @@
                     </div>
 
                     <!-- Echo Section -->
-                    <h6 class="border-bottom pb-2 mb-3 mt-4">Echo</h6>
+                    <h6 class="section-header pb-2 mb-3 mt-4"><b>Echo</b></h6>
                     <div class="mb-3">
                         <label for="wakeWord" class="form-label">Wake Word</label>
                         <input type="text" class="form-control" id="wakeWord" value="Alexa">
@@ -107,7 +117,7 @@
                     </div>
 
                     <!-- Automation Section -->
-                    <h6 class="border-bottom pb-2 mb-3 mt-4">Automation</h6>
+                    <h6 class="section-header pb-2 mb-3 mt-4"><b>Automation</b></h6>
                     <div class="mb-3 form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="frustrationFreeAutomation">
                         <label class="form-check-label" for="frustrationFreeAutomation">Enable Frustration Free Automation</label>
