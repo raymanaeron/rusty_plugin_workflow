@@ -411,6 +411,14 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                             let plugin_route = plugin.plugin_route.clone();
                             let run_after_event_name_owned = Box::leak(Box::new(run_after_event_name.to_string())).as_str();
                             let route = Box::leak(format!("{}/web", plugin_route).into_boxed_str());
+
+                            log_debug!(format!(
+                                "Plugin name: {} - run_after_event_name: {}, route: {} from execution plan",
+                                plugin.name.clone(),
+                                run_after_event_name,
+                                route
+                            ).as_str());
+
                             if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
                                 // Call the async function and detach, don't spawn or block here
                                 let _ = subscribe_and_handle(
