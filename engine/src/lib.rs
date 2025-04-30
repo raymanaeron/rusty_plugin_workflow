@@ -396,6 +396,7 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                         // This code determines which plugin should be loaded after the login event
                         // We search for plugins configured to run after LoginCompleted
                         // The selected plugin's route will be used for navigation after login
+                        // We hardocded the LoginCompleted event becuase it is a system event
                         if run_after_event_name == "LoginCompleted" {
                             log_debug!(
                                 format!(
@@ -408,28 +409,16 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                             );
                         } else {
                             let plugin_route = plugin.plugin_route.clone();
-                            let route = format!("{}/web", plugin_route);
-
-                            log_debug!(
-                                format!(
-                                    "Plugin name: {} - run_after_event_name: {} - route: {} from execution plan",
-                                    plugin.name.clone(),
-                                    run_after_event_name,
-                                    route.as_str()
-                                ).as_str()
-                            );
-
-                            /*
+                            let run_after_event_name_owned = Box::leak(Box::new(run_after_event_name.to_string())).as_str();
+                            let route = Box::leak(format!("{}/web", plugin_route).into_boxed_str());
                             if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-                                let rt = tokio::runtime::Handle::current();
-                                rt.block_on(
-                                    subscribe_and_handle(
-                                        client_arc.clone(),
-                                        run_after_event_name,
-                                        route.as_str()
-                                    )
+                                // Call the async function and detach, don't spawn or block here
+                                let _ = subscribe_and_handle(
+                                    client_arc.clone(),
+                                    run_after_event_name_owned,
+                                    route
                                 );
-                            }*/
+                            }
                         }
                     }
 
