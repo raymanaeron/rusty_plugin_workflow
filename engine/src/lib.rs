@@ -40,26 +40,26 @@
 //! ```
 
 // Standard library imports
-use std::{ net::SocketAddr, sync::{ Arc, Mutex } };
-use std::fs;
-use std::path::PathBuf;
-use std::ffi::CString;
-use std::time::Duration;
+use std::{ net::SocketAddr, sync::{ Arc, Mutex } };  // For network sockets and thread-safe shared state
+use std::fs;                                        // For file system operations
+use std::path::PathBuf;                             // For path manipulation
+use std::ffi::CString;                              // For C-compatible strings used in FFI
+use std::time::Duration;                            // For time-based operations
 
 // Async runtime imports
-use tokio::net::TcpListener;
+use tokio::net::TcpListener;                        // For asynchronous TCP socket listening
 
 // Web framework imports
-use axum::Router;
-use axum::routing::{ any, get };
-use axum::response::Response;
-use axum::body::Body;
-use axum::http::StatusCode;
+use axum::Router;                                   // For HTTP routing
+use axum::routing::{ any, get };                    // For route handler definitions
+use axum::response::Response;                       // For HTTP responses
+use axum::body::Body;                               // For HTTP body content
+use axum::http::StatusCode;                         // For HTTP status codes
 
-use once_cell::sync::Lazy;
+use once_cell::sync::Lazy;                          // For thread-safe lazy-initialized statics
 
-use liblogger::{ Logger, log_info, log_warn, log_error, log_debug };
-use liblogger_macros::*;
+use liblogger::{ Logger, log_info, log_warn, log_error, log_debug }; // Logging utilities
+use liblogger_macros::*;                            // Logging macro extensions
 
 // Local module declarations
 mod router_manager;
