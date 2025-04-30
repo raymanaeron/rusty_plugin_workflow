@@ -115,7 +115,7 @@ fn initialize_custom_logger() {
         Ok(_) => log_info!("Logger successfully initialized from config file"),
         Err(e) => {
             // Something went wrong with the config file
-            log_debug!("Error initializing logger from config: {}", Some(e.to_string()));
+            log_debug!(format!("Error initializing logger from config: {}", e.to_string()).as_str());
             // Fall back to console logging
             Logger::init();
             log_error!("Failed to initialize file logger, falling back to console");
@@ -155,19 +155,14 @@ async fn subscribe_and_handle(
     {
         let mut client = client_arc.lock().unwrap();
         client.subscribe("engine_subscriber", topic, "").await;
-        log_debug!("Engine, subscribed to {}", Some(topic.to_string()));
+        log_debug!(format!("Engine, subscribed to {}", topic).as_str());
 
         client.on_message(topic, move |_msg| {
-            log_debug!("[engine] => {}: received", Some(topic.to_string()));
+            log_debug!(format!("[engine] => {}: received", topic).as_str());
 
             // Call the reusable function
             tokio::spawn(
-                publish_ws_message(
-                    client_for_topic.clone(),
-                    "engine",
-                    SWITCH_ROUTE,
-                    route
-                )
+                publish_ws_message(client_for_topic.clone(), "engine", SWITCH_ROUTE, route)
             );
         });
     }
@@ -193,10 +188,8 @@ pub async fn create_ws_engine_client() {
             }
             Err(e) => {
                 retries += 1;
-                log_debug!(
-                    "Failed to connect WsClient (attempt {}/{}) : {}",
-                    Some(format!("{} {} {}", retries, MAX_RETRIES, e.to_string()))
-                );
+                log_debug!(format!("Failed to connect WsClient (attempt {}/{}) : {}", 
+                    retries, MAX_RETRIES, e.to_string()).as_str());
                 if retries < MAX_RETRIES {
                     tokio::time::sleep(Duration::from_millis(500)).await;
                 }
@@ -208,17 +201,15 @@ pub async fn create_ws_engine_client() {
     let client = match client {
         Some(c) => c,
         None => {
-            log_error!(
-                "Failed to connect to WebSocket server after {} attempts. Exiting.",
-                Some(MAX_RETRIES.to_string())
-            );
+            log_error!(format!("Failed to connect to WebSocket server after {} attempts. Exiting.", 
+                MAX_RETRIES).as_str());
             return;
         }
     };
 
     // Store the WebSocket client in the static variable.
     if ENGINE_WS_CLIENT.set(Arc::new(Mutex::new(client))).is_err() {
-        log_debug!("Failed to set ENGINE_WS_CLIENT: already initialized", None);
+        log_debug!("Failed to set ENGINE_WS_CLIENT: already initialized");
         return;
     }
 
@@ -228,10 +219,10 @@ pub async fn create_ws_engine_client() {
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let mut client = client_arc.lock().unwrap();
         client.subscribe("engine_subscriber", SWITCH_ROUTE, "").await;
-        log_debug!("Engine, subscribed to SWITCH_ROUTE", None);
+        log_debug!("Engine, subscribed to SWITCH_ROUTE");
 
         client.on_message(SWITCH_ROUTE, |msg| {
-            log_debug!("[engine] => SWITCH_ROUTE: {}", Some(msg.to_string()));
+            log_debug!(format!("[engine] => SWITCH_ROUTE: {}", msg).as_str());
         });
     }
 
@@ -260,10 +251,10 @@ pub async fn create_ws_engine_client() {
         {
             let mut client = client_arc.lock().unwrap();
             client.subscribe("engine_subscriber", LOGIN_COMPLETED, "").await;
-            log_debug!("Engine, subscribed to LOGIN_COMPLETED", None);
+            log_debug!("Engine, subscribed to LOGIN_COMPLETED");
 
             client.on_message(LOGIN_COMPLETED, move |msg| {
-                log_debug!("[engine] => LOGIN_COMPLETED: {}", Some(msg.to_string()));
+                log_debug!(format!("[engine] => LOGIN_COMPLETED: {}", msg).as_str());
 
                 // Call the reusable function
                 tokio::spawn(
@@ -312,10 +303,8 @@ pub async fn publish_ws_message(
                 let _ = rt.block_on(
                     client.publish(&client_name, &topic_name, &payload, &timestamp)
                 );
-                log_debug!(
-                    "engine, published {} '{}' to topic '{}'",
-                    Some(format!("{} '{}' {}", client_name, payload, topic_name))
-                );
+                log_debug!(format!("engine, published {} '{}' to topic '{}'", 
+                    client_name, payload, topic_name).as_str());
             }
         }).await
         .ok();
@@ -347,10 +336,8 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                         PlanLoadSource::Remote(_) => "remote",
                         PlanLoadSource::LocalFallback(_) => "local fallback",
                     };
-                    log_debug!(
-                        "Execution plan [{}] loaded with {} plugins",
-                        Some(format!("{} {}", plan_type, plan.plugins.len()))
-                    );
+                    log_debug!(format!("Execution plan [{}] loaded with {} plugins", 
+                        plan_type, plan.plugins.len()).as_str());
 
                     // Log details for each plugin in the execution plan
                     for (idx, plugin) in plan.plugins.iter().enumerate() {
@@ -384,38 +371,36 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                             completed_event_name
                         );
 
-                        log_debug!("{}", Some(plugin_details));
+                        log_debug!(plugin_details.as_str());
 
                         // This code determines which plugin should be loaded after the login event
                         // We search for plugins configured to run after LoginCompleted
                         // The selected plugin's route will be used for navigation after login
                         if run_after_event_name == "LoginCompleted" {
-                            log_debug!(
-                                "Plugin name: {} - LoginCompleted event found in execution plan",
-                                Some(plugin.name.clone())
-                            );
+                            log_debug!(format!("Plugin name: {} - LoginCompleted event found in execution plan", 
+                                plugin.name.clone()).as_str());
                             *ROUTE_AFTER_LOGIN.lock().unwrap() = Box::leak(
                                 (plugin.plugin_route.clone() + "/web").into_boxed_str()
                             );
                         } else {
-                            let plugin_info = format!("Plugin name: {} - run_after_event_name: {} from execution plan", 
+                            log_debug!(format!(
+                                "Plugin name: {} - run_after_event_name: {} from execution plan",
                                 plugin.name.clone(),
                                 run_after_event_name
-                            );
-                            log_debug!("{}", Some(plugin_info));
+                            ).as_str());
                         }
                     }
 
                     Some((plan_status, plan.plugins))
                 }
                 Err(e) => {
-                    log_debug!("Failed to parse execution plan: {}", Some(e.to_string()));
+                    log_debug!(format!("Failed to parse execution plan: {}", e.to_string()).as_str());
                     None
                 }
             }
         }
         Err(e) => {
-            log_debug!("Failed to resolve execution plan: {}", Some(e.to_string()));
+            log_debug!(format!("Failed to resolve execution plan: {}", e.to_string()).as_str());
             None
         }
     }
@@ -439,10 +424,7 @@ fn load_and_register(
             lib_holder.push(lib); // retain library to avoid drop
         }
         Err(e) =>
-            log_debug!(
-                "Failed to load plugin from {}: {}",
-                Some(format!("{} {}", path.display(), e))
-            ),
+            log_debug!(format!("Failed to load plugin from {}: {}", path.display(), e).as_str()),
     }
 }
 
@@ -513,10 +495,10 @@ pub async fn start_server_async() {
     ];
 
     for (plugin_name, params) in plugins_to_load {
-        log_debug!(&format!("Loading the {} plugin", plugin_name));
+        log_debug!(format!("Loading the {} plugin", plugin_name).as_str());
 
         if let Some(plugin) = plugin_manager.load_plugin(plugin_name, params) {
-            log_debug!(&format!("Registered {}", plugin_name));
+            log_debug!(format!("Registered {}", plugin_name).as_str());
 
             // Special handling for task_agent_headless post-load setup
             if plugin_name == "plugin_task_agent_headless" {
@@ -525,10 +507,10 @@ pub async fn start_server_async() {
                     let mut client = client_arc.lock().unwrap();
 
                     client.subscribe("engine_subscriber", NETWORK_CONNECTED, "").await;
-                    log_debug!("Engine, subscribed to NETWORK_CONNECTED", None);
+                    log_debug!("Engine, subscribed to NETWORK_CONNECTED");
 
                     client.on_message(NETWORK_CONNECTED, move |msg| {
-                        log_debug!("[engine] => NETWORK_CONNECTED: {}", Some(msg.to_string()));
+                        log_debug!(format!("[engine] => NETWORK_CONNECTED: {}", msg).as_str());
 
                         if let Some(run_workflow_fn) = task_agent.run_workflow {
                             let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
@@ -554,7 +536,7 @@ pub async fn start_server_async() {
                 }
             }
         } else {
-            log_debug!(&format!("Failed to load {}", plugin_name));
+            log_debug!(format!("Failed to load {}", plugin_name).as_str());
             return;
         }
     }
@@ -564,10 +546,10 @@ pub async fn start_server_async() {
     // Move plugin libraries to holder
     plugin_libraries.extend(plugin_manager.get_plugin_libraries().drain(..));
 
-    log_debug!("Loading the execution plan", None);
+    log_debug!("Loading the execution plan");
 
     let Some((plan_status, plugins)) = run_exection_plan_updater() else {
-        log_debug!("Execution plan loading failed. Cannot continue.", None);
+        log_debug!("Execution plan loading failed. Cannot continue.");
         return;
     };
 
@@ -583,18 +565,13 @@ pub async fn start_server_async() {
                     PlanLoadSource::LocalFallback(_) => "local fallback plan",
                 };
 
-                log_debug!(
+                log_debug!(format!(
                     "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
-                    Some(
-                        format!(
-                            "{} {} {} {}",
-                            plugin_meta.name,
-                            plugin_meta.plugin_location_type,
-                            source,
-                            e
-                        )
-                    )
-                );
+                    plugin_meta.name,
+                    plugin_meta.plugin_location_type,
+                    source,
+                    e
+                ).as_str());
             }
         }
     }
@@ -654,7 +631,7 @@ pub async fn start_server_async() {
     };
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-    log_debug!("Listening at http://{}", Some(addr.to_string()));
+    log_debug!(format!("Listening at http://{}", addr).as_str());
 
     let listener = TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
