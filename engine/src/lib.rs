@@ -40,26 +40,26 @@
 //! ```
 
 // Standard library imports
-use std::{ net::SocketAddr, sync::{ Arc, Mutex } };  // For network sockets and thread-safe shared state
-use std::fs;                                        // For file system operations
-use std::path::PathBuf;                             // For path manipulation
-use std::ffi::CString;                              // For C-compatible strings used in FFI
-use std::time::Duration;                            // For time-based operations
+use std::{ net::SocketAddr, sync::{ Arc, Mutex } }; // For network sockets and thread-safe shared state
+use std::fs; // For file system operations
+use std::path::PathBuf; // For path manipulation
+use std::ffi::CString; // For C-compatible strings used in FFI
+use std::time::Duration; // For time-based operations
 
 // Async runtime imports
-use tokio::net::TcpListener;                        // For asynchronous TCP socket listening
+use tokio::net::TcpListener; // For asynchronous TCP socket listening
 
 // Web framework imports
-use axum::Router;                                   // For HTTP routing
-use axum::routing::{ any, get };                    // For route handler definitions
-use axum::response::Response;                       // For HTTP responses
-use axum::body::Body;                               // For HTTP body content
-use axum::http::StatusCode;                         // For HTTP status codes
+use axum::Router; // For HTTP routing
+use axum::routing::{ any, get }; // For route handler definitions
+use axum::response::Response; // For HTTP responses
+use axum::body::Body; // For HTTP body content
+use axum::http::StatusCode; // For HTTP status codes
 
-use once_cell::sync::Lazy;                          // For thread-safe lazy-initialized statics
+use once_cell::sync::Lazy; // For thread-safe lazy-initialized statics
 
 use liblogger::{ Logger, log_info, log_warn, log_error, log_debug }; // Logging utilities
-use liblogger_macros::*;                            // Logging macro extensions
+use liblogger_macros::*; // Logging macro extensions
 
 // Local module declarations
 mod router_manager;
@@ -115,7 +115,9 @@ fn initialize_custom_logger() {
         Ok(_) => log_info!("Logger successfully initialized from config file"),
         Err(e) => {
             // Something went wrong with the config file
-            log_debug!(format!("Error initializing logger from config: {}", e.to_string()).as_str());
+            log_debug!(
+                format!("Error initializing logger from config: {}", e.to_string()).as_str()
+            );
             // Fall back to console logging
             Logger::init();
             log_error!("Failed to initialize file logger, falling back to console");
@@ -188,8 +190,14 @@ pub async fn create_ws_engine_client() {
             }
             Err(e) => {
                 retries += 1;
-                log_debug!(format!("Failed to connect WsClient (attempt {}/{}) : {}", 
-                    retries, MAX_RETRIES, e.to_string()).as_str());
+                log_debug!(
+                    format!(
+                        "Failed to connect WsClient (attempt {}/{}) : {}",
+                        retries,
+                        MAX_RETRIES,
+                        e.to_string()
+                    ).as_str()
+                );
                 if retries < MAX_RETRIES {
                     tokio::time::sleep(Duration::from_millis(500)).await;
                 }
@@ -201,8 +209,9 @@ pub async fn create_ws_engine_client() {
     let client = match client {
         Some(c) => c,
         None => {
-            log_error!(format!("Failed to connect to WebSocket server after {} attempts. Exiting.", 
-                MAX_RETRIES).as_str());
+            log_error!(
+                format!("Failed to connect to WebSocket server after {} attempts. Exiting.", MAX_RETRIES).as_str()
+            );
             return;
         }
     };
@@ -303,8 +312,14 @@ pub async fn publish_ws_message(
                 let _ = rt.block_on(
                     client.publish(&client_name, &topic_name, &payload, &timestamp)
                 );
-                log_debug!(format!("engine, published {} '{}' to topic '{}'", 
-                    client_name, payload, topic_name).as_str());
+                log_debug!(
+                    format!(
+                        "engine, published {} '{}' to topic '{}'",
+                        client_name,
+                        payload,
+                        topic_name
+                    ).as_str()
+                );
             }
         }).await
         .ok();
@@ -336,8 +351,13 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                         PlanLoadSource::Remote(_) => "remote",
                         PlanLoadSource::LocalFallback(_) => "local fallback",
                     };
-                    log_debug!(format!("Execution plan [{}] loaded with {} plugins", 
-                        plan_type, plan.plugins.len()).as_str());
+                    log_debug!(
+                        format!(
+                            "Execution plan [{}] loaded with {} plugins",
+                            plan_type,
+                            plan.plugins.len()
+                        ).as_str()
+                    );
 
                     // Log details for each plugin in the execution plan
                     for (idx, plugin) in plan.plugins.iter().enumerate() {
@@ -377,24 +397,48 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                         // We search for plugins configured to run after LoginCompleted
                         // The selected plugin's route will be used for navigation after login
                         if run_after_event_name == "LoginCompleted" {
-                            log_debug!(format!("Plugin name: {} - LoginCompleted event found in execution plan", 
-                                plugin.name.clone()).as_str());
+                            log_debug!(
+                                format!(
+                                    "Plugin name: {} - LoginCompleted event found in execution plan",
+                                    plugin.name.clone()
+                                ).as_str()
+                            );
                             *ROUTE_AFTER_LOGIN.lock().unwrap() = Box::leak(
                                 (plugin.plugin_route.clone() + "/web").into_boxed_str()
                             );
                         } else {
-                            log_debug!(format!(
-                                "Plugin name: {} - run_after_event_name: {} from execution plan",
-                                plugin.name.clone(),
-                                run_after_event_name
-                            ).as_str());
+                            let plugin_route = plugin.plugin_route.clone();
+                            let route = format!("{}/web", plugin_route);
+
+                            log_debug!(
+                                format!(
+                                    "Plugin name: {} - run_after_event_name: {} - route: {} from execution plan",
+                                    plugin.name.clone(),
+                                    run_after_event_name,
+                                    route.as_str()
+                                ).as_str()
+                            );
+
+                            /*
+                            if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+                                let rt = tokio::runtime::Handle::current();
+                                rt.block_on(
+                                    subscribe_and_handle(
+                                        client_arc.clone(),
+                                        run_after_event_name,
+                                        route.as_str()
+                                    )
+                                );
+                            }*/
                         }
                     }
 
                     Some((plan_status, plan.plugins))
                 }
                 Err(e) => {
-                    log_debug!(format!("Failed to parse execution plan: {}", e.to_string()).as_str());
+                    log_debug!(
+                        format!("Failed to parse execution plan: {}", e.to_string()).as_str()
+                    );
                     None
                 }
             }
@@ -565,13 +609,15 @@ pub async fn start_server_async() {
                     PlanLoadSource::LocalFallback(_) => "local fallback plan",
                 };
 
-                log_debug!(format!(
-                    "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
-                    plugin_meta.name,
-                    plugin_meta.plugin_location_type,
-                    source,
-                    e
-                ).as_str());
+                log_debug!(
+                    format!(
+                        "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
+                        plugin_meta.name,
+                        plugin_meta.plugin_location_type,
+                        source,
+                        e
+                    ).as_str()
+                );
             }
         }
     }

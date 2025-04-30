@@ -14,9 +14,6 @@ pub static WS_SUBSCRIBERS: Lazy<Subscribers> = Lazy::new(|| {
 /// WebSocket client for the engine.
 pub static ENGINE_WS_CLIENT: OnceCell<Arc<Mutex<WsClient>>> = OnceCell::new();
 
-/// Topic for receiving status change messages.
-pub static STATUS_CHANGED: &str = "StatusMessageChanged";
-
 /// Topic for receiving network connected messages.
 pub static NETWORK_CONNECTED: &str = "NetworkConnected";
 
