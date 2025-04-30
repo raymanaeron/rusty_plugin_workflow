@@ -77,7 +77,6 @@ use websocket_manager::{
     EXECPLAN_COMPLETED,
     LOGIN_COMPLETED,
     PROVISION_COMPLETED,
-    STATUS_CHANGED,
     NETWORK_CONNECTED,
     SWITCH_ROUTE,
 };
@@ -136,6 +135,43 @@ fn initialize_custom_logger() {
 // WebSocket Client Management
 // -------------------------
 //
+
+/// Asynchronously subscribes to a WebSocket topic and handles incoming messages.
+///
+/// This function encapsulates the common logic for subscribing to a topic, logging the subscription,
+/// and defining the message handling logic.
+///
+/// # Arguments
+///
+/// * `client_arc`: An `Arc<Mutex<WsClient>>` representing the WebSocket client.
+/// * `topic`: A string slice representing the topic to subscribe to.
+/// * `route`: A string slice representing the route to switch to when a message is received.
+async fn subscribe_and_handle(
+    client_arc: Arc<Mutex<WsClient>>,
+    topic: &'static str,
+    route: &'static str
+) {
+    let client_for_topic = client_arc.clone();
+    {
+        let mut client = client_arc.lock().unwrap();
+        client.subscribe("engine_subscriber", topic, "").await;
+        log_debug!("Engine, subscribed to {}", Some(topic.to_string()));
+
+        client.on_message(topic, move |_msg| {
+            log_debug!("[engine] => {}: received", Some(topic.to_string()));
+
+            // Call the reusable function
+            tokio::spawn(
+                publish_ws_message(
+                    client_for_topic.clone(),
+                    "engine",
+                    SWITCH_ROUTE,
+                    route
+                )
+            );
+        });
+    }
+}
 
 /// Creates and initializes the WebSocket client for the engine.
 /// Sets up subscriptions for status changes and route switching.
@@ -199,96 +235,26 @@ pub async fn create_ws_engine_client() {
         });
     }
 
-    /*
-    // Subscribe to STATUS_CHANGED topic
-    if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        let mut client = client_arc.lock().unwrap();
-        client.subscribe("engine_subscriber", STATUS_CHANGED, "").await;
-        log_debug!("Engine, subscribed to STATUS_CHANGED", None);
-
-        client.on_message(STATUS_CHANGED, |msg| {
-            log_debug!("[engine] => STATUS_CHANGED: {}", Some(msg.to_string()));
-        });
-    }
-    */
-
     // Subscribe to WELCOME_COMPLETED topic
     // Route next to /wifi/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        let client_for_welcome = client_arc.clone();
-        {
-            let mut client = client_arc.lock().unwrap();
-            client.subscribe("engine_subscriber", WELCOME_COMPLETED, "").await;
-            log_debug!("Engine, subscribed to WELCOME_COMPLETED", None);
-
-            client.on_message(WELCOME_COMPLETED, move |_msg| {
-                log_debug!("[engine] => WELCOME_COMPLETED: {}", Some("received".to_string()));
-
-                // Call the reusable function
-                tokio::spawn(
-                    publish_ws_message(
-                        client_for_welcome.clone(),
-                        "engine",
-                        SWITCH_ROUTE,
-                        "/wifi/web"
-                    )
-                );
-            });
-        }
+        subscribe_and_handle(client_arc.clone(), WELCOME_COMPLETED, "/wifi/web").await;
     }
 
     // Subscribe to WIFI_COMPLETED topic
     // Route next to /execution/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        let client_for_wifi = client_arc.clone();
-        {
-            let mut client = client_arc.lock().unwrap();
-            client.subscribe("engine_subscriber", WIFI_COMPLETED, "").await;
-            log_debug!("Engine, subscribed to WIFI_COMPLETED", None);
-
-            client.on_message(WIFI_COMPLETED, move |_msg| {
-                log_debug!("[engine] => WIFI_COMPLETED: {}", Some("received".to_string()));
-
-                // Call the reusable function
-                tokio::spawn(
-                    publish_ws_message(
-                        client_for_wifi.clone(),
-                        "engine",
-                        SWITCH_ROUTE,
-                        "/execution/web"
-                    )
-                );
-            });
-        }
+        subscribe_and_handle(client_arc.clone(), WIFI_COMPLETED, "/execution/web").await;
     }
 
     // Subscribe to EXECPLAN_COMPLETED topic
     // Route next to /login/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        let client_for_execplan = client_arc.clone();
-        {
-            let mut client = client_arc.lock().unwrap();
-            client.subscribe("engine_subscriber", EXECPLAN_COMPLETED, "").await;
-            log_debug!("Engine, subscribed to EXECPLAN_COMPLETED", None);
-
-            client.on_message(EXECPLAN_COMPLETED, move |msg| {
-                log_debug!("[engine] => EXECPLAN_COMPLETED: {}", Some(msg.to_string()));
-
-                // Call the reusable function
-                tokio::spawn(
-                    publish_ws_message(
-                        client_for_execplan.clone(),
-                        "engine",
-                        SWITCH_ROUTE,
-                        "/login/web"
-                    )
-                );
-            });
-        }
+        subscribe_and_handle(client_arc.clone(), EXECPLAN_COMPLETED, "/login/web").await;
     }
 
     // Subscribe to LOGIN_COMPLETED topic
-    // Route next to /status/web
+    // Route next to /provision/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let client_for_login = client_arc.clone();
         {
@@ -315,26 +281,7 @@ pub async fn create_ws_engine_client() {
     // Subscribe to PROVISION_COMPLETED topic
     // Route next to /status/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        let client_for_provision = client_arc.clone();
-        {
-            let mut client = client_arc.lock().unwrap();
-            client.subscribe("engine_subscriber", PROVISION_COMPLETED, "").await;
-            log_debug!("Engine, subscribed to PROVISION_COMPLETED", None);
-
-            client.on_message(PROVISION_COMPLETED, move |msg| {
-                log_debug!("[engine] => PROVISION_COMPLETED: {}", Some(msg.to_string()));
-
-                // Call the reusable function
-                tokio::spawn(
-                    publish_ws_message(
-                        client_for_provision.clone(),
-                        "engine",
-                        SWITCH_ROUTE,
-                        "/status/web"
-                    )
-                );
-            });
-        }
+        subscribe_and_handle(client_arc.clone(), PROVISION_COMPLETED, "/status/web").await;
     }
 }
 
@@ -450,6 +397,12 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                             *ROUTE_AFTER_LOGIN.lock().unwrap() = Box::leak(
                                 (plugin.plugin_route.clone() + "/web").into_boxed_str()
                             );
+                        } else {
+                            let plugin_info = format!("Plugin name: {} - run_after_event_name: {} from execution plan", 
+                                plugin.name.clone(),
+                                run_after_event_name
+                            );
+                            log_debug!("{}", Some(plugin_info));
                         }
                     }
 
