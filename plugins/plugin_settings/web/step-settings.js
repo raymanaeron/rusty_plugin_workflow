@@ -23,13 +23,13 @@ export async function activate(container, appManager) {
     // Define the device settings data structure
     const deviceSettings = {
         general: {
-            deviceName: "",
+            deviceName: "My Echo",
             language: "en-US",
             region: "us",
             timeZone: "GMT-5",
             autoUpdate: true,
             amazonEmail: "",
-            shareMetrics: false
+            shareMetrics: true
         },
         echo: {
             wakeWord: "Alexa",
@@ -38,7 +38,7 @@ export async function activate(container, appManager) {
             displaySettings: "brightness"
         },
         automation: {
-            frustrationFreeAutomation: false
+            frustrationFreeAutomation: true
         }
     };
 
