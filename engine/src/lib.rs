@@ -254,7 +254,8 @@ pub async fn create_ws_engine_client() {
     }
 
     // Subscribe to LOGIN_COMPLETED topic
-    // Route next to /provision/web
+    // This is an entry point for a PL specific plugin
+    // Route next to a dynamic route -- default is /provision/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let client_for_login = client_arc.clone();
         {
@@ -277,6 +278,10 @@ pub async fn create_ws_engine_client() {
             });
         }
     }
+
+    // Important Note -- User logged in and we handed off to plugin_settings (loaded dynamically through the execution plan)
+    // when the engine needs to take over from the dynamic plugin, we need to hardcode which event we want to listen to
+    // and then route to a core plugin such as provisioning
 
     // Subscribe to PROVISION_COMPLETED topic
     // Route next to /status/web
