@@ -23,24 +23,94 @@ static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
 // Shared WebSocket client
 static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 
-// Device Settings structure
+// DeviceSettings is the top-level struct holding all plugin settings.
+// It contains three sections: general, echo, and automation.
 #[derive(Serialize, Deserialize, Clone, Default)]
 struct DeviceSettings {
-    timezone: String,
-    language: String,
-    metrics_enabled: bool,
-    copy_settings: bool,
-    theme: String,
+    general: GeneralSettings,
+    echo: EchoSettings,
+    automation: AutomationSettings,
+}
+
+// GeneralSettings holds general device configuration such as name, language, region, etc.
+#[derive(Serialize, Deserialize, Clone)]
+struct GeneralSettings {
+    #[serde(rename = "deviceName")]
+    device_name: String,      // Device name as shown to the user
+    language: String,         // Language code (e.g., "en-US")
+    region: String,           // Region code (e.g., "us")
+    #[serde(rename = "timeZone")]
+    time_zone: String,        // Time zone string (e.g., "GMT-5")
+    #[serde(rename = "autoUpdate")]
+    auto_update: bool,        // Whether automatic updates are enabled
+    #[serde(rename = "amazonEmail")]
+    amazon_email: String,     // Amazon account email
+    #[serde(rename = "shareMetrics")]
+    share_metrics: bool,      // Whether to share device metrics
+}
+
+// Provides default values for GeneralSettings.
+impl Default for GeneralSettings {
+    fn default() -> Self {
+        Self {
+            device_name: "My Echo".to_string(),
+            language: "en-US".to_string(),
+            region: "us".to_string(),
+            time_zone: "GMT-5".to_string(),
+            auto_update: true,
+            amazon_email: "".to_string(),
+            share_metrics: true,
+        }
+    }
+}
+
+// EchoSettings holds configuration specific to Echo device features.
+#[derive(Serialize, Deserialize, Clone)]
+struct EchoSettings {
+    #[serde(rename = "wakeWord")]
+    wake_word: String,            // Wake word for the device (e.g., "Alexa")
+    #[serde(rename = "micEnabled")]
+    mic_enabled: bool,            // Whether the microphone is enabled
+    #[serde(rename = "dropInCalling")]
+    drop_in_calling: bool,        // Whether Drop In/Calling is enabled
+    #[serde(rename = "displaySettings")]
+    display_settings: String,     // Display setting (e.g., "brightness")
+}
+
+// Provides default values for EchoSettings.
+impl Default for EchoSettings {
+    fn default() -> Self {
+        Self {
+            wake_word: "Alexa".to_string(),
+            mic_enabled: true,
+            drop_in_calling: false,
+            display_settings: "brightness".to_string(),
+        }
+    }
+}
+
+// AutomationSettings holds automation-related configuration.
+#[derive(Serialize, Deserialize, Clone)]
+struct AutomationSettings {
+    #[serde(rename = "frustrationFreeAutomation")]
+    frustration_free_automation: bool, // Whether Frustration Free Automation is enabled
+}
+
+// Provides default values for AutomationSettings.
+impl Default for AutomationSettings {
+    fn default() -> Self {
+        Self {
+            frustration_free_automation: true,
+        }
+    }
 }
 
 // Shared state
 static STATE: Lazy<Mutex<DeviceSettings>> = Lazy::new(|| {
     Mutex::new(DeviceSettings {
-        timezone: "UTC".to_string(),
-        language: "en-US".to_string(),
-        metrics_enabled: false,
-        copy_settings: false,
-        theme: "light".to_string(),
+        general: GeneralSettings::default(),
+        echo: EchoSettings::default(),
+        automation: AutomationSettings::default(),
     })
 });
 
