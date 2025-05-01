@@ -157,7 +157,9 @@ async fn subscribe_and_handle(
     {
         let mut client = client_arc.lock().unwrap();
         client.subscribe("engine_subscriber", topic, "").await;
-        log_debug!(format!("Engine, subscribed to topic: {}, will handle route: {}", topic, route).as_str());
+        log_debug!(
+            format!("Engine, subscribed to topic: {}, will handle route: {}", topic, route).as_str()
+        );
 
         client.on_message(topic, move |_msg| {
             log_debug!(format!("[engine] => {}: received", topic).as_str());
@@ -376,9 +378,26 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
 
                     for event in &plan.handoffs.handoff_events {
                         println!("Engine: Setting up handoff event: {}", event);
-                        // TODO: Implement handoff event handling
                     }
 
+                    // Implement handoff event handling
+                    // NOTE:
+                    // A dynamic plugin routes according to run_after_event_name (see execution_plan.toml)
+                    // Engine uses the dynamic plugins handoff event to route back to a core plugin after the dynamic plan ran
+                    // First one in the list is for the provisioning plugin
+                    if plan.handoffs.handoff_events.len() > 0 {
+                        if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+                            let handoff_event = Box::leak(
+                                plan.handoffs.handoff_events[0].clone().into_boxed_str()
+                            );
+                            subscribe_and_handle(
+                                client_arc.clone(),
+                                handoff_event,
+                                "/provision/web"
+                            ).await;
+                        }
+                    }
+                    
                     // Log details for each plugin in the execution plan
                     for (idx, plugin) in plan.plugins.iter().enumerate() {
                         let run_after_event_name = plugin.run_after_event_name
@@ -430,30 +449,34 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                             );
                         } else {
                          */
-                            let plugin_route = plugin.plugin_route.clone();
-                            let run_after_event_name_owned = Box::leak(Box::new(run_after_event_name.to_string())).as_str();
-                            let route = Box::leak(format!("{}/web", plugin_route).into_boxed_str());
+                        let plugin_route = plugin.plugin_route.clone();
+                        let run_after_event_name_owned = Box::leak(
+                            Box::new(run_after_event_name.to_string())
+                        ).as_str();
+                        let route = Box::leak(format!("{}/web", plugin_route).into_boxed_str());
 
-                            log_debug!(format!(
+                        log_debug!(
+                            format!(
                                 "Plugin name: {} - run_after_event_name: {}, route: {} from execution plan",
                                 plugin.name.clone(),
                                 run_after_event_name,
                                 route
-                            ).as_str());
+                            ).as_str()
+                        );
 
-                            if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-                                subscribe_and_handle(
-                                    client_arc.clone(),
-                                    run_after_event_name_owned,
-                                    route
-                                ).await;
-                            }
+                        if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+                            subscribe_and_handle(
+                                client_arc.clone(),
+                                run_after_event_name_owned,
+                                route
+                            ).await;
+                        }
 
-                            // To add a new route at runtime:
-                            RouterManager::add_plugin_route(&plugin_route, route).await;
-    
-                            // To add a static route at runtime:
-                            // RouterManager::add_static_route("/docs", "documentation").await;
+                        // To add a new route at runtime:
+                        RouterManager::add_plugin_route(&plugin_route, route).await;
+
+                        // To add a static route at runtime:
+                        // RouterManager::add_static_route("/docs", "documentation").await;
                         //}
                     }
 
