@@ -1,8 +1,8 @@
 [logging]
-type = "console"
+type = "file"
 threshold = "debug"        
 file_path = "workflow.log" 
-log_folder = "logs" 
+log_folder = "logs"        
 max_file_size_mb = 1
 http_endpoint = "https://logs.example.com"
 http_timeout_seconds = 5
