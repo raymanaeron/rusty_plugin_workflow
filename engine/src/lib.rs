@@ -157,7 +157,7 @@ async fn subscribe_and_handle(
     {
         let mut client = client_arc.lock().unwrap();
         client.subscribe("engine_subscriber", topic, "").await;
-        log_debug!(format!("Engine, subscribed to {}", topic).as_str());
+        log_debug!(format!("Engine, subscribed to topic: {}, will handle route: {}", topic, route).as_str());
 
         client.on_message(topic, move |_msg| {
             log_debug!(format!("[engine] => {}: received", topic).as_str());
@@ -256,6 +256,7 @@ pub async fn create_ws_engine_client() {
     // Subscribe to LOGIN_COMPLETED topic
     // This is an entry point for a PL specific plugin
     // Route next to a dynamic route -- default is /provision/web
+    /*
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         let client_for_login = client_arc.clone();
         {
@@ -278,6 +279,7 @@ pub async fn create_ws_engine_client() {
             });
         }
     }
+    */
 
     // Important Note -- User logged in and we handed off to plugin_settings (loaded dynamically through the execution plan)
     // when the engine needs to take over from the dynamic plugin, we need to hardcode which event we want to listen to
@@ -338,9 +340,9 @@ pub async fn publish_ws_message(
 /// Loads and processes the execution plan that controls plugin loading.
 /// Supports both remote and local fallback plans.
 /// Returns the plan source and a vector of plugin metadata if successful.
-#[log_entry_exit]
-#[measure_time]
-pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
+//#[log_entry_exit]
+//#[measure_time]
+pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
     let local_path = "execution_plan.toml";
 
     match ExecutionPlanUpdater::fetch_and_prepare_latest(local_path) {
@@ -402,6 +404,7 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                         // We search for plugins configured to run after LoginCompleted
                         // The selected plugin's route will be used for navigation after login
                         // We hardocded the LoginCompleted event becuase it is a system event
+                        /*
                         if run_after_event_name == "LoginCompleted" {
                             log_debug!(
                                 format!(
@@ -413,6 +416,7 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                                 (plugin.plugin_route.clone() + "/web").into_boxed_str()
                             );
                         } else {
+                         */
                             let plugin_route = plugin.plugin_route.clone();
                             let run_after_event_name_owned = Box::leak(Box::new(run_after_event_name.to_string())).as_str();
                             let route = Box::leak(format!("{}/web", plugin_route).into_boxed_str());
@@ -425,14 +429,28 @@ pub fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata
                             ).as_str());
 
                             if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+                                /*
                                 // Call the async function and detach, don't spawn or block here
                                 let _ = subscribe_and_handle(
                                     client_arc.clone(),
                                     run_after_event_name_owned,
                                     route
                                 );
+                                */
+                                // Option 1: Spawn the future to run concurrently and detach
+                                subscribe_and_handle(
+                                    client_arc.clone(),
+                                    run_after_event_name_owned,
+                                    route
+                                ).await;
                             }
-                        }
+
+                            // To add a new route at runtime:
+                            RouterManager::add_plugin_route(&plugin_route, route).await;
+    
+                            // To add a static route at runtime:
+                            // RouterManager::add_static_route("/docs", "documentation").await;
+                        //}
                     }
 
                     Some((plan_status, plan.plugins))
@@ -594,7 +612,7 @@ pub async fn start_server_async() {
 
     log_debug!("Loading the execution plan");
 
-    let Some((plan_status, plugins)) = run_exection_plan_updater() else {
+    let Some((plan_status, plugins)) = run_exection_plan_updater().await else {
         log_debug!("Execution plan loading failed. Cannot continue.");
         return;
     };
