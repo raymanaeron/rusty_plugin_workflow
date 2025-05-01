@@ -30,7 +30,7 @@ pub static WIFI_COMPLETED : &str = "WifiCompleted";
 pub static EXECPLAN_COMPLETED : &str = "ExecutionPlanCompleted";
 
 /// Topic for receiving login completed messages.
-pub static LOGIN_COMPLETED : &str = "LoginCompleted";
+// pub static LOGIN_COMPLETED : &str = "LoginCompleted";
 
 /// Topic for provision completed messages.
 pub static PROVISION_COMPLETED : &str = "ProvisionCompleted";

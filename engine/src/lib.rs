@@ -56,7 +56,7 @@ use axum::response::Response; // For HTTP responses
 use axum::body::Body; // For HTTP body content
 use axum::http::StatusCode; // For HTTP status codes
 
-use once_cell::sync::Lazy; // For thread-safe lazy-initialized statics
+// use once_cell::sync::Lazy; // For thread-safe lazy-initialized statics
 
 use liblogger::{ Logger, log_info, log_warn, log_error, log_debug }; // Logging utilities
 use liblogger_macros::*; // Logging macro extensions
@@ -75,14 +75,13 @@ use websocket_manager::{
     WELCOME_COMPLETED,
     WIFI_COMPLETED,
     EXECPLAN_COMPLETED,
-    LOGIN_COMPLETED,
     PROVISION_COMPLETED,
     NETWORK_CONNECTED,
     SWITCH_ROUTE,
 };
 
 // Variable defining route destination after login completion
-static ROUTE_AFTER_LOGIN: Lazy<Mutex<&str>> = Lazy::new(|| Mutex::new("/provision/web"));
+// static ROUTE_AFTER_LOGIN: Lazy<Mutex<&str>> = Lazy::new(|| Mutex::new("/provision/web"));
 
 // Engine core functionality
 use engine_core::{
@@ -284,8 +283,6 @@ pub async fn create_ws_engine_client() {
     */
 
     // Important Note -- User logged in and we handed off to plugin_settings (loaded dynamically through the execution plan)
-    // when the engine needs to take over from the dynamic plugin, we need to hardcode which event we want to listen to
-    // and then route to a core plugin such as provisioning
 
     // Subscribe to PROVISION_COMPLETED topic
     // Route next to /status/web
@@ -380,10 +377,12 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                         println!("Engine: Setting up handoff event: {}", event);
                     }
 
-                    // Implement handoff event handling
-                    // NOTE:
-                    // A dynamic plugin routes according to run_after_event_name (see execution_plan.toml)
-                    // Engine uses the dynamic plugins handoff event to route back to a core plugin after the dynamic plan ran
+                    // Dynamic plugins are displayed based on the value of `run_after_event_name` defined in execution_plan.toml.
+                    // Multiple dynamic plugins can be chained together to run sequentially.
+                    // When control needs to transition from a dynamic plugin to a core plugin (i.e., a built-in engine plugin),
+                    // we use the list of handoff events from the TOML file to determine the transition point.
+                    // Each handoff event is matched manually to the corresponding core plugin that should be executed next.
+
                     // First one in the list is for the provisioning plugin
                     if plan.handoffs.handoff_events.len() > 0 {
                         if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
@@ -397,7 +396,7 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                             ).await;
                         }
                     }
-                    
+
                     // Log details for each plugin in the execution plan
                     for (idx, plugin) in plan.plugins.iter().enumerate() {
                         let run_after_event_name = plugin.run_after_event_name
