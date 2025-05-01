@@ -46,6 +46,7 @@ pub struct PluginMetadata {
 
     /// Specify this in the toml so that the engine knows that you are done
     pub completed_event_name: Option<String>,
+
 }
 
 /// Default value for `visible_in_ui` field (true).

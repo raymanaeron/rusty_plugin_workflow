@@ -366,6 +366,19 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                         ).as_str()
                     );
 
+                    log_debug!(
+                        format!(
+                            "Execution plan [{}] loaded with {} handoffs",
+                            plan_type,
+                            plan.handoffs.handoff_events.len()
+                        ).as_str()
+                    );
+
+                    for event in &plan.handoffs.handoff_events {
+                        println!("Engine: Setting up handoff event: {}", event);
+                        // TODO: Implement handoff event handling
+                    }
+
                     // Log details for each plugin in the execution plan
                     for (idx, plugin) in plan.plugins.iter().enumerate() {
                         let run_after_event_name = plugin.run_after_event_name
@@ -429,15 +442,6 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                             ).as_str());
 
                             if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-                                /*
-                                // Call the async function and detach, don't spawn or block here
-                                let _ = subscribe_and_handle(
-                                    client_arc.clone(),
-                                    run_after_event_name_owned,
-                                    route
-                                );
-                                */
-                                // Option 1: Spawn the future to run concurrently and detach
                                 subscribe_and_handle(
                                     client_arc.clone(),
                                     run_after_event_name_owned,

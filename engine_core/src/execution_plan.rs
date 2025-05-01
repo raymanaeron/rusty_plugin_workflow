@@ -6,6 +6,7 @@ use std::{fs, path::Path, error::Error};
 pub struct PluginExecutionPlan {
     pub general: GeneralConfig,
     pub plugins: Vec<PluginMetadata>,
+    pub handoffs: Handoffs,
 }
 
 #[derive(Debug, Deserialize)]
@@ -16,6 +17,11 @@ pub struct GeneralConfig {
     pub update_path_root: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct Handoffs {
+    pub handoff_events: Vec<String>,
+}
+
 pub struct ExecutionPlanLoader;
 
 impl ExecutionPlanLoader {
@@ -23,13 +29,25 @@ impl ExecutionPlanLoader {
         let content = fs::read_to_string(path)?;
         let plan: PluginExecutionPlan = toml::from_str(&content)?;
 
+        // general section validation
         Self::validate_general(&plan.general)?;
         
+        // plugins section validation
         for (idx, plugin) in plan.plugins.iter().enumerate() {
             Self::validate_plugin(plugin, idx)?;
         }
 
+        // handoffs section validation
+        Self::validate_handoffs(&plan.handoffs)?;
+
         Ok(plan)
+    }
+
+    fn validate_handoffs(handoffs: &Handoffs) -> Result<(), Box<dyn Error>> {
+        for event in &handoffs.handoff_events {
+            println!("Handoff event: {}", event);
+        }
+        Ok(())
     }
 
     fn validate_general(general: &GeneralConfig) -> Result<(), Box<dyn Error>> {

@@ -34,3 +34,5 @@ visible_in_ui = true
 run_after_event_name = "LoginCompleted"
 completed_event_name = "SettingsCompleted"
 
+[handoffs]
+handoff_events = ["SettingsCompleted", "TutorialCompleted"]
