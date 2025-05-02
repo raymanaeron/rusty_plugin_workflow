@@ -35,7 +35,7 @@ static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 
 // Resource data model definition
 #[derive(Serialize, Deserialize, Clone, Default)]
-struct {{resource_name_camel}} {
+struct Todoitems {
     id: String,
     field1: String,
     field2: bool,
@@ -43,7 +43,7 @@ struct {{resource_name_camel}} {
 
 // In-memory database implemented as a thread-safe HashMap
 // Keys are resource IDs, values are resource instances
-static STATE: Lazy<Mutex<std::collections::HashMap<String, {{resource_name_camel}}>>> = Lazy::new(|| {
+static STATE: Lazy<Mutex<std::collections::HashMap<String, Todoitems>>> = Lazy::new(|| {
     Mutex::new(std::collections::HashMap::new())
 });
 
@@ -51,7 +51,7 @@ static STATE: Lazy<Mutex<std::collections::HashMap<String, {{resource_name_camel
 #[ctor::ctor]
 fn on_load() {
     // Initialize the logger for this plugin
-    if let Err(e) = plugin_core::init_logger("{{plugin_name}}") {
+    if let Err(e) = plugin_core::init_logger("plugin_howto") {
         eprintln!("[plugin_totorial] Failed to initialize logger: {}", e);
     }
     
@@ -61,12 +61,12 @@ fn on_load() {
 // Establishes WebSocket connection for real-time event publishing/subscribing
 // Automatically subscribes to the resource update event channel
 pub async fn create_ws_plugin_client() {
-    if let Ok(client) = WsClient::connect("{{plugin_name}}", "ws://127.0.0.1:8081/ws").await {
+    if let Ok(client) = WsClient::connect("plugin_howto", "ws://127.0.0.1:8081/ws").await {
         let client = Arc::new(Mutex::new(client));
         
         if let Ok(mut ws_client) = client.lock() {
-            ws_client.subscribe("{{plugin_name}}", "{{resource_name_camel}}Updated", "").await;
-            log_debug!("[{{plugin_name}}] Subscribed to {{resource_name_camel}}Updated");
+            ws_client.subscribe("plugin_howto", "TodoitemsUpdated", "").await;
+            log_debug!("[plugin_howto] Subscribed to TodoitemsUpdated");
         }
         
         unsafe {
@@ -78,16 +78,16 @@ pub async fn create_ws_plugin_client() {
 // Entry point called by the plugin engine on startup
 // Initializes WebSocket connection and other required resources
 extern "C" fn run(_ctx: *const PluginContext) {
-    println!("[{{plugin_name}}] - run");
+    println!("[plugin_howto] - run");
     RUNTIME.block_on(async {
         create_ws_plugin_client().await;
     });
 }
 
 // Defines the path where static web content (HTML, CSS, JS) can be served from
-// This content will be available at /{{plugin_route}}/web/ in the application
+// This content will be available at /howto/web/ in the application
 extern "C" fn get_static_content_path() -> *const c_char {
-    CString::new("{{plugin_route}}/web").unwrap().into_raw()
+    CString::new("howto/web").unwrap().into_raw()
 }
 
 // Registers API endpoints that this plugin will handle
@@ -99,7 +99,7 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
         HttpMethod::Put,
         HttpMethod::Delete,
     ];
-    let slice = static_resource("{{resource_name}}", &METHODS);
+    let slice = static_resource("todoitems", &METHODS);
     unsafe { *out_len = slice.len(); }
     slice.as_ptr()
 }
@@ -121,7 +121,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             CStr::from_ptr(request.path).to_str().unwrap_or("<invalid>")
         };
 
-        // Extract ID from path if present (format: "{{resource_name}}/{id}")
+        // Extract ID from path if present (format: "todoitems/{id}")
         let path_parts: Vec<&str> = path.split('/').collect();
         let (resource_path, id_opt) = if path_parts.len() >= 2 {
             (path_parts[0], Some(path_parts[1]))
@@ -131,7 +131,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
         match request.method {
             // GET: List all resources or get a specific one by ID
-            HttpMethod::Get if resource_path == "{{resource_name}}" => {
+            HttpMethod::Get if resource_path == "todoitems" => {
                 let state = STATE.lock().unwrap();
 
                 // If ID is provided, return that specific resource
@@ -145,15 +145,15 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                 } else {
                     // Return all resources
                     let json = serde_json::to_string(&*state).unwrap();
-                    log_debug!(format!("Returning all resources: {} - Context: {}", json, "{{plugin_name}}").as_str());
+                    log_debug!(format!("Returning all resources: {} - Context: {}", json, "plugin_howto").as_str());
                     json_response(200, &json)
                 }
             }
 
             // POST: Create a new resource
-            HttpMethod::Post if resource_path == "{{resource_name}}" => {
+            HttpMethod::Post if resource_path == "todoitems" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                if let Ok(mut data) = serde_json::from_slice::<{{resource_name_camel}}>(body) {
+                if let Ok(mut data) = serde_json::from_slice::<Todoitems>(body) {
                     let mut state = STATE.lock().unwrap();
 
                     // If ID is empty, generate one
@@ -173,7 +173,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                         "message": "Resource created",
                         "id": resource_id
                     });
-                    log_debug!(format!("Saving a resource: {}, Context: {}", response, "{{plugin_name}}").as_str());
+                    log_debug!(format!("Saving a resource: {}, Context: {}", response, "plugin_howto").as_str());
                     json_response(201, &serde_json::to_string(&response).unwrap())
                 } else {
                     error_response(400, "Invalid data")
@@ -181,10 +181,10 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             // PUT: Update a resource (complete replacement)
-            HttpMethod::Put if resource_path == "{{resource_name}}" => {
+            HttpMethod::Put if resource_path == "todoitems" => {
                 if let Some(id) = id_opt {
                     let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
-                    if let Ok(mut data) = serde_json::from_slice::<{{resource_name_camel}}>(body) {
+                    if let Ok(mut data) = serde_json::from_slice::<Todoitems>(body) {
                         let mut state = STATE.lock().unwrap();
 
                         // Ensure the ID in the URL matches the resource
@@ -205,7 +205,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             }
 
             // DELETE: Remove a resource
-            HttpMethod::Delete if resource_path == "{{resource_name}}" => {
+            HttpMethod::Delete if resource_path == "todoitems" => {
                 let mut state = STATE.lock().unwrap();
 
                 if let Some(id) = id_opt {
@@ -235,8 +235,8 @@ extern "C" fn cleanup(resp: *mut ApiResponse) {
 // Plugin declaration macro that registers this module with the plugin system
 // Defines name, route, and callback functions used by the plugin loader
 declare_plugin!(
-    "{{plugin_name}}",
-    "{{plugin_route}}",
+    "plugin_howto",
+    "howto",
     run,
     get_static_content_path,
     get_api_resources,

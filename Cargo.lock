@@ -2332,6 +2332,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "plugin_howto"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "ctor 0.2.9",
+ "liblogger",
+ "liblogger_macros",
+ "once_cell",
+ "plugin_core",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "tokio",
+ "ws_server",
+]
+
+[[package]]
 name = "plugin_login"
 version = "0.1.0"
 dependencies = [
