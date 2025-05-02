@@ -39,7 +39,7 @@ REM Process lib.rs - use both resource_name and camelcased version
 powershell -Command "(Get-Content '%TEMPLATE_DIR%\lib.rs.template') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\src\lib.rs'"
 
 REM Process HTML
-powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-x.html.template') -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\web\step-%PLUGIN_ROUTE%.html'"
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-x.html.template') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\web\step-%PLUGIN_ROUTE%.html'"
 
 REM Process JS
 powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-x.js.template') -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\web\step-%PLUGIN_ROUTE%.js'"

@@ -39,6 +39,7 @@ sed -e "s/{{plugin_name}}/$PLUGIN_NAME/g" \
 
 # Process HTML
 sed -e "s/{{plugin_route}}/$PLUGIN_ROUTE/g" \
+    -e "s/{{plugin_name}}/$PLUGIN_NAME/g" \
     -e "s/{{plugin_name_camel}}/$PLUGIN_NAME_CAMEL/g" \
     "$TEMPLATE_DIR/step-x.html.template" > "$TARGET_DIR/web/step-$PLUGIN_ROUTE.html"
 

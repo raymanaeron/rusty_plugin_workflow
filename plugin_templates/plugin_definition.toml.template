@@ -2,7 +2,7 @@
 name = "{{plugin_name}}"
 plugin_description = "{{plugin_name}} description"
 plugin_route = "{{plugin_route}}"
-version = "4.1"
+version = "0.1.0"
 plugin_location_type = "s3"
 plugin_base_path = "https://echo-oobe-bucket.s3.amazonaws.com/echo-show/v4.1/plugins"
 team_name = "{{plugin_name_camel}} Product Team"
