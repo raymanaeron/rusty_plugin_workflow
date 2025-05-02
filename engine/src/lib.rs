@@ -58,7 +58,7 @@ use axum::http::StatusCode; // For HTTP status codes
 
 // use once_cell::sync::Lazy; // For thread-safe lazy-initialized statics
 
-use liblogger::{ Logger, log_info, log_warn, log_error, log_debug }; // Logging utilities
+use plugin_core::{log_debug, log_info, log_warn, log_error}; // Logging utilities
 use liblogger_macros::*; // Logging macro extensions
 
 // Local module declarations
@@ -110,17 +110,21 @@ initialize_logger_attributes!();
 /// Prints test log messages at all levels.
 fn initialize_custom_logger() {
     // Initialize logger with debug threshold to ensure all logs are shown
-    match Logger::init_with_config_file("app_config.toml") {
-        Ok(_) => log_info!("Logger successfully initialized from config file"),
-        Err(e) => {
-            // Something went wrong with the config file
-            log_debug!(
-                format!("Error initializing logger from config: {}", e.to_string()).as_str()
-            );
-            // Fall back to console logging
-            Logger::init();
+    match plugin_core::init_logger("engine") {
+        Ok(_) => {
+            log_info!("Logger successfully initialized from config file");
+        }
+        Err(_e) => {
+            log_debug!(format!("Error initializing logger from config: {}", _e).as_str());
+            
+            // Fall back to console logging by calling init_logger again
+            // The plugin_core init_logger will handle fallback internally
+            if let Err(e) = plugin_core::init_logger("engine") {
+                eprintln!("Fatal error: Failed to initialize logger: {}", e);
+            }
             log_error!("Failed to initialize file logger, falling back to console");
         }
+
     }
 
     // Print a clear marker to see if logger is working
@@ -189,16 +193,10 @@ pub async fn create_ws_engine_client() {
                 client = Some(connected_client);
                 break;
             }
-            Err(e) => {
+            Err(_err) => {
                 retries += 1;
-                log_debug!(
-                    format!(
-                        "Failed to connect WsClient (attempt {}/{}) : {}",
-                        retries,
-                        MAX_RETRIES,
-                        e.to_string()
-                    ).as_str()
-                );
+                // Actually use the error variable by directly printing it with its display implementation
+                log_debug!(format!("Failed to connect WsClient (attempt {}/{}): {}", retries, MAX_RETRIES, _err).as_str());
                 if retries < MAX_RETRIES {
                     tokio::time::sleep(Duration::from_millis(500)).await;
                 }
@@ -231,8 +229,8 @@ pub async fn create_ws_engine_client() {
         client.subscribe("engine_subscriber", SWITCH_ROUTE, "").await;
         log_debug!("Engine, subscribed to SWITCH_ROUTE");
 
-        client.on_message(SWITCH_ROUTE, |msg| {
-            log_debug!(format!("[engine] => SWITCH_ROUTE: {}", msg).as_str());
+        client.on_message(SWITCH_ROUTE, |_msg| {
+            log_debug!(format!("[engine] => SWITCH_ROUTE: {}", _msg).as_str());
         });
     }
 
@@ -353,14 +351,15 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
 
             match ExecutionPlanLoader::load_from_file(plan_path) {
                 Ok(plan) => {
-                    let plan_type = match plan_status {
+                    let _plan_type = match plan_status {
                         PlanLoadSource::Remote(_) => "remote",
                         PlanLoadSource::LocalFallback(_) => "local fallback",
                     };
+
                     log_debug!(
                         format!(
                             "Execution plan [{}] loaded with {} plugins",
-                            plan_type,
+                            _plan_type,
                             plan.plugins.len()
                         ).as_str()
                     );
@@ -368,7 +367,7 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                     log_debug!(
                         format!(
                             "Execution plan [{}] loaded with {} handoffs",
-                            plan_type,
+                            _plan_type,
                             plan.handoffs.handoff_events.len()
                         ).as_str()
                     );
@@ -411,7 +410,7 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                             &plugin.plugin_description
                         };
 
-                        let plugin_details = format!(
+                        let _plugin_details = format!(
                             "Plugin[{}] Details:\n  name: {}\n  route: {}\n  version: {}\n  location_type: {}\n  base_path: {}\n  team: {}\n  eng_contact: {}\n  ops_contact: {}\n  run_async: {}\n  visible_in_ui: {}\n  description: {}\n  run_after_event: {}\n  completed_event: {}",
                             idx,
                             plugin.name,
@@ -429,7 +428,7 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                             completed_event_name
                         );
 
-                        log_debug!(plugin_details.as_str());
+                        log_debug!(_plugin_details.as_str());
 
                         // This code determines which plugin should be loaded after the login event
                         // We search for plugins configured to run after LoginCompleted
@@ -481,16 +480,16 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
 
                     Some((plan_status, plan.plugins))
                 }
-                Err(e) => {
+                Err(_e) => {
                     log_debug!(
-                        format!("Failed to parse execution plan: {}", e.to_string()).as_str()
+                        format!("Failed to parse execution plan: {}", _e.to_string()).as_str()
                     );
                     None
                 }
             }
         }
-        Err(e) => {
-            log_debug!(format!("Failed to resolve execution plan: {}", e.to_string()).as_str());
+        Err(_e) => {
+            log_debug!(format!("Failed to resolve execution plan: {}", _e.to_string()).as_str());
             None
         }
     }
@@ -513,8 +512,9 @@ fn load_and_register(
             registry.register(plugin);
             lib_holder.push(lib); // retain library to avoid drop
         }
-        Err(e) =>
-            log_debug!(format!("Failed to load plugin from {}: {}", path.display(), e).as_str()),
+        Err(_e) => {
+            log_debug!(format!("Failed to load plugin from {}: {}", path.display(), _e).as_str()); 
+        }
     }
 }
 
@@ -599,8 +599,8 @@ pub async fn start_server_async() {
                     client.subscribe("engine_subscriber", NETWORK_CONNECTED, "").await;
                     log_debug!("Engine, subscribed to NETWORK_CONNECTED");
 
-                    client.on_message(NETWORK_CONNECTED, move |msg| {
-                        log_debug!(format!("[engine] => NETWORK_CONNECTED: {}", msg).as_str());
+                    client.on_message(NETWORK_CONNECTED, move |_msg| {
+                        log_debug!(format!("[engine] => NETWORK_CONNECTED: {}", _msg).as_str());
 
                         if let Some(run_workflow_fn) = task_agent.run_workflow {
                             let json_bytes = r#"{"task": "background_job"}"#.as_bytes().to_vec();
@@ -649,8 +649,8 @@ pub async fn start_server_async() {
     for plugin_meta in plugins {
         match prepare_plugin_binary(&plugin_meta, allow_write) {
             Ok(local_path) => load_and_register(local_path, &registry, &mut plugin_libraries),
-            Err(e) => {
-                let source = match plan_status {
+            Err(_e) => {
+                let _source = match plan_status {
                     PlanLoadSource::Remote(_) => "remote plan",
                     PlanLoadSource::LocalFallback(_) => "local fallback plan",
                 };
@@ -660,8 +660,8 @@ pub async fn start_server_async() {
                         "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
                         plugin_meta.name,
                         plugin_meta.plugin_location_type,
-                        source,
-                        e
+                        _source,
+                        _e
                     ).as_str()
                 );
             }
