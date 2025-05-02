@@ -1,0 +1,14 @@
+[[plugins]]
+name = "plugin_tutorial"
+plugin_description = "plugin_tutorial description"
+plugin_route = "tutorial"
+version = "4.1"
+plugin_location_type = "s3"
+plugin_base_path = "https://echo-oobe-bucket.s3.amazonaws.com/echo-show/v4.1/plugins"
+team_name = "PluginTutorial Product Team"
+engineering_contact_email = "plugin_tutorial-eng@example.com"
+operation_contact_email = "plugin_tutorial-ops@example.com"
+run_async = true
+visible_in_ui = true                                        # Headless or UI?
+run_after_event_name = "NetworkConnectionCompleted"         # This is your entry point
+completed_event_name = "PluginTutorialCompleted"          # Raise this event when you are done

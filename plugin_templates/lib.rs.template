@@ -17,13 +17,13 @@ use std::ffi::{CString, CStr};
 use std::ptr;
 use serde::{Serialize, Deserialize};
 
-// Shared Runtime for async operations
+// Initialize a shared runtime for all async operations in the plugin
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
 
-// Shared WebSocket client
+// Global WebSocket client instance for event-driven communication
 static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 
-// Define your data structure - using CamelCase for type name
+// Resource data model definition
 #[derive(Serialize, Deserialize, Clone, Default)]
 struct {{resource_name_camel}} {
     id: String,
@@ -31,16 +31,20 @@ struct {{resource_name_camel}} {
     field2: bool,
 }
 
-// Shared state - using a HashMap to store multiple items by ID
+// In-memory database implemented as a thread-safe HashMap
+// Keys are resource IDs, values are resource instances
 static STATE: Lazy<Mutex<std::collections::HashMap<String, {{resource_name_camel}}>>> = Lazy::new(|| {
     Mutex::new(std::collections::HashMap::new())
 });
 
+// Plugin initialization hook that runs when the plugin is first loaded
 #[ctor::ctor]
 fn on_load() {
     println!("[{{plugin_name}}] >>> LOADED");
 }
 
+// Establishes WebSocket connection for real-time event publishing/subscribing
+// Automatically subscribes to the resource update event channel
 pub async fn create_ws_plugin_client() {
     if let Ok(client) = WsClient::connect("{{plugin_name}}", "ws://127.0.0.1:8081/ws").await {
         let client = Arc::new(Mutex::new(client));
@@ -56,6 +60,8 @@ pub async fn create_ws_plugin_client() {
     }
 }
 
+// Entry point called by the plugin engine on startup
+// Initializes WebSocket connection and other required resources
 extern "C" fn run(_ctx: *const PluginContext) {
     println!("[{{plugin_name}}] - run");
     RUNTIME.block_on(async {
@@ -63,10 +69,14 @@ extern "C" fn run(_ctx: *const PluginContext) {
     });
 }
 
+// Defines the path where static web content (HTML, CSS, JS) can be served from
+// This content will be available at /{{plugin_route}}/web/ in the application
 extern "C" fn get_static_content_path() -> *const c_char {
     CString::new("{{plugin_route}}/web").unwrap().into_raw()
 }
 
+// Registers API endpoints that this plugin will handle
+// Defines which HTTP methods are accepted for the resource
 extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
     static METHODS: [HttpMethod; 4] = [
         HttpMethod::Get,
@@ -79,6 +89,8 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
     slice.as_ptr()
 }
 
+// Main request handler implementing RESTful API operations
+// Processes GET, POST, PUT, and DELETE requests for the resource
 extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
     if req.is_null() {
         return ptr::null_mut();
@@ -92,7 +104,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             CStr::from_ptr(request.path).to_str().unwrap_or("<invalid>")
         };
 
-        // Extract ID from path if present (format: "{{resource_name}}/ID")
+        // Extract ID from path if present (format: "{{resource_name}}/{id}")
         let path_parts: Vec<&str> = path.split('/').collect();
         let (resource_path, id_opt) = if path_parts.len() >= 2 {
             (path_parts[0], Some(path_parts[1]))
@@ -104,7 +116,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             // GET: List all resources or get a specific one by ID
             HttpMethod::Get if resource_path == "{{resource_name}}" => {
                 let state = STATE.lock().unwrap();
-                
+
                 // If ID is provided, return that specific resource
                 if let Some(id) = id_opt {
                     if let Some(item) = state.get(id) {
@@ -125,51 +137,21 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
                 if let Ok(mut data) = serde_json::from_slice::<{{resource_name_camel}}>(body) {
                     let mut state = STATE.lock().unwrap();
-                    
+
                     // If ID is empty, generate one
                     if data.id.is_empty() {
                         data.id = format!("{:x}", rand::random::<u64>());
                     }
-                    
+
                     // Clone the ID for use in the response
                     let resource_id = data.id.clone();
-                    
+
                     // Insert into state
                     state.insert(data.id.clone(), data.clone());
-                    
-                    // Get WebSocket client safely without creating a shared reference to static
-                    let client_clone = {
-                        // Get a raw pointer to the static
-                        let ws_client_ptr = ptr::addr_of!(PLUGIN_WS_CLIENT);
-                        // Dereference the raw pointer to get Option<Arc<Mutex<WsClient>>>
-                        (*ws_client_ptr).as_ref().map(Arc::clone)
-                    };
-                    
-                    if let Some(client) = client_clone {
-                        let timestamp = chrono::Utc::now().to_rfc3339();
-                        let data_clone = data.clone(); // Clone data before moving
-                        
-                        // Use spawn_blocking to handle the non-Send MutexGuard
-                        RUNTIME.spawn(async move {
-                            let timestamp_clone = timestamp.clone();
-                            let payload = serde_json::to_string(&data_clone).unwrap();
-                            
-                            tokio::task::spawn_blocking(move || {
-                                if let Ok(mut ws_client) = client.lock() {
-                                    let rt = tokio::runtime::Handle::current();
-                                    let _ = rt.block_on(ws_client.publish(
-                                        "{{plugin_name}}", 
-                                        "{{resource_name_camel}}Updated", 
-                                        &payload,
-                                        &timestamp_clone
-                                    ));
-                                }
-                            }).await.ok();
-                        });
-                    }
-                    
+
                     // Create response with the saved resource_id
-                    let response = serde_json::json!({
+                    let response =
+                        serde_json::json!({
                         "message": "Resource created",
                         "id": resource_id
                     });
@@ -185,43 +167,12 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                     let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
                     if let Ok(mut data) = serde_json::from_slice::<{{resource_name_camel}}>(body) {
                         let mut state = STATE.lock().unwrap();
-                        
+
                         // Ensure the ID in the URL matches the resource
                         data.id = id.to_string();
-                        
+
                         if state.contains_key(id) {
                             state.insert(id.to_string(), data.clone());
-                            
-                            // Get WebSocket client safely without creating a shared reference to static
-                            let client_clone = {
-                                // Get a raw pointer to the static
-                                let ws_client_ptr = ptr::addr_of!(PLUGIN_WS_CLIENT);
-                                // Dereference the raw pointer to get Option<Arc<Mutex<WsClient>>>
-                                (*ws_client_ptr).as_ref().map(Arc::clone)
-                            };
-                            
-                            if let Some(client) = client_clone {
-                                let timestamp = chrono::Utc::now().to_rfc3339();
-                                let data_clone = data.clone();
-                                
-                                RUNTIME.spawn(async move {
-                                    let timestamp_clone = timestamp.clone();
-                                    let payload = serde_json::to_string(&data_clone).unwrap();
-                                    
-                                    tokio::task::spawn_blocking(move || {
-                                        if let Ok(mut ws_client) = client.lock() {
-                                            let rt = tokio::runtime::Handle::current();
-                                            let _ = rt.block_on(ws_client.publish(
-                                                "{{plugin_name}}", 
-                                                "{{resource_name_camel}}Updated", 
-                                                &payload,
-                                                &timestamp_clone
-                                            ));
-                                        }
-                                    }).await.ok();
-                                });
-                            }
-                            
                             json_response(200, r#"{"message": "Resource updated"}"#)
                         } else {
                             error_response(404, "Resource not found")
@@ -237,41 +188,9 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             // DELETE: Remove a resource
             HttpMethod::Delete if resource_path == "{{resource_name}}" => {
                 let mut state = STATE.lock().unwrap();
-                
+
                 if let Some(id) = id_opt {
-                    let id_string = id.to_string(); // Clone ID for use in async block
-                    
                     if state.remove(id).is_some() {
-                        // Get WebSocket client safely without creating a shared reference to static
-                        let client_clone = {
-                            // Get a raw pointer to the static
-                            let ws_client_ptr = ptr::addr_of!(PLUGIN_WS_CLIENT);
-                            // Dereference the raw pointer to get Option<Arc<Mutex<WsClient>>>
-                            (*ws_client_ptr).as_ref().map(Arc::clone)
-                        };
-                        
-                        if let Some(client) = client_clone {
-                            let timestamp = chrono::Utc::now().to_rfc3339();
-                            
-                            RUNTIME.spawn(async move {
-                                let timestamp_clone = timestamp.clone();
-                                let event_data = serde_json::json!({ "id": id_string, "deleted": true });
-                                let payload = serde_json::to_string(&event_data).unwrap();
-                                
-                                tokio::task::spawn_blocking(move || {
-                                    if let Ok(mut ws_client) = client.lock() {
-                                        let rt = tokio::runtime::Handle::current();
-                                        let _ = rt.block_on(ws_client.publish(
-                                            "{{plugin_name}}", 
-                                            "{{resource_name_camel}}Updated", 
-                                            &payload,
-                                            &timestamp_clone
-                                        ));
-                                    }
-                                }).await.ok();
-                            });
-                        }
-                        
                         json_response(200, r#"{"message": "Resource deleted"}"#)
                     } else {
                         error_response(404, "Resource not found")
@@ -288,10 +207,14 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
     }
 }
 
+// Memory cleanup function called by the plugin engine
+// Prevents memory leaks when responses are no longer needed
 extern "C" fn cleanup(resp: *mut ApiResponse) {
     cleanup_response(resp);
 }
 
+// Plugin declaration macro that registers this module with the plugin system
+// Defines name, route, and callback functions used by the plugin loader
 declare_plugin!(
     "{{plugin_name}}",
     "{{plugin_route}}",

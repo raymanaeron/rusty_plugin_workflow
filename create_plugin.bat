@@ -17,28 +17,38 @@ for %%w in (%RESOURCE_NAME:_= %) do (
     set "RESOURCE_NAME_CAMEL=!RESOURCE_NAME_CAMEL!!word!"
 )
 
+REM Convert resource_name to CamelCase
+set "PLUGIN_NAME_CAMEL="
+for %%w in (%PLUGIN_NAME:_= %) do (
+    call :CapFirst %%w
+    set "PLUGIN_NAME_CAMEL=!PLUGIN_NAME_CAMEL!!word!"
+)
+
 set TEMPLATE_DIR=plugin_templates
 set TARGET_DIR=plugins\%PLUGIN_NAME%
 
-echo Creating plugin: %PLUGIN_NAME% (route=%PLUGIN_ROUTE%, resource=%RESOURCE_NAME%, resource_camel=%RESOURCE_NAME_CAMEL%)
+echo Creating plugin: %PLUGIN_NAME% (route=%PLUGIN_ROUTE%, resource=%RESOURCE_NAME%, resource_camel=%RESOURCE_NAME_CAMEL%, plugin_camel=%PLUGIN_NAME_CAMEL%)
 
 if not exist "%TARGET_DIR%\src" mkdir "%TARGET_DIR%\src"
 if not exist "%TARGET_DIR%\web" mkdir "%TARGET_DIR%\web"
 
 REM Process Cargo.toml
-powershell -Command "(Get-Content '%TEMPLATE_DIR%\Cargo.toml.template') -replace '{{plugin_name}}','%PLUGIN_NAME%' | Set-Content '%TARGET_DIR%\Cargo.toml'"
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\Cargo.toml.template') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\Cargo.toml'"
 
 REM Process lib.rs - use both resource_name and camelcased version
-powershell -Command "(Get-Content '%TEMPLATE_DIR%\lib.rs.template') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\src\lib.rs'"
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\lib.rs.template') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\src\lib.rs'"
 
 REM Process HTML
-powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-template.html') -replace '{{plugin_route}}','%PLUGIN_ROUTE%' | Set-Content '%TARGET_DIR%\web\step-%PLUGIN_ROUTE%.html'"
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-x.html.template') -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\web\step-%PLUGIN_ROUTE%.html'"
 
 REM Process JS
-powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-template.js') -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' -replace '{{plugin_name}}','%PLUGIN_NAME%' | Set-Content '%TARGET_DIR%\web\step-%PLUGIN_ROUTE%.js'"
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\step-x.js.template') -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\web\step-%PLUGIN_ROUTE%.js'"
 
 REM Process README from the template file instead of creating it from scratch
-powershell -Command "(Get-Content '%TEMPLATE_DIR%\README_template.md') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\README.md'"
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\README_x.md.template') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\README.md'"
+
+REM Process plugin_definition.toml from the template file instead of creating it from scratch
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\plugin_definition.toml.template') -replace '{{plugin_name}}','%PLUGIN_NAME%' -replace '{{plugin_route}}','%PLUGIN_ROUTE%' -replace '{{resource_name}}','%RESOURCE_NAME%' -replace '{{resource_name_camel}}','%RESOURCE_NAME_CAMEL%' -replace '{{plugin_name_camel}}','%PLUGIN_NAME_CAMEL%' | Set-Content '%TARGET_DIR%\plugin_metadata.toml'"
 
 echo Plugin %PLUGIN_NAME% scaffolded under %TARGET_DIR%
 

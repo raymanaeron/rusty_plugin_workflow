@@ -138,6 +138,7 @@ async function updateResource(id, payload) {
 **Request Body**
 ```json
 {
+  "id": "new value",
   "field1": "new value",
   "field2": false
 }
@@ -211,8 +212,7 @@ async function deleteResource(id) {
 ## WebSocket Integration
 
 ### Topics
-- `{{resource_name_camel}}Updated` - Published when resource changes
-- `{{resource_name_camel}}Completed` - Published when plugin operation completes
+- `{{plugin_name_camel}}Completed` - Published when plugin operation completes
 
 ### Publishing Events
 
@@ -227,7 +227,7 @@ export async function activate(container, appManager) {
   function publishCompletion() {
     const published = appManager.publish(
       '{{plugin_name}}',                   // Publisher name
-      '{{resource_name_camel}}Completed',  // Topic
+      '{{plugin_name_camel}}Completed',    // Topic
       { status: 'completed', data: { /* additional data */ } }
     );
     
@@ -258,7 +258,7 @@ if let Some(client) = unsafe { &PLUGIN_WS_CLIENT } {
             // Publish an event
             if let Err(e) = ws_client.publish(
                 "{{plugin_name}}", 
-                "{{resource_name_camel}}Completed", 
+                "{{plugin_name_camel}}Completed", 
                 payload,
                 &timestamp
             ).await {
@@ -281,7 +281,7 @@ export async function activate(container, appManager) {
   appManager.registerPlugin('{{plugin_name}}');
   
   // Subscribe to a topic
-  appManager.subscribe('{{plugin_name}}', '{{resource_name_camel}}Updated', (data) => {
+  appManager.subscribe('{{plugin_name}}', 'ImportantEvent', (data) => {
     console.log('Received update:', data);
     
     // Update UI based on the data
@@ -341,7 +341,7 @@ function completeSetup() {
   // Do final processing...
   
   // Publish completion
-  const published = appManager.publish('{{plugin_name}}', '{{resource_name_camel}}Completed', 
+  const published = appManager.publish('{{plugin_name}}', '{{plugin_name_camel}}Completed', 
     { status: 'completed' }
   );
   
@@ -361,7 +361,7 @@ To implement a skip function:
 // Skip button handler
 if (skipBtn) {
   skipBtn.addEventListener('click', async () => {
-    const published = appManager.publish('{{plugin_name}}', '{{resource_name_camel}}Completed', 
+    const published = appManager.publish('{{plugin_name}}', '{{plugin_name_camel}}Completed', 
       { status: 'skipped' }
     );
     
@@ -381,12 +381,14 @@ if (skipBtn) {
 plugins/
 └── {{plugin_name}}/
     ├── src/
-    │   └── lib.rs              # Rust plugin implementation
+    │   └── lib.rs                      # Rust plugin implementation
     ├── web/
     │   ├── step-{{plugin_route}}.html  # HTML UI template
     │   ├── step-{{plugin_route}}.js    # JavaScript logic
-    │   └── icons/               # Optional icons folder
-    └── Cargo.toml              # Rust dependencies and metadata
+    │   └── icons/                      # Optional icons folder
+    ├── plugin_metadata.toml            # You will need this to publish your plugin to the OOBE repository
+    └── Cargo.toml                      # Rust dependencies and metadata
+    
 ```
 
 ## Integration

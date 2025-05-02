@@ -1,16 +1,17 @@
 export async function activate(container, appManager) {
-    // Register with app manager
+    // Register this plugin with the application manager for lifecycle management
     appManager.registerPlugin('{{plugin_name}}');
     console.log('Plugin activated: {{plugin_name}}');
     
-    // Get UI elements
+    // Find and cache DOM elements for UI interaction
     const statusContent = container.querySelector('#statusContent');
     const actionBtn = container.querySelector('#actionBtn');
     const skipBtn = container.querySelector('#skipBtn');
     const continueBtn = container.querySelector('#continueBtn');
     const resultBox = container.querySelector('#resultBox');
     
-    // Example: GET data from API
+    // Fetch all resources from the plugin's REST API endpoint
+    // Returns a promise with the retrieved data or throws an error
     async function getData() {
         try {
             const response = await fetch('/api/{{plugin_route}}/{{resource_name}}');
@@ -28,7 +29,9 @@ export async function activate(container, appManager) {
         }
     }
     
-    // Example: POST data to API
+    // Create a new resource by sending data to the plugin's REST API
+    // payload: Object to be JSON-serialized and sent to the server
+    // Returns the server's response or throws an error
     async function postData(payload) {
         try {
             const response = await fetch('/api/{{plugin_route}}/{{resource_name}}', {
@@ -51,7 +54,10 @@ export async function activate(container, appManager) {
         }
     }
     
-    // Example: PUT data to API (update)
+    // Update an existing resource by sending data to the plugin's REST API
+    // id: Identifier of the resource to update
+    // payload: Object to be JSON-serialized and sent to the server
+    // Returns the server's response or throws an error
     async function putData(id, payload) {
         try {
             const response = await fetch(`/api/{{plugin_route}}/{{resource_name}}/${id}`, {
@@ -74,7 +80,10 @@ export async function activate(container, appManager) {
         }
     }
     
-    // Example: PATCH data to API (partial update)
+    // Partially update an existing resource by sending data to the plugin's REST API
+    // id: Identifier of the resource to update
+    // partialPayload: Object to be JSON-serialized and sent to the server
+    // Returns the server's response or throws an error
     async function patchData(id, partialPayload) {
         try {
             const response = await fetch(`/api/{{plugin_route}}/{{resource_name}}/${id}`, {
@@ -97,7 +106,8 @@ export async function activate(container, appManager) {
         }
     }
     
-    // Example: Action button handler
+    // Handle the action button click event
+    // Fetches data from the server and updates the UI accordingly
     if (actionBtn) {
         actionBtn.addEventListener('click', async () => {
             try {
@@ -110,11 +120,12 @@ export async function activate(container, appManager) {
         });
     }
     
-    // Example: Skip button handler
+    // Handle the skip button click event
+    // Publishes a skip status event and updates the UI accordingly
     if (skipBtn) {
         skipBtn.addEventListener('click', async () => {
-            // Publish via connection manager using CamelCased event topic
-            const published = appManager.publish('{{plugin_name}}', '{{resource_name_camel}}Completed', 
+            // Publish via connection manager 
+            const published = appManager.publish('{{plugin_name}}', '{{plugin_name_camel}}Completed', 
                 { status: 'skipped' }
             );
             
@@ -128,11 +139,12 @@ export async function activate(container, appManager) {
         });
     }
     
-    // Example: Continue button handler
+    // Handle the continue button click event
+    // Publishes a completion status event
     if (continueBtn) {
         continueBtn.addEventListener('click', async () => {
-            // Publish completion event using CamelCased event topic
-            const published = appManager.publish('{{plugin_name}}', '{{resource_name_camel}}Completed', 
+            // Publish completion event 
+            const published = appManager.publish('{{plugin_name}}', '{{plugin_name_camel}}Completed', 
                 { status: 'completed' }
             );
             
@@ -145,6 +157,7 @@ export async function activate(container, appManager) {
     }
 
     // Return cleanup function at module level
+    // Unregisters the plugin from the application manager
     return () => {
         appManager.unregisterPlugin('{{plugin_name}}');
     };
