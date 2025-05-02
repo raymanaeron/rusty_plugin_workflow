@@ -2462,6 +2462,8 @@ dependencies = [
  "axum",
  "ctor 0.1.26",
  "hex",
+ "liblogger",
+ "liblogger_macros",
  "objc",
  "once_cell",
  "plist",

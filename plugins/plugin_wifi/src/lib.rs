@@ -5,6 +5,8 @@
 //! discovery and connection management.
 
 extern crate plugin_core;
+extern crate liblogger;
+extern crate liblogger_macros;
 
 mod network_info;
 pub mod wifi_manager_cp;
@@ -18,9 +20,16 @@ use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
 
+// Import logging related items
+use plugin_core::{log_debug, log_info, log_warn, log_error};
+use liblogger_macros::{log_entry_exit, measure_time};
+
 use once_cell::sync::Lazy;
 
 use network_info::{ NetworkInfo, to_json };
+
+// Initialize logger attributes
+liblogger_macros::initialize_logger_attributes!();
 
 /// Global flag to track WiFi connection status
 static WIFI_CONNECTED: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new(false)));
@@ -29,25 +38,30 @@ static WIFI_CONNECTED: Lazy<Arc<Mutex<bool>>> = Lazy::new(|| Arc::new(Mutex::new
 /// Called when the plugin is first loaded
 #[ctor::ctor]
 fn on_load() {
-    println!("[plugin_wifi] >>> LOADED");
+    // Initialize the logger for this plugin
+    if let Err(e) = plugin_core::init_logger("plugin_wifi") {
+        eprintln!("[plugin_wifi] Failed to initialize logger: {}", e);
+    }
+    
+    log_info!("Plugin WiFi loaded successfully");
 }
 
 /// Plugin runtime configuration handler
 /// 
 /// # Arguments
 /// * `ctx` - Pointer to plugin context containing configuration
+#[log_entry_exit]
 extern "C" fn run(ctx: *const PluginContext) {
-    println!("[plugin_wifi] - run");
-    println!("[plugin_wifi] FINGERPRINT: run = {:p}", run as *const ());
+    log_info!("Starting WiFi plugin initialization");
 
     if ctx.is_null() {
-        eprintln!("PluginContext is null");
+        log_error!("PluginContext is null");
         return;
     }
 
     unsafe {
         let config_cstr = CStr::from_ptr((*ctx).config);
-        println!("WiFi Plugin running with config: {}", config_cstr.to_string_lossy());
+        log_debug!(format!("WiFi Plugin running with config: {}", config_cstr.to_string_lossy()).as_str());
     }
 }
 
@@ -62,8 +76,10 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
     slice.as_ptr()
 }
 
+#[measure_time]
 extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
     if req.is_null() {
+        log_warn!("Received null request pointer");
         return ptr::null_mut();
     }
 
@@ -75,16 +91,21 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             CStr::from_ptr(request.path).to_str().unwrap_or("<invalid>")
         };
 
+        log_debug!(format!("Handling API request path={}, method={:?}", path, request.method).as_str());
+
         match request.method {
             HttpMethod::Get if path == "network" => {
+                log_info!("Processing network scan request");
                 let mut count: usize = 0;
                 let result_ptr = scan(&mut count);
 
                 let json = if result_ptr.is_null() || count == 0 {
+                    log_warn!("Scan returned no networks");
                     "[]".to_string()
                 } else {
                     let results = std::slice::from_raw_parts(result_ptr, count);
                     let objects: Vec<_> = results.iter().map(to_json).collect();
+                    log_info!(format!("Scan completed successfully, found_networks={}", count).as_str());
                     serde_json::to_string(&objects).unwrap_or("[]".into())
                 };
 
@@ -97,21 +118,29 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(body_str) {
                     let ssid = json.get("ssid").and_then(|v| v.as_str()).unwrap_or("");
                     let password = json.get("password").and_then(|v| v.as_str()).unwrap_or("");
+                    log_info!(format!("Processing connection request for ssid={}", ssid).as_str());
                     return connect_to_network(ssid, password);
                 }
+                log_error!("Invalid JSON in connection request");
                 return error_response(400, "Invalid JSON payload");
             }
 
-            _ => method_not_allowed_response(request.method, request.path),
+            _ => {
+                log_warn!(format!("Method not allowed: method={:?}, path={}", request.method, path).as_str());
+                method_not_allowed_response(request.method, request.path)
+            },
         }
     }
 }
 
 extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
+    log_info!("Starting WiFi network scan");
     wifi_manager_cp::scan(out_count)
 }
 
 fn connect_to_network(ssid: &str, password: &str) -> *mut ApiResponse {
+    log_info!(format!("Attempting to connect to network ssid={}", ssid).as_str());
+    
     let success = wifi_manager_cp::connect_wifi(ssid, password);
     
     {
@@ -120,10 +149,11 @@ fn connect_to_network(ssid: &str, password: &str) -> *mut ApiResponse {
     }
 
     if success {
-        println!("[plugin_wifi] Connected to {}", ssid);
+        log_info!(format!("Successfully connected to WiFi network ssid={}", ssid).as_str());
         let msg = format!(r#"{{ "message": "Connected to {}" }}"#, ssid);
         json_response(200, &msg)
     } else {
+        log_error!(format!("Failed to connect to WiFi network ssid={}", ssid).as_str());
         let msg = format!(r#"{{ "message": "Failed to connect to {}" }}"#, ssid);
         json_response(500, &msg)
     }
@@ -131,7 +161,7 @@ fn connect_to_network(ssid: &str, password: &str) -> *mut ApiResponse {
 
 extern "C" fn on_complete() -> *mut ApiResponse {
     let connected = *WIFI_CONNECTED.lock().unwrap();
-    println!("[plugin_wifi] on_complete: connected = {}", connected);
+    log_debug!(format!("on_complete: connected = {}", connected).as_str());
 
     if connected {
         json_response(200, r#"{ "message": "WiFi Connected" }"#)

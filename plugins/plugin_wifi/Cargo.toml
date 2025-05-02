@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 hex = "0.4"
-plugin_core = { path = "../../plugin_core" }
+plugin_core = { path = "../../plugin_core", features = ["logging"] }
 axum = { version = "0.7", features = ["macros", "http1", "tokio"] }
 tokio = { version = "1.36", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
@@ -18,6 +18,8 @@ wifi-rs = "0.2.4"
 tokio-wifiscanner = "0.2.1"
 plist = "1.5"
 objc = "0.2"
+liblogger = { path = "../../liblogger", features = ["proc_macros"] }
+liblogger_macros = { path = "../../liblogger_macros" }
 
 [lib]
 crate-type = ["cdylib", "staticlib", "rlib"]
