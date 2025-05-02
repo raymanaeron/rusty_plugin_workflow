@@ -287,6 +287,7 @@ pub async fn create_ws_engine_client() {
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         subscribe_and_handle(client_arc.clone(), PROVISION_COMPLETED, "/status/web").await;
     }
+
 }
 
 /// Utility function to publish a message to a websocket topic using a client.
@@ -392,6 +393,20 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
                                 client_arc.clone(),
                                 handoff_event,
                                 "/provision/web"
+                            ).await;
+                        }
+                    }
+
+                    // Second one in the list is for the finish plugin
+                    if plan.handoffs.handoff_events.len() > 1 {
+                        if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
+                            let handoff_event = Box::leak(
+                                plan.handoffs.handoff_events[1].clone().into_boxed_str()
+                            );
+                            subscribe_and_handle(
+                                client_arc.clone(),
+                                handoff_event,
+                                "/finish/web"
                             ).await;
                         }
                     }
@@ -583,6 +598,7 @@ pub async fn start_server_async() {
         ("plugin_login", "isloggedin=false"),
         ("plugin_provisioning", "isprovisioned=false"),
         ("plugin_terms", "accepted=false"),
+        ("plugin_finish", "done=true"),
     ];
 
     for (plugin_name, params) in plugins_to_load {

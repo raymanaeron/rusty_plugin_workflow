@@ -92,6 +92,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM === Build plugin_finish ===
+echo Building plugin_finish...
+cargo build --manifest-path plugins\plugin_finish\Cargo.toml %CARGO_FLAG%
+if errorlevel 1 (
+    echo Failed to build plugin_finish.
+    exit /b 1
+)
+
 REM === Build plugin_task_agent_headless ===
 echo Building plugin_task_agent_headless...
 cargo build --manifest-path plugins\plugin_task_agent_headless\Cargo.toml %CARGO_FLAG%
@@ -179,9 +187,16 @@ if errorlevel 1 (
     echo Failed to copy plugin_howto web folder.
     exit /b 1
 )
+
 xcopy /E /I /Y plugins\plugin_tutorial\web %TARGET%\tutorial\web
 if errorlevel 1 (
     echo Failed to copy plugin_tutorial web folder.
+    exit /b 1
+)
+
+xcopy /E /I /Y plugins\plugin_finish\web %TARGET%\finish\web
+if errorlevel 1 (
+    echo Failed to copy plugin_finish web folder.
     exit /b 1
 )
 
