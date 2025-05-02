@@ -636,6 +636,7 @@ dependencies = [
  "chrono",
  "engine_core",
  "libloading",
+ "liblogger",
  "liblogger_macros",
  "once_cell",
  "plugin_core",

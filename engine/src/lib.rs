@@ -57,7 +57,7 @@ use axum::body::Body; // For HTTP body content
 use axum::http::StatusCode; // For HTTP status codes
 
 // use once_cell::sync::Lazy; // For thread-safe lazy-initialized statics
-
+use liblogger;
 use plugin_core::{log_debug, log_info, log_warn, log_error}; // Logging utilities
 use liblogger_macros::*; // Logging macro extensions
 
@@ -502,6 +502,7 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
 /// * `path` - Path to the plugin binary.
 /// * `registry` - Shared plugin registry.
 /// * `lib_holder` - Vector holding loaded plugin libraries.
+#[measure_time]
 fn load_and_register(
     path: PathBuf,
     registry: &Arc<PluginRegistry>,

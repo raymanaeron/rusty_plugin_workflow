@@ -4,27 +4,32 @@
 //! It supports multiple platforms (Windows, Linux, macOS) and handles network
 //! discovery and connection management.
 
-extern crate plugin_core;
+// External crates
 extern crate liblogger;
+extern crate plugin_core;
 extern crate liblogger_macros;
 
-mod network_info;
-pub mod wifi_manager_cp;
+use liblogger_macros::{log_entry_exit, measure_time};
+use once_cell::sync::Lazy;
 
+use plugin_core::{
+    log_debug, log_info, log_warn, log_error,
+    declare_plugin, PluginContext, Resource, HttpMethod,
+    ApiRequest, ApiResponse, error_response, cleanup_response
+};
+use plugin_core::resource_utils::static_resource;
+use plugin_core::response_utils::*;
+
+// Standard library
 use std::ffi::{CString, CStr};
 use std::os::raw::c_char;
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
-use plugin_core::*;
-use plugin_core::resource_utils::static_resource;
-use plugin_core::response_utils::*;
-use plugin_core::{log_debug, log_info, log_warn, log_error};
-use liblogger_macros::{log_entry_exit, measure_time};
-
-use once_cell::sync::Lazy;
-
-use network_info::{ NetworkInfo, to_json };
+// Internal modules
+mod network_info;
+pub mod wifi_manager_cp;
+use network_info::{NetworkInfo, to_json};
 
 // Initialize logger attributes
 liblogger_macros::initialize_logger_attributes!();

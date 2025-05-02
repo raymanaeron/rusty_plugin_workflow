@@ -22,4 +22,5 @@ uuid = { version = "1.4", features = ["v4"] }
 plugin_core = { path = "../plugin_core" }
 engine_core = { path = "../engine_core" }
 ws_server = { path = "../ws_server"}
+liblogger = { path = "../liblogger" }
 liblogger_macros = { path = "../liblogger_macros" }
