@@ -6,7 +6,7 @@ pub mod plugin_context;
 pub mod plugin;
 pub mod resource;
 pub mod helper_functions;
-pub mod logging;  // Ensure the logging module is publicly accessible
+pub mod logging;
 
 pub mod response_utils;
 pub mod resource_utils;

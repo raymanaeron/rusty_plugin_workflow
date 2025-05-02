@@ -2319,6 +2319,8 @@ dependencies = [
  "axum",
  "chrono",
  "ctor 0.1.26",
+ "liblogger",
+ "liblogger_macros",
  "once_cell",
  "plugin_core",
  "serde",
@@ -2334,6 +2336,8 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "ctor 0.2.9",
+ "liblogger",
+ "liblogger_macros",
  "once_cell",
  "plugin_core",
  "rand 0.8.5",
@@ -2349,6 +2353,8 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "ctor 0.2.9",
+ "liblogger",
+ "liblogger_macros",
  "once_cell",
  "plugin_core",
  "rand 0.8.5",
@@ -2366,6 +2372,8 @@ dependencies = [
  "axum",
  "chrono",
  "ctor 0.1.26",
+ "liblogger",
+ "liblogger_macros",
  "once_cell",
  "plugin_core",
  "serde",
@@ -2382,12 +2390,15 @@ dependencies = [
  "async-trait",
  "axum",
  "ctor 0.1.26",
+ "liblogger",
+ "liblogger_macros",
  "once_cell",
  "plugin_core",
  "serde",
  "serde_json",
  "tokio",
  "tower 0.4.13",
+ "ws_server",
 ]
 
 [[package]]
@@ -2398,6 +2409,8 @@ dependencies = [
  "axum",
  "chrono",
  "ctor 0.1.26",
+ "liblogger",
+ "liblogger_macros",
  "once_cell",
  "plugin_core",
  "serde",
@@ -2412,13 +2425,15 @@ name = "plugin_terms"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "axum",
  "ctor 0.1.26",
+ "liblogger",
+ "liblogger_macros",
  "plugin_core",
  "serde",
  "serde_json",
  "tokio",
  "tower 0.4.13",
+ "ws_server",
 ]
 
 [[package]]
@@ -2427,6 +2442,8 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "ctor 0.2.9",
+ "liblogger",
+ "liblogger_macros",
  "once_cell",
  "plugin_core",
  "rand 0.8.5",
@@ -2444,6 +2461,8 @@ dependencies = [
  "axum",
  "chrono",
  "ctor 0.1.26",
+ "liblogger",
+ "liblogger_macros",
  "once_cell",
  "plugin_core",
  "serde",
@@ -2463,9 +2482,7 @@ dependencies = [
  "hex",
  "liblogger",
  "liblogger_macros",
- "objc",
  "once_cell",
- "plist",
  "plugin_core",
  "serde",
  "serde_json",
@@ -2473,6 +2490,7 @@ dependencies = [
  "tokio-wifiscanner",
  "tower 0.4.13",
  "wifi-rs",
+ "ws_server",
 ]
 
 [[package]]
