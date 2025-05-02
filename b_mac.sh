@@ -39,6 +39,12 @@ cargo build --manifest-path plugins/plugin_settings/Cargo.toml $CARGO_FLAG
 echo "Building plugin_status..."
 cargo build --manifest-path plugins/plugin_status/Cargo.toml $CARGO_FLAG
 
+echo "Building plugin_howto..."
+cargo build --manifest-path plugins/plugin_howto/Cargo.toml $CARGO_FLAG
+
+echo "Building plugin_tutorial..."
+cargo build --manifest-path plugins/plugin_tutorial/Cargo.toml $CARGO_FLAG
+
 echo "Building plugin_task_agent_headless..."
 cargo build --manifest-path plugins/plugin_task_agent_headless/Cargo.toml $CARGO_FLAG
 
@@ -61,6 +67,8 @@ mkdir -p "$TARGET/provision/web"
 mkdir -p "$TARGET/terms/web"
 mkdir -p "$TARGET/settings/web"
 mkdir -p "$TARGET/status/web"
+mkdir -p "$TARGET/howto/web"
+mkdir -p "$TARGET/tutorial/web"
 mkdir -p "$TARGET/taskagent/web"
 mkdir -p "$TARGET/webapp"
 
@@ -77,6 +85,8 @@ rsync -a plugins/plugin_provisioning/web/ "$TARGET/provision/web/"
 rsync -a plugins/plugin_terms/web/ "$TARGET/terms/web/"
 rsync -a plugins/plugin_settings/web/ "$TARGET/settings/web/"
 rsync -a plugins/plugin_status/web/ "$TARGET/status/web/"
+rsync -a plugins/plugin_howto/web/ "$TARGET/howto/web/"
+rsync -a plugins/plugin_tutorial/web/ "$TARGET/tutorial/web/"
 rsync -a plugins/plugin_task_agent_headless/web/ "$TARGET/taskagent/web/"
 
 
@@ -90,6 +100,8 @@ cp "$TARGET/libplugin_provisioning.dylib" "$TARGET/plugin_provisioning.dylib"
 cp "$TARGET/libplugin_terms.dylib" "$TARGET/plugin_terms.dylib"
 cp "$TARGET/libplugin_settings.dylib" "$TARGET/plugin_settings.dylib"
 cp "$TARGET/libplugin_status.dylib" "$TARGET/plugin_status.dylib"
+cp "$TARGET/libplugin_howto.dylib" "$TARGET/plugin_howto.dylib"
+cp "$TARGET/libplugin_tutorial.dylib" "$TARGET/plugin_tutorial.dylib"
 cp "$TARGET/libplugin_task_agent_headless.dylib" "$TARGET/plugin_task_agent_headless.dylib"
 
 # === Copy config and plan files ===

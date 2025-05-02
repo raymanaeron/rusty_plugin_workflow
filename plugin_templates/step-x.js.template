@@ -125,7 +125,7 @@ export async function activate(container, appManager) {
     if (skipBtn) {
         skipBtn.addEventListener('click', async () => {
             // Publish via connection manager 
-            const published = appManager.publish('{{plugin_name}}', '{{plugin_name_camel}}Completed', 
+            const published = appManager.publish('{{plugin_name}}', '{{plugin_route_camel}}Completed', 
                 { status: 'skipped' }
             );
             
@@ -144,7 +144,7 @@ export async function activate(container, appManager) {
     if (continueBtn) {
         continueBtn.addEventListener('click', async () => {
             // Publish completion event 
-            const published = appManager.publish('{{plugin_name}}', '{{plugin_name_camel}}Completed', 
+            const published = appManager.publish('{{plugin_name}}', '{{plugin_route_camel}}Completed', 
                 { status: 'completed' }
             );
             

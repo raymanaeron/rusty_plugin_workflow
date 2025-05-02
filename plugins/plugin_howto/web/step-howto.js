@@ -125,7 +125,7 @@ export async function activate(container, appManager) {
     if (skipBtn) {
         skipBtn.addEventListener('click', async () => {
             // Publish via connection manager 
-            const published = appManager.publish('plugin_howto', 'PluginHowtoCompleted', 
+            const published = appManager.publish('plugin_howto', 'HowtoCompleted', 
                 { status: 'skipped' }
             );
             
@@ -144,7 +144,7 @@ export async function activate(container, appManager) {
     if (continueBtn) {
         continueBtn.addEventListener('click', async () => {
             // Publish completion event 
-            const published = appManager.publish('plugin_howto', 'PluginHowtoCompleted', 
+            const published = appManager.publish('plugin_howto', 'HowtoCompleted', 
                 { status: 'completed' }
             );
             

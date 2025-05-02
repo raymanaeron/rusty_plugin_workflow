@@ -49,6 +49,7 @@ sed -e "s/{{plugin_route}}/$PLUGIN_ROUTE/g" \
 
 # Process JS
 sed -e "s/{{plugin_route}}/$PLUGIN_ROUTE/g" \
+    -e "s/{{plugin_route_camel}}/$PLUGIN_ROUTE_CAMEL/g" \
     -e "s/{{resource_name}}/$RESOURCE_NAME/g" \
     -e "s/{{resource_name_camel}}/$RESOURCE_NAME_CAMEL/g" \
     -e "s/{{plugin_name}}/$PLUGIN_NAME/g" \
