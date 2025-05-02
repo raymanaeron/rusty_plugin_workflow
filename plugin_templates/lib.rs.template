@@ -1,21 +1,31 @@
+extern crate liblogger;
 extern crate plugin_core;
+extern crate liblogger_macros;
 
+// Plugin core imports
 use plugin_core::{
-    ApiRequest, ApiResponse, HttpMethod, PluginContext, Resource,
-    declare_plugin,
-    error_response,
+    log_debug, log_info, 
+    declare_plugin, PluginContext, Resource, HttpMethod,
+    ApiRequest, ApiResponse, error_response, cleanup_response,
     response_utils::{json_response, method_not_allowed_response},
     resource_utils::static_resource,
-    cleanup_response,
 };
-use std::sync::{Arc, Mutex};
-use ws_server::ws_client::WsClient;
-use tokio::runtime::Runtime;
-use once_cell::sync::Lazy;
-use std::os::raw::c_char;
+
+// Standard library
 use std::ffi::{CString, CStr};
+use std::os::raw::c_char;
 use std::ptr;
+use std::sync::{Arc, Mutex};
+
+// External dependencies
+use liblogger_macros::{log_entry_exit, measure_time, initialize_logger_attributes};
+use once_cell::sync::Lazy;
 use serde::{Serialize, Deserialize};
+use tokio::runtime::Runtime;
+use ws_server::ws_client::WsClient;
+
+// Initialize logger attributes
+initialize_logger_attributes!();
 
 // Initialize a shared runtime for all async operations in the plugin
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
@@ -40,7 +50,12 @@ static STATE: Lazy<Mutex<std::collections::HashMap<String, {{resource_name_camel
 // Plugin initialization hook that runs when the plugin is first loaded
 #[ctor::ctor]
 fn on_load() {
-    println!("[{{plugin_name}}] >>> LOADED");
+    // Initialize the logger for this plugin
+    if let Err(e) = plugin_core::init_logger("plugin_tutorial") {
+        eprintln!("[plugin_totorial] Failed to initialize logger: {}", e);
+    }
+    
+    log_info!("Plugin Tutorial loaded successfully");
 }
 
 // Establishes WebSocket connection for real-time event publishing/subscribing
@@ -91,6 +106,8 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
 
 // Main request handler implementing RESTful API operations
 // Processes GET, POST, PUT, and DELETE requests for the resource
+#[log_entry_exit]
+#[measure_time]
 extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
     if req.is_null() {
         return ptr::null_mut();
@@ -128,6 +145,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                 } else {
                     // Return all resources
                     let json = serde_json::to_string(&*state).unwrap();
+                    log_debug!(format!("Returning all resources: {} - Context: {}", json, "{{plugin_name}}").as_str());
                     json_response(200, &json)
                 }
             }
@@ -155,6 +173,7 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                         "message": "Resource created",
                         "id": resource_id
                     });
+                    log_debug!(format!("Saving a resource: {}, Context: {}", response, "{{plugin_name}}").as_str());
                     json_response(201, &serde_json::to_string(&response).unwrap())
                 } else {
                     error_response(400, "Invalid data")
