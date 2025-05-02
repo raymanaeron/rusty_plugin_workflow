@@ -8,4 +8,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 libc = "0.2"
 once_cell = "1.19"
-ws_server = { path = "../ws_server"}
+ws_server = { path = "../ws_server" }
+liblogger = { path = "../liblogger", features = ["proc_macros"], optional = true }
+liblogger_macros = { path = "../liblogger_macros", optional = true }
+
+[features]
+default = []
+logging = ["liblogger", "liblogger_macros"]
