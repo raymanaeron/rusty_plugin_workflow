@@ -19,8 +19,6 @@ use std::sync::{Arc, Mutex};
 use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
-
-// Import logging related items
 use plugin_core::{log_debug, log_info, log_warn, log_error};
 use liblogger_macros::{log_entry_exit, measure_time};
 
@@ -138,6 +136,7 @@ extern "C" fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     wifi_manager_cp::scan(out_count)
 }
 
+#[measure_time]
 fn connect_to_network(ssid: &str, password: &str) -> *mut ApiResponse {
     log_info!(format!("Attempting to connect to network ssid={}", ssid).as_str());
     
