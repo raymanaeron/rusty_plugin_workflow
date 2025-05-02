@@ -11,4 +11,4 @@ operation_contact_email = "{{plugin_name}}-ops@example.com"
 run_async = true
 visible_in_ui = true                                        # Headless or UI?
 run_after_event_name = "NetworkConnectionCompleted"         # This is your entry point
-completed_event_name = "{{plugin_name_camel}}Completed"          # Raise this event when you are done
+completed_event_name = "{{plugin_route_camel}}Completed"          # Raise this event when you are done

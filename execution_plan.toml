@@ -34,5 +34,35 @@ visible_in_ui = true
 run_after_event_name = "LoginCompleted"
 completed_event_name = "SettingsCompleted"
 
+[[plugins]]
+name = "plugin_howto"
+plugin_description = "plugin_howto description"
+plugin_route = "howto"
+version = "4.1"
+plugin_location_type = "local"
+plugin_base_path = "./"
+team_name = "PluginHowto Product Team"
+engineering_contact_email = "plugin_howto-eng@example.com"
+operation_contact_email = "plugin_howto-ops@example.com"
+run_async = true
+visible_in_ui = true                                        # Headless or UI?
+run_after_event_name = "SettingsCompleted"         # This is your entry point
+completed_event_name = "HowtoCompleted"          # Raise this event when you are done
+
+[[plugins]]
+name = "plugin_tutorial"
+plugin_description = "plugin_tutorial description"
+plugin_route = "tutorial"
+version = "4.1"
+plugin_location_type = "local"
+plugin_base_path = "./"
+team_name = "PluginTutorial Product Team"
+engineering_contact_email = "plugin_tutorial-eng@example.com"
+operation_contact_email = "plugin_tutorial-ops@example.com"
+run_async = true
+visible_in_ui = true                                        # Headless or UI?
+run_after_event_name = "HowtoCompleted"         # This is your entry point
+completed_event_name = "TutorialCompleted"          # Raise this event when you are done
+
 [handoffs]
 handoff_events = ["SettingsCompleted", "TutorialCompleted"]

@@ -9,13 +9,17 @@ PLUGIN_NAME=$1
 PLUGIN_ROUTE=$2
 RESOURCE_NAME=$3
 
-# Convert resource_name to CamelCase
-# First to lowercase, then capitalize each word
-RESOURCE_NAME_CAMEL=$(echo "$RESOURCE_NAME" | tr '[:upper:]' '[:lower:]' | awk -F_ '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1)) substr($i,2)}}1' | sed 's/ //g')
-
 # Convert plugin_name to CamelCase
 # First to lowercase, then capitalize each word
 PLUGIN_NAME_CAMEL=$(echo "$PLUGIN_NAME" | tr '[:upper:]' '[:lower:]' | awk -F_ '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1)) substr($i,2)}}1' | sed 's/ //g')
+
+# Convert plugin_route to CamelCase
+# First to lowercase, then capitalize each word
+PLUGIN_ROUTE_CAMEL=$(echo "$PLUGIN_ROUTE" | tr '[:upper:]' '[:lower:]' | awk -F_ '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1)) substr($i,2)}}1' | sed 's/ //g')
+
+# Convert resource_name to CamelCase
+# First to lowercase, then capitalize each word
+RESOURCE_NAME_CAMEL=$(echo "$RESOURCE_NAME" | tr '[:upper:]' '[:lower:]' | awk -F_ '{for(i=1;i<=NF;i++){$i=toupper(substr($i,1,1)) substr($i,2)}}1' | sed 's/ //g')
 
 TEMPLATE_DIR="plugin_templates"
 TARGET_DIR="plugins/$PLUGIN_NAME"
@@ -62,6 +66,7 @@ sed -e "s/{{plugin_name}}/$PLUGIN_NAME/g" \
 # Process plugin_definition.toml from template
 sed -e "s/{{plugin_name}}/$PLUGIN_NAME/g" \
     -e "s/{{plugin_route}}/$PLUGIN_ROUTE/g" \
+    -e "s/{{plugin_route_camel}}/$PLUGIN_ROUTE_CAMEL/g" \
     -e "s/{{resource_name}}/$RESOURCE_NAME/g" \
     -e "s/{{resource_name_camel}}/$RESOURCE_NAME_CAMEL/g" \
     -e "s/{{plugin_name_camel}}/$PLUGIN_NAME_CAMEL/g" \
