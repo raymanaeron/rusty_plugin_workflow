@@ -66,12 +66,14 @@ export async function activate(container, appManager) {
                     }
                     
                     // Simulate delay before redirect
+                    /*
                     setTimeout(() => {
                         // Get next route from response or use default
                         const nextRoute = data.next_route || "/dashboard";
                         history.pushState({}, "", nextRoute);
                         window.dispatchEvent(new PopStateEvent("popstate"));
                     }, 1500);
+                    */
                 } else {
                     // Login failed
                     resultBox.innerHTML = `<div class="alert alert-error">${data.message || "Login failed."}</div>`;

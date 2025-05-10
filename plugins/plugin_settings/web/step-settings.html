@@ -4,143 +4,137 @@
     
     <div class="h-[500px] overflow-y-auto pr-2">
       <!-- General Section -->
-      <h3 class="text-lg font-bold pb-2 mb-3 border-b-2 border-base-300">General</h3>
-      <div class="flex flex-col gap-4">
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Device Name</span>
-          </label>
-          <input type="text" class="input input-bordered w-full" id="deviceName">
-        </div>
-        
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Language</span>
-          </label>
-          <select class="select select-bordered w-full" id="language">
-            <option value="en-US">English (US)</option>
-            <option value="en-UK">English (UK)</option>
-            <option value="es-ES">Spanish</option>
-            <option value="fr-FR">French</option>
-            <option value="de-DE">German</option>
-            <option value="it-IT">Italian</option>
-            <option value="ja-JP">Japanese</option>
-            <option value="zh-CN">Chinese (Simplified)</option>
-          </select>
-        </div>
-        
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Region</span>
-          </label>
-          <select class="select select-bordered w-full" id="region">
-            <option value="us">United States</option>
-            <option value="ca">Canada</option>
-            <option value="uk">United Kingdom</option>
-            <option value="de">Germany</option>
-            <option value="fr">France</option>
-            <option value="jp">Japan</option>
-            <option value="au">Australia</option>
-            <option value="in">India</option>
-          </select>
-        </div>
-        
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Time Zone</span>
-          </label>
-          <select class="select select-bordered w-full" id="timeZone">
-            <option value="GMT-8">Pacific Time (GMT-8)</option>
-            <option value="GMT-7">Mountain Time (GMT-7)</option>
-            <option value="GMT-6">Central Time (GMT-6)</option>
-            <option value="GMT-5">Eastern Time (GMT-5)</option>
-            <option value="GMT">Greenwich Mean Time (GMT)</option>
-            <option value="GMT+1">Central European Time (GMT+1)</option>
-            <option value="GMT+8">China Standard Time (GMT+8)</option>
-            <option value="GMT+9">Japan Standard Time (GMT+9)</option>
-          </select>
-        </div>
-        
-        <div class="form-control">
-          <label class="label cursor-pointer justify-between">
-            <span class="label-text">Automatic Software Update</span>
-            <input type="checkbox" class="toggle toggle-primary" id="autoUpdate">
-          </label>
-        </div>
-        
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Amazon Account Email</span>
-          </label>
-          <input type="email" class="input input-bordered w-full" id="amazonEmail">
-          <div id="emailFeedback" class="text-error text-sm mt-1 hidden">
-            Please enter a valid email address.
+      <h3 class="text-lg font-bold mb-2">General</h3>
+      <ul class="menu bg-base-200 rounded-box mb-6 p-0 w-full">
+        <li>
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span class="w-1/4">Device Name</span>
+            <input type="text" class="input input-bordered w-3/4" id="deviceName">
           </div>
-        </div>
-        
-        <div class="form-control">
-          <label class="label cursor-pointer justify-between">
-            <span class="label-text">Share Device Metrics</span>
+        </li>
+        <li class="bordered">
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span class="w-1/4">Language</span>
+            <select class="select select-bordered w-3/4" id="language">
+              <option value="en-US">English (US)</option>
+              <option value="en-UK">English (UK)</option>
+              <option value="es-ES">Spanish</option>
+              <option value="fr-FR">French</option>
+              <option value="de-DE">German</option>
+              <option value="it-IT">Italian</option>
+              <option value="ja-JP">Japanese</option>
+              <option value="zh-CN">Chinese (Simplified)</option>
+            </select>
+          </div>
+        </li>
+        <li class="bordered">
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span class="w-1/4">Region</span>
+            <select class="select select-bordered w-3/4" id="region">
+              <option value="us">United States</option>
+              <option value="ca">Canada</option>
+              <option value="uk">United Kingdom</option>
+              <option value="de">Germany</option>
+              <option value="fr">France</option>
+              <option value="jp">Japan</option>
+              <option value="au">Australia</option>
+              <option value="in">India</option>
+            </select>
+          </div>
+        </li>
+        <li class="bordered">
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span class="w-1/4">Time Zone</span>
+            <select class="select select-bordered w-3/4" id="timeZone">
+              <option value="GMT-8">Pacific (GMT-8)</option>
+              <option value="GMT-7">Mountain (GMT-7)</option>
+              <option value="GMT-6">Central (GMT-6)</option>
+              <option value="GMT-5">Eastern (GMT-5)</option>
+              <option value="GMT">Greenwich Mean Time (GMT)</option>
+              <option value="GMT+1">Central European (GMT+1)</option>
+              <option value="GMT+8">China Standard (GMT+8)</option>
+              <option value="GMT+9">Japan Standard (GMT+9)</option>
+            </select>
+          </div>
+        </li>
+        <li class="bordered">
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span>Automatic Software Update</span>
+            <input type="checkbox" class="toggle toggle-primary" id="autoUpdate">
+          </div>
+        </li>
+        <li class="bordered">
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span class="w-1/4">Amazon Account Email</span>
+            <div class="w-3/4">
+              <input type="email" class="input input-bordered w-full" id="amazonEmail">
+              <div id="emailFeedback" class="text-error text-xs mt-1 hidden">
+                Please enter a valid email address.
+              </div>
+            </div>
+          </div>
+        </li>
+        <li>
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span>Share Device Metrics</span>
             <input type="checkbox" class="toggle toggle-primary" id="shareMetrics">
-          </label>
-        </div>
+          </div>
+        </li>
+      </ul>
 
-        <!-- Echo Section -->
-        <h3 class="text-lg font-bold pb-2 mb-3 border-b-2 border-base-300 mt-4">Echo</h3>
-        
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Wake Word</span>
-          </label>
-          <input type="text" class="input input-bordered w-full" id="wakeWord" value="Alexa">
-        </div>
-        
-        <div class="form-control">
-          <label class="label cursor-pointer justify-between">
-            <span class="label-text">Microphone</span>
+      <!-- Echo Section -->
+      <h3 class="text-lg font-bold mb-2">Echo</h3>
+      <ul class="menu bg-base-200 rounded-box mb-6 p-0 w-full">
+        <li>
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span class="w-1/4">Wake Word</span>
+            <input type="text" class="input input-bordered w-3/4" id="wakeWord" value="Alexa">
+          </div>
+        </li>
+        <li class="bordered">
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span>Microphone</span>
             <input type="checkbox" class="toggle toggle-primary" id="micEnabled">
-          </label>
-        </div>
-        
-        <div class="form-control">
-          <label class="label cursor-pointer justify-between">
-            <span class="label-text">Drop In / Calling</span>
+          </div>
+        </li>
+        <li class="bordered">
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span>Drop In / Calling</span>
             <input type="checkbox" class="toggle toggle-primary" id="dropInCalling">
-          </label>
-        </div>
-        
-        <div class="form-control w-full">
-          <label class="label">
-            <span class="label-text">Display Settings (Echo Show)</span>
-          </label>
-          <select class="select select-bordered w-full" id="displaySettings">
-            <option value="brightness">Brightness</option>
-            <option value="ambientClock">Ambient Clock</option>
-            <option value="photoSlideshow">Photo Slideshow</option>
-          </select>
-        </div>
+          </div>
+        </li>
+        <li>
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span>Display Settings</span>
+            <select class="select select-bordered w-3/4" id="displaySettings">
+              <option value="brightness">Brightness</option>
+              <option value="ambientClock">Ambient Clock</option>
+              <option value="photoSlideshow">Photo Slideshow</option>
+            </select>
+          </div>
+        </li>
+      </ul>
 
-        <!-- Automation Section -->
-        <h3 class="text-lg font-bold pb-2 mb-3 border-b-2 border-base-300 mt-4">Automation</h3>
-        
-        <div class="form-control">
-          <label class="label cursor-pointer justify-between">
-            <span class="label-text">Enable Frustration Free Automation</span>
+      <!-- Automation Section -->
+      <h3 class="text-lg font-bold mb-2">Automation</h3>
+      <ul class="menu bg-base-200 rounded-box mb-6 p-0 w-full">
+        <li>
+          <div class="flex justify-between items-center w-full px-4 py-3">
+            <span>Enable Frustration Free Automation</span>
             <input type="checkbox" class="toggle toggle-primary" id="frustrationFreeAutomation">
-          </label>
-        </div>
-      </div>
+          </div>
+        </li>
+      </ul>
     </div>
 
-    <div id="resultBox" class="mt-4"></div>
-    
     <!-- Action buttons -->
-    <div class="form-control mt-6">
+    <div class="form-control mt-6 w-full">
       <div class="flex gap-[15px]">
         <button id="clearBtn" class="btn btn-outline border-base-300 flex-1">Reset</button>
         <button id="submitBtn" class="btn btn-primary flex-1">Submit</button>
       </div>
     </div>
+    <div id="resultBox" class="mt-4"></div>
   </div>
 </div>
 <script type="module" src="./step-settings.js"></script>
