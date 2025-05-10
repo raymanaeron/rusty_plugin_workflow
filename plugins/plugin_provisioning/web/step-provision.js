@@ -3,7 +3,7 @@ export async function activate(container, appManager) {
     console.log('Plugin activated: plugin_provisioning');
     const statusContent = container.querySelector('#statusContent');
     const continueBtn = container.querySelector('#continueBtn');
-    const spinner = container.querySelector('.spinner-border');
+    const spinner = container.querySelector('.loading-spinner'); // Updated selector for daisyUI spinner
 
     let doneIcon = null;
 

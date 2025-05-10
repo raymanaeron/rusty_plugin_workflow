@@ -1,25 +1,23 @@
 <div class="plugin-section">
-  <h5 class="plugin-title">Device Provisioning</h5>
-  <div class="flex-grow-1 d-flex flex-column align-items-center">
-    <!-- Card docked at top, full width, fixed height, with minimal Bootstrap shadow -->
-    <div class="card w-100 mb-3 shadow-sm" style="height: 320px; border-radius: 0; margin-top: 0;">
-      <div class="card-body h-100 d-flex flex-column justify-content-center align-items-center">
-        <!-- Spinner -->
-        <div id="loadingSpinner" class="d-flex justify-content-center align-items-center mb-4" style="height: 80px;">
-          <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-        </div>
-        <!-- Status message -->
-        <div id="statusContent" class="mb-4 text-center w-100">
-          Registering your device...
-        </div>
+  <div class="p-4">
+    <h2 class="text-2xl font-bold mb-4">Device Provisioning</h2>
+    
+    <div class="h-80 bg-base-100 rounded-box p-4 flex flex-col justify-center items-center">
+      <!-- Spinner -->
+      <div id="loadingSpinner" class="flex justify-center items-center mb-4 h-20">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+      <!-- Status message -->
+      <div id="statusContent" class="mb-4 text-center w-full">
+        Registering your device...
       </div>
     </div>
-    <!-- Continue button - Now properly wired with an ID that matches the JS -->
-    <button id="continueBtn" type="button" class="btn btn-primary w-100 mt-3" disabled>
-      Continue
-    </button>
+    
+    <div class="mt-6">
+      <button id="continueBtn" class="btn btn-primary w-full" disabled>
+        Continue
+      </button>
+    </div>
   </div>
 </div>
 <script type="module" src="./step-provision.js"></script>
