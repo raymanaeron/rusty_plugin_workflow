@@ -4,10 +4,10 @@
 body {
   font-family: "Segoe UI", "Helvetica Neue", sans-serif;
   min-height: 100vh;
-  background: linear-gradient(to bottom right, #f0f7ff, #d6eaff);
   margin: 0;
   padding: 0;
   font-family: 'Roboto', sans-serif;
+  /* Removed background gradient - using daisyUI theming instead */
 }
 
 /* Header styles */
@@ -40,7 +40,7 @@ body {
 */
 .plugin-section {
   background: transparent;
-  padding: 30px;
+  padding: 1.25rem;
   flex: 1;
 }
 
@@ -57,7 +57,7 @@ body {
   }
 }
 
-/* Status indicators */
+/* Status indicators - converting to daisyUI equivalents but keeping classes for compatibility */
 .status-line {
   font-size: 0.875rem;
   padding: 0.5rem;
@@ -65,6 +65,134 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.status-line.info { color: #084298; background-color: #cfe2ff; }
-.status-line.success { color: #0f5132; background-color: #d1e7dd; }
-.status-line.error { color: #842029; background-color: #f8d7da; }
+.status-line.info { 
+  @apply bg-info text-info-content;
+}
+.status-line.success { 
+  @apply bg-success text-success-content;
+}
+.status-line.error { 
+  @apply bg-error text-error-content;
+}
+
+/* Legacy class support for existing plugins */
+.container-fluid {
+  @apply container mx-auto px-4;
+}
+
+.row {
+  @apply flex flex-wrap;
+}
+
+.justify-content-center {
+  @apply justify-center;
+}
+
+.justify-content-between {
+  @apply justify-between;
+}
+
+.align-items-center {
+  @apply items-center;
+}
+
+.col-12 {
+  @apply w-full;
+}
+
+.col-md-8 {
+  @apply w-full md:w-2/3 lg:w-8/12;
+}
+
+.text-center {
+  @apply text-center;
+}
+
+.text-muted {
+  @apply text-base-content opacity-60;
+}
+
+.d-flex {
+  @apply flex;
+}
+
+.flex-column {
+  @apply flex-col;
+}
+
+.vh-100 {
+  @apply min-h-screen;
+}
+
+/* Maintain compatibility with any Bootstrap classes used in plugins */
+.alert {
+  @apply p-4 rounded-lg mb-4;
+}
+
+.alert-info {
+  @apply bg-info text-info-content;
+}
+
+.alert-success {
+  @apply bg-success text-success-content;
+}
+
+.alert-danger {
+  @apply bg-error text-error-content;
+}
+
+.alert-warning {
+  @apply bg-warning text-warning-content;
+}
+
+.btn {
+  @apply btn;
+}
+
+.btn-primary {
+  @apply btn-primary;
+}
+
+.btn-secondary {
+  @apply btn-secondary;
+}
+
+.btn-success {
+  @apply btn-success;
+}
+
+.btn-danger {
+  @apply btn-error;
+}
+
+.btn-warning {
+  @apply btn-warning;
+}
+
+.btn-info {
+  @apply btn-info;
+}
+
+.btn-link {
+  @apply btn-link;
+}
+
+.form-control {
+  @apply input input-bordered w-full;
+}
+
+.form-select {
+  @apply select select-bordered w-full;
+}
+
+.card {
+  @apply card bg-base-100 shadow-xl;
+}
+
+.card-body {
+  @apply card-body;
+}
+
+.card-title {
+  @apply card-title;
+}

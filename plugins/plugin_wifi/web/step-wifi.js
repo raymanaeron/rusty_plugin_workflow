@@ -28,81 +28,91 @@ export async function activate(container, appManager) {
     }
 
     async function getNetworkList() {
-        resultBox.innerHTML = "";
-        scanStatus.textContent = "Scanning...";
-        scanBtn.disabled = true;
-
         try {
-            const res = await fetch("/api/wifi/network");
-            if (!res.ok) throw new Error(`Scan failed (${res.status})`);
-            let networks = await res.json();
-
-            // Filter out networks with no SSID
-            networks = networks.filter(n => n.ssid && n.ssid.trim() !== "");
-
-            // Replace dropdown with custom list
-            const listBox = networkListBox;
-            listBox.innerHTML = "";
-            connectBtn.disabled = true; // Disable connect by default after scan
-            if (networks.length === 0) {
-                listBox.innerHTML = `<li class="list-group-item text-muted">No networks found</li>`;
-            } else {
-                /*
-                    <span class="text-muted small ms-2">
-                        ${typeof n.signal === "number" ? n.signal + " dBm" : ""}
-                    </span>
-                */
-                networks.forEach(n => {
-                    console.log(n);
-                    const iconPath = getSignalIconName(n.signal);
-                    const li = document.createElement("li");
-                    li.className = "list-group-item d-flex align-items-center";
-                    li.tabIndex = 0;
-                    li.setAttribute("role", "option");
-                    li.setAttribute("data-ssid", n.ssid);
-                    li.innerHTML = `
-                        <img src="${iconPath}" alt="signal" style="height:1.5em;width:auto;margin-right:0.75em;flex-shrink:0;">
-                        <span class="flex-grow-1">${n.ssid}</span>
-                        <span class="text-muted small ms-2">${n.security || ""}</span>
-                    `;
-                    li.addEventListener("click", () => {
-                        // Remove selection from others
-                        listBox.querySelectorAll(".active").forEach(el => el.classList.remove("active"));
-                        li.classList.add("active");
-                        networkList.value = n.ssid;
-                        connectBtn.disabled = false; // Enable connect when selected
-                    });
-                    li.addEventListener("keydown", (e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                            li.click();
-                        }
-                    });
-                    listBox.appendChild(li);
-                });
+            scanBtn.disabled = true;
+            scanBtn.classList.add("loading");
+            scanStatus.innerHTML = "Scanning networks...";
+            networkList.innerHTML = "";
+            
+            const response = await fetch('/api/wifi/network');
+            if (!response.ok) throw new Error(`Network scan failed (${response.status})`);
+            
+            const networks = await response.json();
+            
+            if (!Array.isArray(networks) || networks.length === 0) {
+                scanStatus.innerHTML = "No networks found";
+                scanBtn.disabled = false;
+                scanBtn.classList.remove("loading");
+                return;
             }
+            
+            scanStatus.innerHTML = `${networks.length} network(s) found`;
+            networkList.innerHTML = "";
+            
+            let selectedNetwork = null;
 
-            scanStatus.textContent = `Found ${networks.length} network(s)`;
-        } catch (err) {
-            scanStatus.textContent = "Scan failed";
-            resultBox.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
-        } finally {
+            networks.forEach(n => {
+                const li = document.createElement("li");
+                
+                // Use the existing getSignalIconName function to get the appropriate icon
+                const iconPath = getSignalIconName(n.signal);
+                
+                // Use daisyUI menu item style without circle background
+                li.innerHTML = `
+                    <button class="network-item w-full text-left flex items-center gap-4 p-3 rounded-lg" data-ssid="${n.ssid}">
+                      <img src="${iconPath}" alt="Signal strength" class="h-6 w-6">
+                      <div class="flex-1">
+                        <div class="font-bold">${n.ssid}</div>
+                        <div class="text-sm opacity-70">${n.security || "Open"}</div>
+                      </div>
+                      <div class="text-sm opacity-70">${n.signal} dBm</div>
+                    </button>
+                `;
+                
+                // Add click handler directly to the button
+                const networkItem = li.querySelector('.network-item');
+                networkItem.addEventListener('click', () => {
+                    // Store selected network SSID
+                    selectedNetwork = n.ssid;
+                    
+                    // Remove active class from all items
+                    document.querySelectorAll('.network-item').forEach(item => {
+                        item.classList.remove('bg-primary', 'text-primary-content');
+                    });
+                    
+                    // Add active class to selected item and keep it highlighted
+                    networkItem.classList.add('bg-primary', 'text-primary-content');
+                    
+                    // Enable connect button
+                    connectBtn.disabled = false;
+                });
+                
+                // Append to list
+                networkList.appendChild(li);
+            });
+            
             scanBtn.disabled = false;
+            scanBtn.classList.remove("loading");
+            connectBtn.disabled = true; // Initially disable connect button until network is selected
+            
+        } catch (err) {
+            scanStatus.innerHTML = `Error: ${err.message}`;
+            scanBtn.disabled = false;
+            scanBtn.classList.remove("loading");
+            console.error(err);
         }
     }
 
     scanBtn.addEventListener("click", async () => {
         await getNetworkList();
     });
-  
     skipBtn.addEventListener("click", async () => {
         resultBox.innerHTML = "";
         skipBtn.disabled = true;
-        
         // Tell the engine that we are done now
         const published = appManager.publish('plugin_wifi', 'WifiCompleted', 
             { status: 'skipped' }
         );
-        
         if (published) {
             resultBox.innerHTML = `<div class="alert alert-info">WiFi setup skipped. Redirecting...</div>`;
             console.log("[plugin_wifi] Network skip published, navigating...");
@@ -110,16 +120,21 @@ export async function activate(container, appManager) {
             resultBox.innerHTML = `<div class="alert alert-warning">Skip failed to publish. Redirecting anyway...</div>`;
             console.warn("[plugin_wifi] Skip publish failed");
         }
-        
         // Navigate to next route
         setTimeout(() => {
             history.pushState({}, "", next_route);
             window.dispatchEvent(new PopStateEvent("popstate"));
         }, 2000);
-    });
-  
+    });     history.pushState({}, "", next_route);
+            window.dispatchEvent(new PopStateEvent("popstate"));
     connectBtn.addEventListener("click", async () => {
-        const ssid = networkList.value;
+        const selectedNetworkItem = document.querySelector('.network-item.bg-primary');
+        if (!selectedNetworkItem) {
+            resultBox.innerHTML = `<div class="alert alert-warning">Please select a network first</div>`;
+            return;
+        }
+        
+        const ssid = selectedNetworkItem.getAttribute('data-ssid');
         const password = passwordInput.value;
         resultBox.innerHTML = "";
     
@@ -132,29 +147,25 @@ export async function activate(container, appManager) {
 
         connectBtn.disabled = true;
         resultBox.innerHTML = `<div class="alert alert-info">Connecting to ${ssid}...</div>`;
-    
         try {
             const res = await fetch("/api/wifi/network", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ssid, password }),
             });
-    
-            let json;
 
+            let json;
             try {
                 json = await res.json();
             } catch (err) {
                 const fallback = await res.text();
                 throw new Error(fallback);
             }
-
             if (res.ok) {
                 // Publish via connection manager
                 const published = appManager.publish('plugin_wifi', 'WifiCompleted', 
                     { status: 'connected', ssid: ssid }
                 );
-
                 if (published) {
                     resultBox.innerHTML = `<div class="alert alert-success">Connected! Redirecting...</div>`;
                     console.log("[plugin_wifi] Network status published, navigating...");
@@ -162,7 +173,6 @@ export async function activate(container, appManager) {
                     resultBox.innerHTML = `<div class="alert alert-warning">Connected, but status update failed. Redirecting...</div>`;
                     console.warn("[plugin_wifi] Publish failed, navigating without status update");
                 }
-
                 // Single navigation point with longer delay to ensure status is processed
                 /*
                 setTimeout(() => {
@@ -170,6 +180,7 @@ export async function activate(container, appManager) {
                     window.dispatchEvent(new PopStateEvent("popstate"));
                 }, 3000);
                 */
+                window.dispatchEvent(new PopStateEvent("popstate"));
             } else {
                 resultBox.innerHTML = `<div class="alert alert-danger">${json.message || "Connection failed"}</div>`;
             }

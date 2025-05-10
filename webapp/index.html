@@ -1,42 +1,118 @@
 <!-- webapp/index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Device Setup</title>
-  <link href="/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
   <link rel="stylesheet" href="/styles.css" />
+  <script>
+    // Initialize theme from localStorage or set default
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    });
+  </script>
 </head>
 
-<body class="d-flex flex-column vh-100">
-  <header class="app-header border-bottom shadow-sm">
-    <div class="container-fluid">
-      <div class="d-flex justify-content-between align-items-center">
-        <h1 class="app-title">OOBE SDK</h1>
-        <div class="d-none d-sm-block">
-          <button id="exitBtn" class="btn btn-link p-0 m-0" style="border:none;box-shadow:none;">
-            <img src="/icons/app-exit.svg" alt="Exit" style="height:1.5em;width:auto;vertical-align:middle;">
-          </button>
+<body class="flex flex-col min-h-screen">
+  <header class="bg-base-100 shadow-sm border-b sticky top-0 z-50">
+    <div class="container mx-auto">
+      <div class="flex justify-between items-center py-3">
+        <h1 class="text-xl font-medium ml-[30px]">OOBE SDK</h1>
+        <div class="flex items-center mr-[30px]">
+          <div class="dropdown dropdown-end">
+            <label tabindex="0" class="btn btn-ghost m-1">
+              Theme
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="ml-1" viewBox="0 0 16 16">
+                <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+              </svg>
+            </label>
+            <ul id="theme-menu" tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
+              <li><a id="theme-light" class="active">Light</a></li>
+              <li><a id="theme-dark">Dark</a></li>
+              <li><a id="theme-cupcake">Cupcake</a></li>
+              <li><a id="theme-corporate">Corporate</a></li>
+              <li><a id="theme-emerald">Emerald</a></li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
   </header>
 
-  <main class="app-content">
-    <div id="content" class="plugin-section">
+  <main class="flex-grow">
+    <div id="content" class="p-4 md:p-6">
       <!-- Plugin content injected here -->
     </div>
   </main>
 
-  <footer class="border-top py-3 bg-white d-sm-none">
-    <div class="container-fluid">
-      <button id="exitBtnMobile" class="btn btn-link w-100 p-0 m-0" style="border:none;box-shadow:none;">
-        <img src="/icons/app-exit.svg" alt="Exit" style="height:1.5em;width:auto;vertical-align:middle;">
-      </button>
+  <footer class="border-t py-3 bg-base-100 md:hidden">
+    <div class="container mx-auto px-4">
     </div>
   </footer>
 
   <script type="module" src="/app.js"></script>
+  <script>
+    // Theme switching functionality - fixed implementation
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      
+      // Set initial theme
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      
+      // Add click handlers directly to each theme option
+      document.getElementById('theme-light').addEventListener('click', () => setTheme('light'));
+      document.getElementById('theme-dark').addEventListener('click', () => setTheme('dark'));
+      document.getElementById('theme-cupcake').addEventListener('click', () => setTheme('cupcake'));
+      document.getElementById('theme-corporate').addEventListener('click', () => setTheme('corporate'));
+      document.getElementById('theme-emerald').addEventListener('click', () => setTheme('emerald'));
+      
+      // Update active state based on current theme
+      updateActiveTheme(savedTheme);
+      
+      // Function to set theme
+      function setTheme(theme) {
+        // Update theme
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        
+        console.log('Theme changed to:', theme);
+        
+        // Update active state
+        updateActiveTheme(theme);
+        
+        // Close the dropdown menu more effectively
+        const dropdownMenu = document.getElementById('theme-menu');
+        if (dropdownMenu) {
+          dropdownMenu.classList.remove('dropdown-open');
+          dropdownMenu.blur();
+        }
+        
+        // Hide dropdown by adding a timeout and clicking outside
+        setTimeout(() => {
+          document.body.click();
+          const dropdownLabel = document.querySelector('.dropdown label');
+          if (dropdownLabel) {
+            dropdownLabel.blur();
+          }
+        }, 10);
+      }
+      
+      // Function to update active theme indicator
+      function updateActiveTheme(activeTheme) {
+        document.querySelectorAll('[id^="theme-"]').forEach(element => {
+          const themeName = element.id.replace('theme-', '');
+          if (themeName === activeTheme) {
+            element.classList.add('active');
+          } else {
+            element.classList.remove('active');
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>

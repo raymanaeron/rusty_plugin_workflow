@@ -3,7 +3,8 @@ export async function activate(container, appManager) {
     console.log('Plugin activated: plugin_execplan');
     const statusContent = container.querySelector('#statusContent');
     const continueBtn = container.querySelector('#continueBtn');
-    const spinner = container.querySelector('.spinner-border');
+    const spinnerContainer = container.querySelector('#loadingSpinner');
+    const spinner = spinnerContainer.querySelector('.loading-spinner');
 
     let doneIcon = null;
 
@@ -24,18 +25,23 @@ export async function activate(container, appManager) {
         if (step === messages.length - 1) {
             // Last message: enable button and hide spinner
             if (continueBtn) continueBtn.disabled = false;
-            if (spinner) spinner.style.display = "none";
+            
             // Show done icon in place of spinner
+            if (spinner) spinner.style.display = "none";
+            
             if (!doneIcon) {
                 doneIcon = document.createElement('img');
                 doneIcon.src = '/execution/web/icons/exec-plan-done.svg';
                 doneIcon.alt = 'Execution Plan Done';
                 doneIcon.style.width = '3rem';
                 doneIcon.style.height = '3rem';
-                // Insert the icon where the spinner was
-                spinner.parentNode.insertBefore(doneIcon, spinner);
+                doneIcon.className = 'h-12 w-12'; // Add Tailwind classes
+                
+                // Insert the done icon in the spinner container
+                spinnerContainer.appendChild(doneIcon);
+            } else {
+                doneIcon.style.display = "";
             }
-            doneIcon.style.display = "";
         } else {
             // Spinner should be visible and button disabled while messages are updating
             if (spinner) spinner.style.display = "";

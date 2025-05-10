@@ -1,36 +1,47 @@
 <!-- plugins/plugin_wifi/web/step-wifi.html -->
 <div class="plugin-section">
-  <h5 class="plugin-title">WiFi Setup</h5>
-
-  <div class="row mb-3 align-items-center">
-    <div class="col-auto">
-      <button id="scanBtn" class="btn btn-outline-primary">
-        <img src="/wifi/web/icons/wifi-scan.svg" alt="Scan" style="height:1.5em;width:auto;vertical-align:middle;">
-      </button>
+  <div class="p-4">
+    <h2 class="text-2xl font-bold mb-4">WiFi Setup</h2>
+    
+    <p class="text-lg text-base-content/70 mb-6">Connect your device to a WiFi network</p>
+    
+    <div id="resultBox"></div>
+    
+    <div class="flex flex-col gap-4">
+      <div id="networkListBox" class="rounded-lg">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold mr-2">Available Networks</h3>
+          <div id="scanStatus" class="text-sm italic text-base-content/70 flex-grow text-center">
+            Click scan to find available networks
+          </div>
+          <button id="scanBtn" class="btn btn-sm btn-primary gap-1 ml-2 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Scan
+          </button>
+        </div>
+        
+        <div class="h-64 md:h-80 lg:h-96 bg-base-100 rounded-box overflow-hidden">
+          <ul id="networkList" class="w-full h-full overflow-y-auto p-2">
+            <!-- Network items will be injected here -->
+          </ul>
+        </div>
+      </div>
+      
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Password</span>
+        </label>
+        <input type="password" id="password" class="input input-bordered w-full" placeholder="Enter network password" />
+      </div>
+      
+      <div class="w-full form-control">
+        <div class="flex gap-[20px]">
+          <button id="skipBtn" class="btn btn-outline border-base-300 flex-1">Skip</button>
+          <button id="connectBtn" class="btn btn-primary flex-1">Connect</button>
+        </div>
+      </div>
     </div>
-    <div class="col text-muted" id="scanStatus"></div>
   </div>
-
-  <div class="mb-4">
-    <label for="networkListBox" class="form-label fw-semibold">Available Networks</label>
-    <ul id="networkListBox"
-        class="list-group shadow-sm"
-        style="min-height: 16em; max-height: 16em; width: 100%; overflow-y: auto;">
-      <li class="list-group-item text-muted">-- Choose a network --</li>
-    </ul>
-    <input type="hidden" id="networkList" />
-    <div class="form-text">Tap to select a network. Scroll for more.</div>
-  </div>
-
-  <div class="mb-4">
-    <label for="password" class="form-label fw-semibold">Password</label>
-    <input type="password" id="password" class="form-control shadow-sm" placeholder="Enter WiFi password" />
-  </div>
-
-  <div class="mt-4 d-flex" style="gap: 15px;">
-    <button id="skipBtn" class="btn btn-secondary flex-grow-1">Skip</button>
-    <button id="connectBtn" class="btn btn-primary flex-grow-1">Connect</button>
-  </div>
-
-  <div id="resultBox" class="mt-4 text-center"></div>
 </div>
