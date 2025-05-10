@@ -30,13 +30,39 @@
                 <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
               </svg>
             </label>
-            <ul id="theme-menu" tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-40">
-              <li><a id="theme-light" class="active">Light</a></li>
-              <li><a id="theme-dark">Dark</a></li>
-              <li><a id="theme-cupcake">Cupcake</a></li>
-              <li><a id="theme-corporate">Corporate</a></li>
-              <li><a id="theme-blue">Blue</a></li>
-              <li><a id="theme-emerald">Emerald</a></li>
+            <ul id="theme-menu" tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-56 max-h-96 overflow-y-auto grid grid-cols-1">
+              <li class="menu-title">Select Theme</li>
+              <li><a id="theme-light" class="active w-full">Light</a></li>
+              <li><a id="theme-dark" class="w-full">Dark</a></li>
+              <li><a id="theme-cupcake" class="w-full">Cupcake</a></li>
+              <li><a id="theme-corporate" class="w-full">Corporate</a></li>
+              <li><a id="theme-emerald" class="w-full">Emerald</a></li>
+              <li><a id="theme-bumblebee" class="w-full">Bumblebee</a></li>
+              <li><a id="theme-retro" class="w-full">Retro</a></li>
+              <li><a id="theme-cyberpunk" class="w-full">Cyberpunk</a></li>
+              <li><a id="theme-valentine" class="w-full">Valentine</a></li>
+              <li><a id="theme-halloween" class="w-full">Halloween</a></li>
+              <li><a id="theme-garden" class="w-full">Garden</a></li>
+              <li><a id="theme-forest" class="w-full">Forest</a></li>
+              <li><a id="theme-aqua" class="w-full">Aqua</a></li>
+              <li><a id="theme-lofi" class="w-full">Lofi</a></li>
+              <li><a id="theme-pastel" class="w-full">Pastel</a></li>
+              <li><a id="theme-fantasy" class="w-full">Fantasy</a></li>
+              <li><a id="theme-wireframe" class="w-full">Wireframe</a></li>
+              <li><a id="theme-black" class="w-full">Black</a></li>
+              <li><a id="theme-luxury" class="w-full">Luxury</a></li>
+              <li><a id="theme-dracula" class="w-full">Dracula</a></li>
+              <li><a id="theme-cmyk" class="w-full">CMYK</a></li>
+              <li><a id="theme-autumn" class="w-full">Autumn</a></li>
+              <li><a id="theme-business" class="w-full">Business</a></li>
+              <li><a id="theme-acid" class="w-full">Acid</a></li>
+              <li><a id="theme-lemonade" class="w-full">Lemonade</a></li>
+              <li><a id="theme-night" class="w-full">Night</a></li>
+              <li><a id="theme-coffee" class="w-full">Coffee</a></li>
+              <li><a id="theme-winter" class="w-full">Winter</a></li>
+              <li><a id="theme-dim" class="w-full">Dim</a></li>
+              <li><a id="theme-nord" class="w-full">Nord</a></li>
+              <li><a id="theme-sunset" class="w-full">Sunset</a></li>
             </ul>
           </div>
         </div>
@@ -69,8 +95,33 @@
       document.getElementById('theme-dark').addEventListener('click', () => setTheme('dark'));
       document.getElementById('theme-cupcake').addEventListener('click', () => setTheme('cupcake'));
       document.getElementById('theme-corporate').addEventListener('click', () => setTheme('corporate'));
-      document.getElementById('theme-blue').addEventListener('click', () => setTheme('blue'));
       document.getElementById('theme-emerald').addEventListener('click', () => setTheme('emerald'));
+      document.getElementById('theme-bumblebee').addEventListener('click', () => setTheme('bumblebee'));
+      document.getElementById('theme-retro').addEventListener('click', () => setTheme('retro'));
+      document.getElementById('theme-cyberpunk').addEventListener('click', () => setTheme('cyberpunk'));
+      document.getElementById('theme-valentine').addEventListener('click', () => setTheme('valentine'));
+      document.getElementById('theme-halloween').addEventListener('click', () => setTheme('halloween'));
+      document.getElementById('theme-garden').addEventListener('click', () => setTheme('garden'));
+      document.getElementById('theme-forest').addEventListener('click', () => setTheme('forest'));
+      document.getElementById('theme-aqua').addEventListener('click', () => setTheme('aqua'));
+      document.getElementById('theme-lofi').addEventListener('click', () => setTheme('lofi'));
+      document.getElementById('theme-pastel').addEventListener('click', () => setTheme('pastel'));
+      document.getElementById('theme-fantasy').addEventListener('click', () => setTheme('fantasy'));
+      document.getElementById('theme-wireframe').addEventListener('click', () => setTheme('wireframe'));
+      document.getElementById('theme-black').addEventListener('click', () => setTheme('black'));
+      document.getElementById('theme-luxury').addEventListener('click', () => setTheme('luxury'));
+      document.getElementById('theme-dracula').addEventListener('click', () => setTheme('dracula'));
+      document.getElementById('theme-cmyk').addEventListener('click', () => setTheme('cmyk'));
+      document.getElementById('theme-autumn').addEventListener('click', () => setTheme('autumn'));
+      document.getElementById('theme-business').addEventListener('click', () => setTheme('business'));
+      document.getElementById('theme-acid').addEventListener('click', () => setTheme('acid'));
+      document.getElementById('theme-lemonade').addEventListener('click', () => setTheme('lemonade'));
+      document.getElementById('theme-night').addEventListener('click', () => setTheme('night'));
+      document.getElementById('theme-coffee').addEventListener('click', () => setTheme('coffee'));
+      document.getElementById('theme-winter').addEventListener('click', () => setTheme('winter'));
+      document.getElementById('theme-dim').addEventListener('click', () => setTheme('dim'));
+      document.getElementById('theme-nord').addEventListener('click', () => setTheme('nord'));
+      document.getElementById('theme-sunset').addEventListener('click', () => setTheme('sunset'));
       
       // Update active state based on current theme
       updateActiveTheme(savedTheme);
