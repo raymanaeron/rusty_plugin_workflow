@@ -1,37 +1,36 @@
 <div class="plugin-section">
-  <h5 class="plugin-title">Sign in</h5>
-  <div class="flex-grow-1 d-flex flex-column align-items-center">
-    <!-- Card docked at top, full width, fixed height, with minimal Bootstrap shadow -->
-    <div class="card w-100 mb-3 shadow-sm" style="height: 320px; border-radius: 0; margin-top: 0;">
-      <div style="margin: 30px;">
-        <!-- Username/email address -->
-        <div class="mb-3 w-100">
-          <label for="inputUsername" class="form-label">Username or Email</label>
-          <input type="text" class="form-control" id="inputUsername" autocomplete="username"
-            placeholder="Enter username or email">
-        </div>
-        <!-- Password -->
-        <div class="mb-3 w-100">
-          <label for="inputPassword" class="form-label">Password</label>
-          <input type="password" class="form-control" id="inputPassword" autocomplete="current-password"
-            placeholder="Enter password">
-        </div>
-        <!-- Clear and Submit buttons stretched to the width of the view but have about 15px gap in between them-->
-        <div class="d-flex w-100 mb-3 mx-auto" style="gap: 15px;">
-          <button id="clearBtn" type="button" class="btn btn-outline-secondary flex-fill">Clear</button>
-          <button id="submitBtn" type="button" class="btn btn-primary flex-fill">Submit</button>
-        </div>
-        <!-- Status message -->
-        <div id="statusContent" class="mb-4 text-center w-100" style="min-height: 24px;">
-          Please enter your credentials to sign in.
-        </div>
+  <div class="p-4">
+    <h2 class="text-2xl font-bold mb-4">Login</h2>
+    
+    <p class="text-lg text-base-content/70 mb-6">Please enter your credentials to sign in</p>
+    
+    <div class="flex flex-col gap-4">
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Username</span>
+        </label>
+        <input type="text" id="username" class="input input-bordered w-full" placeholder="Enter username" />
       </div>
-
-      <div class="w-100 text-center mb-3" style="max-width: 500px; margin-left: auto; margin-right: auto;">
-        <a href="#" id="forgotPasswordLink">Forgot Password</a>
-        <span class="mx-2">|</span>
-        <a href="#" id="signUpLink">Sign Up</a>
+      
+      <div class="form-control w-full">
+        <label class="label">
+          <span class="label-text">Password</span>
+        </label>
+        <input type="password" id="password" class="input input-bordered w-full" placeholder="Enter password" />
       </div>
+      
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-2">
+          <input type="checkbox" id="rememberCheck" class="checkbox checkbox-sm" />
+          <span class="label-text">Remember me</span>
+        </label>
+      </div>
+      
+      <div class="mt-4">
+        <button id="loginBtn" class="btn btn-primary w-full">Login</button>
+      </div>
+      
+      <div id="resultBox" class="mt-2"></div>
     </div>
   </div>
 </div>

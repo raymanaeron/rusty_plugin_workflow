@@ -26,9 +26,11 @@ static mut PLUGIN_WS_CLIENT: Option<Arc<Mutex<WsClient>>> = None;
 // Define your data structure - using CamelCase for type name
 #[derive(Serialize, Deserialize, Clone, Default)]
 struct Userprofile {
+    #[serde(default)]
     id: String,
-    field1: String,
-    field2: bool,
+    username: String,
+    password: String,
+    remember_me: bool,
 }
 
 // Shared state - using a HashMap to store multiple items by ID
@@ -123,6 +125,10 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
             // POST: Create a new resource
             HttpMethod::Post if resource_path == "userprofile" => {
                 let body = std::slice::from_raw_parts(request.body_ptr, request.body_len);
+                
+                // Print the request body for debugging
+                println!("[plugin_login] Received request body: {:?}", String::from_utf8_lossy(body));
+                
                 if let Ok(mut data) = serde_json::from_slice::<Userprofile>(body) {
                     let mut state = STATE.lock().unwrap();
                     

@@ -1,139 +1,89 @@
 export async function activate(container, appManager) {
-    // Register with app manager
+    // Register with connection manager
     appManager.registerPlugin('plugin_login');
-    console.log('Plugin activated: plugin_login');
     
-    // Get UI elements
-    const statusContent = container.querySelector('#statusContent');
-    const submitBtn = container.querySelector('#submitBtn');
-    const clearBtn = container.querySelector('#clearBtn');
-    const forgotPasswordLink = container.querySelector('#forgotPasswordLink');
-    const signUpLink = container.querySelector('#signUpLink');
+    // Get DOM elements
+    const usernameInput = container.querySelector('#username');
+    const passwordInput = container.querySelector('#password');
+    const rememberCheck = container.querySelector('#rememberCheck');
+    const loginBtn = container.querySelector('#loginBtn');
+    const resultBox = container.querySelector('#resultBox');
     
-    // Example: GET data from API
-    async function getData() {
-        try {
-            const response = await fetch('/api/login/userprofile');
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Data loaded:', data);
-                return data;
-            } else {
-                console.error('Failed to load data:', response.statusText);
-                throw new Error(`Failed to load data: ${response.statusText}`);
-            }
-        } catch (error) {
-            console.error('Error loading data:', error);
-            throw error;
-        }
+    // Set focus to username field
+    if (usernameInput) {
+        setTimeout(() => {
+            usernameInput.focus();
+        }, 100);
     }
     
-    // Example: POST data to API
-    async function postData(payload) {
-        try {
-            const response = await fetch('/api/login/userprofile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+    // Handle login button click
+    if (loginBtn) {
+        loginBtn.addEventListener('click', async () => {
+            // Basic validation
+            const username = usernameInput?.value?.trim();
+            const password = passwordInput?.value;
+            const rememberMe = rememberCheck?.checked || false;
             
-            const data = await response.json();
-            if (response.ok) {
-                console.log('Data posted successfully:', data);
-                return data;
-            } else {
-                console.error('Failed to post data:', data);
-                throw new Error(data.message || 'Failed to post data');
+            if (!username || !password) {
+                resultBox.innerHTML = `<div class="alert alert-warning">Please enter both username and password.</div>`;
+                return;
             }
-        } catch (error) {
-            console.error('Error posting data:', error);
-            throw error;
-        }
-    }
-    
-    // Example: PUT data to API (update)
-    async function putData(id, payload) {
-        try {
-            const response = await fetch(`/api/login/userprofile/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
             
-            const data = await response.json();
-            if (response.ok) {
-                console.log('Data updated successfully:', data);
-                return data;
-            } else {
-                console.error('Failed to update data:', data);
-                throw new Error(data.message || 'Failed to update data');
-            }
-        } catch (error) {
-            console.error('Error updating data:', error);
-            throw error;
-        }
-    }
-    
-    // Example: PATCH data to API (partial update)
-    async function patchData(id, partialPayload) {
-        try {
-            const response = await fetch(`/api/login/userprofile/${id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(partialPayload)
-            });
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = `<span class="loading loading-spinner loading-sm"></span> Logging in...`;
+            resultBox.innerHTML = "";
             
-            const data = await response.json();
-            if (response.ok) {
-                console.log('Data patched successfully:', data);
-                return data;
-            } else {
-                console.error('Failed to patch data:', data);
-                throw new Error(data.message || 'Failed to patch data');
-            }
-        } catch (error) {
-            console.error('Error patching data:', error);
-            throw error;
-        }
-    }
-    
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            // Clear the status content
-            // Clear username and password fields
-            const usernameField = container.querySelector('#inputUsername');
-            const passwordField = container.querySelector('#inputPassword');
-            if (usernameField) usernameField.value = '';
-            if (passwordField) passwordField.value = '';
-            if (statusContent) statusContent.innerHTML = '';
-        });
-    }
-
-    if (submitBtn) {
-        submitBtn.addEventListener('click', async () => {
-            // Get values from input fields
-            const usernameField = container.querySelector('#usernameField');
-            const passwordField = container.querySelector('#passwordField');
-            const username = usernameField ? usernameField.value : '';
-            const password = passwordField ? passwordField.value : '';
-
-            // Example: POST data to API
             try {
-                const payload = { username, password };
-                const response = await postData(payload);
-                statusContent.innerHTML = `Login successful: ${response.message}`;
-            } catch (error) {
-                statusContent.innerHTML = `Login failed: ${error.message}`;
+                // Call login API
+                const response = await fetch('/api/login/userprofile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        remember_me: rememberMe
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Login successful
+                    resultBox.innerHTML = `<div class="alert alert-success">Login successful! Redirecting...</div>`;
+                    
+                    // Publish login event
+                    const published = appManager.publish('plugin_login', 'LoginCompleted', {
+                        username: username,
+                        userId: data.user_id || 'unknown',
+                        isAdmin: data.is_admin || false
+                    });
+                    
+                    if (published) {
+                        console.log("[plugin_login] Authentication published");
+                    } else {
+                        console.warn("[plugin_login] Authentication publish failed");
+                    }
+                    
+                    // Simulate delay before redirect
+                    setTimeout(() => {
+                        // Get next route from response or use default
+                        const nextRoute = data.next_route || "/dashboard";
+                        history.pushState({}, "", nextRoute);
+                        window.dispatchEvent(new PopStateEvent("popstate"));
+                    }, 1500);
+                } else {
+                    // Login failed
+                    resultBox.innerHTML = `<div class="alert alert-error">${data.message || "Login failed."}</div>`;
+                }
+            } catch (err) {
+                resultBox.innerHTML = `<div class="alert alert-error">Error: ${err.message}</div>`;
+                console.error(err);
+            } finally {
+                // Reset button state
+                loginBtn.disabled = false;
+                loginBtn.textContent = "Login";
             }
-
-            const published = appManager.publish('plugin_login', 'LoginCompleted', 
-                { status: 'completed' }
-            );
         });
     }
-
-    // Return cleanup function at module level
-    return () => {
-        appManager.unregisterPlugin('plugin_login');
-    };
 }

@@ -47,5 +47,6 @@ This agreement must be reviewed before each code change to ensure compliance.
 5. Ensure buttons are properly styled and aligned
 6. Keep scrollable areas at appropriate height with overflow handling
 7. Preserve all functionality while updating visual elements
+8. Position result/error messages after action buttons for better UX flow
 
 The goal is visual consistency across all plugins while maintaining all original functionality.
