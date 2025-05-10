@@ -86,4 +86,10 @@ export async function activate(container, appManager) {
             }
         });
     }
+
+    // Return cleanup function at module level
+    // Unregisters the plugin from the application manager
+    return () => {
+        appManager.unregisterPlugin('plugin_login');
+    };
 }

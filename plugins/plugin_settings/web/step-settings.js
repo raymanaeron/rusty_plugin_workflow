@@ -12,11 +12,12 @@ export async function activate(container, appManager) {
     // Get UI elements
     const submitBtn = container.querySelector('#submitBtn');
     const clearBtn = container.querySelector('#clearBtn');
+    const resultBox = container.querySelector('#resultBox');
 
     // Check for critical elements
-    if (!submitBtn || !clearBtn) {
+    if (!submitBtn || !clearBtn || !resultBox) {
         console.error('Critical UI elements not found in container:', 
-            { submitBtn: !!submitBtn, clearBtn: !!clearBtn });
+            { submitBtn: !!submitBtn, clearBtn: !!clearBtn, resultBox: !!resultBox });
         return;
     }
     
@@ -159,8 +160,12 @@ export async function activate(container, appManager) {
             try {
                 await postData(updatedSettings);
                 console.log('Settings submitted successfully');
+                resultBox.innerText = 'Settings submitted successfully!';
+                resultBox.classList.remove('hidden');
             } catch (error) {
                 console.error(`Save settings failed: ${error.message}`);
+                resultBox.innerText = `Error: ${error.message}`;
+                resultBox.classList.remove('hidden');
             }
 
             const published = appManager.publish('plugin_settings', 'SettingsCompleted',

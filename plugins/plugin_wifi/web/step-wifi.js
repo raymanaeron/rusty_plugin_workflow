@@ -196,4 +196,10 @@ export async function activate(container, appManager) {
 
     // Scan for networks as soon as the controls are ready
     await getNetworkList();
+
+    // Return cleanup function at module level
+    // Unregisters the plugin from the application manager
+    return () => {
+        appManager.unregisterPlugin('plugin_wifi');
+    };
 }
