@@ -16,6 +16,7 @@ once_cell = "1.19"
 wifi-rs = "0.2.4"
 tokio-wifiscanner = "0.2.1"
 plugin_core = { path = "../../plugin_core", features = ["logging"] }
+libjwt = { path = "../../libjwt"}
 libws = { path = "../../libws" }
 liblogger = { path = "../../liblogger" }
 liblogger_macros = { path = "../../liblogger_macros" }

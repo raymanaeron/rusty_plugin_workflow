@@ -519,7 +519,7 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
 /// * `path` - Path to the plugin binary.
 /// * `registry` - Shared plugin registry.
 /// * `lib_holder` - Vector holding loaded plugin libraries.
-// #[measure_time]
+#[measure_time]
 fn load_and_register(
     path: PathBuf,
     registry: &Arc<PluginRegistry>,
