@@ -3,39 +3,36 @@
  * Provides secure request functions and automatic token refresh
  */
 
-let currentToken = null;
-let tokenExpiry = null;
-let refreshInterval = null;
+// Session state management
 let apiKey = null;
 let apiSecret = null;
 let sessionId = null;
-let onTokenRefreshCallbacks = [];
+let currentToken = null;
 
 /**
  * Initialize JWT authentication with API credentials
- * @param {string} key - API key
- * @param {string} secret - API secret
+ * @param {string} key - API key (optional, will generate if not provided)
+ * @param {string} secret - API secret (optional, will generate if not provided)
  * @returns {Promise<string>} - JWT token
  */
 export async function initialize_with_jwt(key, secret) {
-    apiKey = key || generateApiKey();
-    apiSecret = secret || generateApiSecret();
+    // Generate or use provided credentials
+    apiKey = key || generateRandomString(12);
+    apiSecret = secret || generateRandomString(24);
     
     console.log('[JWT Manager] Initializing with API key:', apiKey);
     
     try {
         // Create a new session
         const session = await createSession(apiKey, apiSecret);
+        
+        // Store session data
         sessionId = session.session_id;
         currentToken = session.token;
         
-        // Parse token expiry (assuming JWT has an exp claim)
-        tokenExpiry = getTokenExpiry(currentToken);
+        console.log('[JWT Manager] Session created successfully:', sessionId);
+        console.log('[JWT Manager] Token obtained:', currentToken ? '✓' : '✗');
         
-        // Set up automatic token refresh
-        setupTokenRefresh();
-        
-        console.log('[JWT Manager] Successfully initialized');
         return currentToken;
     } catch (error) {
         console.error('[JWT Manager] Initialization failed:', error);
@@ -44,43 +41,52 @@ export async function initialize_with_jwt(key, secret) {
 }
 
 /**
- * Create a secure request function that automatically adds the JWT token
+ * Make a secure request with authentication token
  * @param {string} url - Request URL
  * @param {Object} options - Fetch options
  * @returns {Promise<Response>} - Fetch response
  */
 export async function secure_request(url, options = {}) {
-    // Ensure we have a valid token
     if (!currentToken) {
-        throw new Error('JWT Manager not initialized. Call initialize_with_jwt() first');
+        throw new Error('[JWT Manager] No token available. Call initialize_with_jwt() first');
     }
 
-    // Check if token is about to expire and refresh if needed
-    const now = Date.now() / 1000; // Current time in seconds
-    if (tokenExpiry && (tokenExpiry - now < 60)) { // Refresh if less than 1 minute left
-        await refreshToken();
-    }
-    
     // Create headers if not present
     const headers = options.headers || {};
     
-    // Add authorization header
+    // Add authorization header with current token
     headers['Authorization'] = `Bearer ${currentToken}`;
     
-    // Return the fetch with the updated options
-    return fetch(url, {
-        ...options,
-        headers
-    });
-}
-
-/**
- * Register a callback to be called when token is refreshed
- * @param {Function} callback - Function to call with new token
- */
-export function onTokenRefresh(callback) {
-    if (typeof callback === 'function') {
-        onTokenRefreshCallbacks.push(callback);
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers
+        });
+        
+        // If unauthorized, try refreshing token and retry once
+        if (response.status === 401) {
+            console.log('[JWT Manager] Received 401 unauthorized, refreshing token');
+            
+            try {
+                // Get a fresh token for the current session
+                const refreshResponse = await getSessionToken(apiKey, sessionId);
+                if (refreshResponse && refreshResponse.token) {
+                    // Update the token
+                    currentToken = refreshResponse.token;
+                    
+                    // Retry the request with new token
+                    headers['Authorization'] = `Bearer ${currentToken}`;
+                    return fetch(url, { ...options, headers });
+                }
+            } catch (refreshError) {
+                console.error('[JWT Manager] Token refresh failed:', refreshError);
+            }
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('[JWT Manager] Request failed:', error);
+        throw error;
     }
 }
 
@@ -101,7 +107,8 @@ async function createSession(key, secret) {
         });
 
         if (!response.ok) {
-            throw new Error(`Failed to create session. Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`Failed to create session (${response.status}): ${errorText}`);
         }
 
         return await response.json();
@@ -112,92 +119,33 @@ async function createSession(key, secret) {
 }
 
 /**
- * Get a new token for the current session
- * @returns {Promise<string>} - New JWT token
+ * Get a new token for a specific session
+ * @param {string} key - API key
+ * @param {string} session - Session ID
+ * @returns {Promise<Object>} - Token data
  */
-async function refreshToken() {
+async function getSessionToken(key, session) {
     try {
-        if (!apiKey || !sessionId) {
-            throw new Error('Cannot refresh token: No active session');
-        }
-
-        console.log('[JWT Manager] Refreshing token...');
-        
-        const response = await fetch(`/api/auth/${apiKey}/sessions/${sessionId}`);
+        const response = await fetch(`/api/auth/${key}/sessions/${session}`);
         
         if (!response.ok) {
-            throw new Error(`Failed to refresh token. Status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`Failed to get session token (${response.status}): ${errorText}`);
         }
 
-        const data = await response.json();
-        currentToken = data.token;
-        tokenExpiry = getTokenExpiry(currentToken);
-        
-        // Notify all registered callbacks
-        onTokenRefreshCallbacks.forEach(callback => {
-            try {
-                callback(currentToken);
-            } catch (e) {
-                console.error('[JWT Manager] Error in token refresh callback:', e);
-            }
-        });
-        
-        console.log('[JWT Manager] Token refreshed successfully');
-        return currentToken;
+        return await response.json();
     } catch (error) {
-        console.error('[JWT Manager] Error refreshing token:', error);
+        console.error('[JWT Manager] Error getting session token:', error);
         throw error;
     }
 }
 
 /**
- * Set up automatic token refresh every minute
- */
-function setupTokenRefresh() {
-    // Clear existing interval if any
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-    }
-    
-    // Refresh token every minute
-    refreshInterval = setInterval(async () => {
-        try {
-            await refreshToken();
-        } catch (error) {
-            console.error('[JWT Manager] Scheduled token refresh failed:', error);
-        }
-    }, 60000); // 60 seconds
-}
-
-/**
- * Extract expiry time from JWT token
- * @param {string} token - JWT token
- * @returns {number|null} - Expiry time in seconds or null if not present
- */
-function getTokenExpiry(token) {
-    try {
-        // Extract the payload part (second segment) of the JWT
-        const payload = token.split('.')[1];
-        // Base64 decode and parse as JSON
-        const decoded = JSON.parse(atob(payload));
-        return decoded.exp || null;
-    } catch (error) {
-        console.error('[JWT Manager] Error parsing token expiry:', error);
-        return null;
-    }
-}
-
-/**
- * Clean up resources and clear refresh interval
+ * Clean up resources and revoke the session
  */
 export function cleanup() {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-    }
-    
-    // Revoke the session if we have active credentials
     if (apiKey && sessionId) {
+        // Attempt to revoke the session
         try {
             fetch(`/api/auth/${apiKey}/sessions/${sessionId}`, {
                 method: 'DELETE',
@@ -207,28 +155,11 @@ export function cleanup() {
         }
     }
     
-    currentToken = null;
-    tokenExpiry = null;
+    // Reset state
     apiKey = null;
     apiSecret = null;
     sessionId = null;
-    onTokenRefreshCallbacks = [];
-}
-
-/**
- * Generate a random API key if not provided
- * @returns {string} - Random API key
- */
-function generateApiKey() {
-    return generateRandomString(12);
-}
-
-/**
- * Generate a random API secret if not provided
- * @returns {string} - Random API secret
- */
-function generateApiSecret() {
-    return generateRandomString(24);
+    currentToken = null;
 }
 
 /**
