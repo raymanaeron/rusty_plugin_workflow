@@ -98,8 +98,8 @@ use engine_core::{
 use plugin_core::{ HttpMethod, ApiRequest }; // Remove PluginContext as it's unused
 
 // WebSocket functionality
-use ws_server::handle_socket;
-use ws_server::ws_client::WsClient;
+use libws::handle_socket;
+use libws::ws_client::WsClient;
 
 // This is required to import the macros
 initialize_logger_attributes!();

@@ -21,6 +21,6 @@ chrono = { version = "0.4", features = ["serde", "alloc"] }
 uuid = { version = "1.4", features = ["v4"] }
 plugin_core = { path = "../plugin_core" }
 engine_core = { path = "../engine_core" }
-ws_server = { path = "../ws_server"}
+libws = { path = "../libws"}
 liblogger = { path = "../liblogger" }
 liblogger_macros = { path = "../liblogger_macros" }

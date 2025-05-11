@@ -12,7 +12,7 @@ ctor = "0.2"
 chrono = "0.4"  
 rand = "0.8"    
 plugin_core = { path = "../../plugin_core", features = ["logging"] }
-ws_server = { path = "../../ws_server" }
+libws = { path = "../../libws" }
 liblogger = { path = "../../liblogger" }
 liblogger_macros = { path = "../../liblogger_macros" }
 

@@ -22,7 +22,7 @@ use liblogger_macros::{log_entry_exit, measure_time, initialize_logger_attribute
 use once_cell::sync::Lazy;
 use serde::{Serialize, Deserialize};
 use tokio::runtime::Runtime;
-use ws_server::ws_client::WsClient;
+use libws::ws_client::WsClient;
 
 // Initialize logger attributes
 initialize_logger_attributes!();

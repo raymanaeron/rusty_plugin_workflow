@@ -8,7 +8,7 @@ use plugin_core::{
     cleanup_response,
 };
 use std::sync::{Arc, Mutex};
-use ws_server::ws_client::WsClient;
+use libws::ws_client::WsClient;
 use tokio::runtime::Runtime;
 use once_cell::sync::Lazy;
 use std::os::raw::c_char;

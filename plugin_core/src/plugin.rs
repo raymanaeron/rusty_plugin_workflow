@@ -6,7 +6,7 @@ use crate::Resource;
 
 use std::sync::Mutex;
 use once_cell::sync::OnceCell;
-use ws_server::ws_client::WsClient;
+use libws::ws_client::WsClient;
 
 /// Represents a dynamically loaded plugin and its exposed API to the engine.
 ///

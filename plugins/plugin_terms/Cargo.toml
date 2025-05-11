@@ -11,7 +11,7 @@ tower = "0.4"
 async-trait = "0.1"
 ctor = "0.1"
 plugin_core = { path = "../../plugin_core", features = ["logging"] }
-ws_server = { path = "../../ws_server" }
+libws = { path = "../../libws" }
 liblogger = { path = "../../liblogger" }
 liblogger_macros = { path = "../../liblogger_macros" }
 

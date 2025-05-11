@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedSender;
 use once_cell::sync::{Lazy, OnceCell};
-use ws_server::ws_client::WsClient;
+use libws::ws_client::WsClient;
 
 pub type Subscribers = Arc<Mutex<HashMap<String, Vec<UnboundedSender<String>>>>>;
 

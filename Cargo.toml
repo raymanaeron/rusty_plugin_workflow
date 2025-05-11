@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "engine", "engine_core","plugin_core", "plugins/plugin_terms", "plugins/plugin_login", "plugins/plugin_provisioning", "plugins/plugin_tutorial",
-    "plugins/plugin_wifi", "ws_server", "liblogger", "liblogger_macros", "plugins/plugin_welcome", "plugins/plugin_execplan", "plugins/plugin_howto",
+    "plugins/plugin_wifi", "libws", "liblogger", "liblogger_macros", "plugins/plugin_welcome", "plugins/plugin_execplan", "plugins/plugin_howto",
     "engine_desktop_ui", "plugins/plugin_status", "plugins/plugin_task_agent_headless", "plugins/plugin_settings", "plugins/plugin_finish",]
 resolver = "2"
 
@@ -17,6 +17,6 @@ toml = "0.5"
 plugin_core = { path = "../plugin_core" }
 engine_core = { path = "../engine_core"}
 engine = { path = "../engine" }
-ws_server = { path = "../ws_server"}
+libws = { path = "../libws"}
 liblogger = { path = "../liblogger", features = ["proc_macros"] }
 liblogger_macros = { path = "../liblogger_macros" }

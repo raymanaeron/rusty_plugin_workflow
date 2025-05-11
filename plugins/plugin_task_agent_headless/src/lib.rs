@@ -12,7 +12,7 @@ use std::thread;
 use std::time::Duration;
 
 use once_cell::sync::{ Lazy, OnceCell };
-use ws_server::ws_client::WsClient;
+use libws::ws_client::WsClient;
 
 #[ctor::ctor]
 fn on_load() {
