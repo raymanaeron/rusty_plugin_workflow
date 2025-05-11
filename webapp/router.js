@@ -1,6 +1,6 @@
 import { appManager } from './app_manager.js';
 
-export async function routeTo(path) {
+export async function routeTo(path, appManager, jwtManager) {
   const container = document.getElementById("content");
   container.innerHTML = `<div class="text-muted">Loading...</div>`;
 
@@ -51,7 +51,8 @@ export async function routeTo(path) {
     
     const module = await import(jsUrl);
     if (module.activate) {
-      await module.activate(container, appManager);  // Inject appManager
+      // Pass jwtManager as a parameter to plugin's activate function
+      await module.activate(container, appManager, jwtManager);
     } else {
       console.warn(`Plugin ${pluginName} has no activate() function`);
     }

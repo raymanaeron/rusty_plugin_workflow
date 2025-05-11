@@ -1,4 +1,4 @@
-export async function activate(container, appManager) {
+export async function activate(container, appManager, jwtManager) {
     appManager.registerPlugin('plugin_welcome');
     console.log('Plugin activated: plugin_welcome');
     const welcomeContent = container.querySelector('#welcomeContent');

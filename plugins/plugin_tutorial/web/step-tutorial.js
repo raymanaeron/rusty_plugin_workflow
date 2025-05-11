@@ -1,4 +1,4 @@
-export async function activate(container, appManager) {
+export async function activate(container, appManager, jwtManager) {
     // Register this plugin with the application manager for lifecycle management
     appManager.registerPlugin('plugin_tutorial');
     console.log('Plugin activated: plugin_tutorial');

@@ -1,6 +1,6 @@
 const next_route = "/status/web";
 
-export async function activate(container, appManager) {
+export async function activate(container, appManager, jwtManager) {
     // Register with connection manager
     appManager.registerPlugin('plugin_wifi');
 

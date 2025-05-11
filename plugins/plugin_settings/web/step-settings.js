@@ -1,4 +1,4 @@
-export async function activate(container, appManager) {
+export async function activate(container, appManager, jwtManager) {
     // Check if container has been properly initialized
     if (!container) {
         console.error('Container is null or undefined');

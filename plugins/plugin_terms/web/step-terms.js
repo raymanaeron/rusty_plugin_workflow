@@ -2,7 +2,7 @@
 
 const next_route = "/wifi/web";
 
-export async function activate(container) {
+export async function activate(container, appManager, jwtManager) {
   const termsDiv = container.querySelector("#termsContent");
   const acceptBtn = container.querySelector("#acceptBtn");
   const declineBtn = container.querySelector("#declineBtn");

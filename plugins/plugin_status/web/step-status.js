@@ -1,4 +1,4 @@
-export async function activate(container, appManager) {
+export async function activate(container, appManager, jwtManager) {
     appManager.registerPlugin('plugin_status');
     const statusContent = container.querySelector('#statusContent');
 

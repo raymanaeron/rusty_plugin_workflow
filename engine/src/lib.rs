@@ -694,29 +694,31 @@ pub async fn start_server_async() {
     let token_cache: SharedTokenCache = Arc::new(Mutex::new(HashMap::new()));
     log_debug!("JWT Auth: Token cache created successfully");
     
-    // Create authentication routes
-    log_debug!("JWT Auth: Creating authentication router...");
-    let auth_router = create_auth_router_with_cache(token_cache.clone());
-    log_debug!("JWT Auth: Authentication router created successfully");
-
-    log_debug!("JWT Auth: Creating base router...");
+    // Step 1: Create the base router that will hold everything
+    log_debug!("Creating base router...");
     let mut base_router = Router::new();
-    log_debug!("JWT Auth: Base router created successfully");
-
-    // Merge authentication router with base router
-    log_debug!("JWT Auth: Merging authentication router with base router...");
-    base_router = base_router.merge(auth_router);
-    log_debug!("JWT Auth: Authentication router merged successfully");
     
-    log_debug!("********** JWT AUTHENTICATION SETUP - COMPLETE **********");
-
-    // Setup API routes
-    log_debug!("Setting up API routes...");
+    // Step 2: Create all API-related routers independently first
+    log_debug!("Creating authentication router...");
+    let auth_router = create_auth_router_with_cache(token_cache.clone());
+    
+    log_debug!("Creating plugin API router...");
     let plugin_api_router = Router::new().route(
         "/:plugin/:resource",
         any(dispatch_plugin_api).with_state(registry.clone())
     );
-    base_router = base_router.nest("/api", plugin_api_router);
+    
+    // Step 3: Combine all API routers into a single API router
+    log_debug!("Combining all API routers...");
+    let api_router = Router::new()
+        .merge(auth_router)
+        .merge(plugin_api_router);
+    
+    // Step 4: Nest the combined API router under /api
+    log_debug!("Nesting combined API router under /api path...");
+    base_router = base_router.nest("/api", api_router);
+    
+    log_debug!("********** JWT AUTHENTICATION SETUP - COMPLETE **********");
 
     // Initialize router manager with base routes
     {

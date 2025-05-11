@@ -1,5 +1,6 @@
 import { routeTo } from './router.js';
 import { appManager } from './app_manager.js';
+import * as jwtManager from './jwt_manager.js';
 
 function handleRouting(forcePath = null) {
   // Handle root redirects
@@ -9,10 +10,10 @@ function handleRouting(forcePath = null) {
 
   // Route to either forced path or current location
   const targetPath = forcePath || location.pathname;
-  routeTo(targetPath);
+  routeTo(targetPath, appManager, jwtManager);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     // Initialize WebSocket
     // appManager.initializeWebSocket(); // Remove this line
 
@@ -37,7 +38,18 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("WebSocket connection setup complete. Waiting for messages...");
 
     // Setup route handling
-    handleRouting();  // Initial route handling
+    try {
+        // Initialize JWT authentication first
+        await jwtManager.initialize_with_jwt();
+        console.log('JWT authentication initialized successfully');
+        
+        // Then proceed with initial routing after JWT is ready
+        handleRouting();
+    } catch (error) {
+        console.error('Failed to initialize JWT authentication:', error);
+        // Still attempt routing even if JWT initialization fails
+        handleRouting();
+    }
 
     // Signal that app is ready
     // appManager.setReady(); // Remove this line
