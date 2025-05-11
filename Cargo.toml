@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "engine", "engine_core","plugin_core", "plugins/plugin_terms", "plugins/plugin_login", "plugins/plugin_provisioning", "plugins/plugin_tutorial",
+    "libjwt","engine", "engine_core","plugin_core", "plugins/plugin_terms", "plugins/plugin_login", "plugins/plugin_provisioning", "plugins/plugin_tutorial",
     "plugins/plugin_wifi", "libws", "liblogger", "liblogger_macros", "plugins/plugin_welcome", "plugins/plugin_execplan", "plugins/plugin_howto",
     "engine_desktop_ui", "plugins/plugin_status", "plugins/plugin_task_agent_headless", "plugins/plugin_settings", "plugins/plugin_finish",]
 resolver = "2"

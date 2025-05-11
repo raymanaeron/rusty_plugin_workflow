@@ -14,6 +14,14 @@ echo [BUILD] Mode set to %MODE%
 echo [BUILD] Output path: %TARGET%
 
 REM === Build plugin_welcome ===
+echo Building libjwt...
+cargo build --manifest-path libjwt\Cargo.toml %CARGO_FLAG%
+if errorlevel 1 (
+    echo Failed to build libjwt.
+    exit /b 1
+)
+
+REM === Build plugin_welcome ===
 echo Building plugin_welcome...
 cargo build --manifest-path plugins\plugin_welcome\Cargo.toml %CARGO_FLAG%
 if errorlevel 1 (
