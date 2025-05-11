@@ -45,6 +45,7 @@ use std::fs; // For file system operations
 use std::path::PathBuf; // For path manipulation
 use std::ffi::CString; // For C-compatible strings used in FFI
 use std::time::Duration; // For time-based operations
+use std::collections::HashMap; // For token cache
 
 // Async runtime imports
 use tokio::net::TcpListener; // For asynchronous TCP socket listening
@@ -56,10 +57,29 @@ use axum::response::Response; // For HTTP responses
 use axum::body::Body; // For HTTP body content
 use axum::http::StatusCode; // For HTTP status codes
 
-// use once_cell::sync::Lazy; // For thread-safe lazy-initialized statics
+// JWT authentication
+use libjwt::routes::create_auth_router_with_cache;
+use libjwt::SharedTokenCache;
+
+// Import all the required logging components
 use liblogger;
 use plugin_core::{log_debug, log_info, log_warn, log_error}; // Logging utilities
 use liblogger_macros::*; // Logging macro extensions
+use ctor::ctor;
+
+// Initialize logger attributes
+initialize_logger_attributes!();
+
+// Use the same initialization pattern that plugins use
+#[ctor]
+fn on_load() {
+    // Initialize the logger for the engine the same way plugins do
+    if let Err(e) = plugin_core::init_logger("engine") {
+        eprintln!("[engine] Failed to initialize logger: {}", e);
+    }
+    
+    println!("[engine] >>> ENGINE LOADED");
+}
 
 // Local module declarations
 mod router_manager;
@@ -101,9 +121,6 @@ use plugin_core::{ HttpMethod, ApiRequest }; // Remove PluginContext as it's unu
 use libws::handle_socket;
 use libws::ws_client::WsClient;
 
-// This is required to import the macros
-initialize_logger_attributes!();
-
 // Custom logger initialization to ensure all logs are displayed
 /// Initializes the custom logger for the engine.
 /// Attempts to load configuration from `app_config.toml`, falls back to console logging if unavailable.
@@ -112,28 +129,27 @@ fn initialize_custom_logger() {
     // Initialize logger with debug threshold to ensure all logs are shown
     match plugin_core::init_logger("engine") {
         Ok(_) => {
-            log_info!("Logger successfully initialized from config file");
+            println!("[engine] Logger successfully initialized from config file");
         }
         Err(_e) => {
-            log_debug!(format!("Error initializing logger from config: {}", _e).as_str());
+            println!("[engine] Error initializing logger from config: {}", _e);
             
             // Fall back to console logging by calling init_logger again
             // The plugin_core init_logger will handle fallback internally
             if let Err(e) = plugin_core::init_logger("engine") {
-                eprintln!("Fatal error: Failed to initialize logger: {}", e);
+                eprintln!("[engine] Fatal error: Failed to initialize logger: {}", e);
             }
-            log_error!("Failed to initialize file logger, falling back to console");
+            println!("[engine] Failed to initialize file logger, falling back to console");
         }
-
     }
 
     // Print a clear marker to see if logger is working
-    log_info!("======== START LOGGER LOADING TEST ========");
+    log_info!("======== ENGINE LOGGER INITIALIZED ========");
     log_debug!("Debug logging is enabled");
     log_info!("Info logging is enabled");
     log_warn!("Warning logging is enabled");
     log_error!("Error logging is enabled");
-    log_info!("======== END LOGGER LOADING TEST ========");
+    log_info!("======== ENGINE LOGGER TEST COMPLETE ========");
 }
 
 //
@@ -517,7 +533,7 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
 /// * `path` - Path to the plugin binary.
 /// * `registry` - Shared plugin registry.
 /// * `lib_holder` - Vector holding loaded plugin libraries.
-#[measure_time]
+// #[measure_time]
 fn load_and_register(
     path: PathBuf,
     registry: &Arc<PluginRegistry>,
@@ -685,9 +701,31 @@ pub async fn start_server_async() {
         }
     }
 
+    // JWT Authentication Setup - START
+    log_debug!("********** JWT AUTHENTICATION SETUP - BEGIN **********");
+    
+    // Create a shared token cache for JWT authentication
+    let token_cache: SharedTokenCache = Arc::new(Mutex::new(HashMap::new()));
+    log_debug!("JWT Auth: Token cache created successfully");
+    
+    // Create authentication routes
+    log_debug!("JWT Auth: Creating authentication router...");
+    let auth_router = create_auth_router_with_cache(token_cache.clone());
+    log_debug!("JWT Auth: Authentication router created successfully");
+
+    log_debug!("JWT Auth: Creating base router...");
     let mut base_router = Router::new();
+    log_debug!("JWT Auth: Base router created successfully");
+
+    // Merge authentication router with base router
+    log_debug!("JWT Auth: Merging authentication router with base router...");
+    base_router = base_router.merge(auth_router);
+    log_debug!("JWT Auth: Authentication router merged successfully");
+    
+    log_debug!("********** JWT AUTHENTICATION SETUP - COMPLETE **********");
 
     // Setup API routes
+    log_debug!("Setting up API routes...");
     let plugin_api_router = Router::new().route(
         "/:plugin/:resource",
         any(dispatch_plugin_api).with_state(registry.clone())
