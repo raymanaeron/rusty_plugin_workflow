@@ -34,7 +34,8 @@ export async function activate(container, appManager, jwtManager) {
             scanStatus.innerHTML = "Scanning networks...";
             networkList.innerHTML = "";
             
-            const response = await fetch('/api/wifi/network');
+            // Use secure_request from jwtManager instead of fetch
+            const response = await jwtManager.secure_request('/api/wifi/network');
             if (!response.ok) throw new Error(`Network scan failed (${response.status})`);
             
             const networks = await response.json();
@@ -148,7 +149,8 @@ export async function activate(container, appManager, jwtManager) {
         connectBtn.disabled = true;
         resultBox.innerHTML = `<div class="alert alert-info">Connecting to ${ssid}...</div>`;
         try {
-            const res = await fetch("/api/wifi/network", {
+            // Use secure_request from jwtManager instead of fetch
+            const res = await jwtManager.secure_request("/api/wifi/network", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ssid, password }),
