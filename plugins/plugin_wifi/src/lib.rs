@@ -88,6 +88,13 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
     unsafe {
         let request = &*req;
+        
+        // Validate JWT token using centralized authentication from plugin_core
+        if let Some(auth_error) = plugin_core::validate_request_auth(request) {
+            log_warn!("JWT authentication failed");
+            return auth_error;
+        }
+        
         let path = if request.path.is_null() {
             "<null>"
         } else {

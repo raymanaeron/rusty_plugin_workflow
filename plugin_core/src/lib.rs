@@ -7,6 +7,7 @@ pub mod plugin;
 pub mod resource;
 pub mod helper_functions;
 pub mod logging;
+pub mod jwt_auth;  // New module for JWT authentication
 
 pub mod response_utils;
 pub mod resource_utils;
@@ -26,6 +27,9 @@ pub use helper_functions::error_response;
 pub use helper_functions::success_response;
 pub use helper_functions::method_not_allowed;
 pub use helper_functions::cleanup_response;
+
+// Export key JWT authentication functions
+pub use jwt_auth::{validate_request_auth, add_token_to_cache, remove_token_from_cache};
 
 // When logging feature is enabled, re-export from liblogger
 #[cfg(feature = "logging")]
