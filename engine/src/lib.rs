@@ -126,23 +126,9 @@ use libws::ws_client::WsClient;
 /// Attempts to load configuration from `app_config.toml`, falls back to console logging if unavailable.
 /// Prints test log messages at all levels.
 fn initialize_custom_logger() {
-    // Initialize logger with debug threshold to ensure all logs are shown
-    match plugin_core::init_logger("engine") {
-        Ok(_) => {
-            println!("[engine] Logger successfully initialized from config file");
-        }
-        Err(_e) => {
-            println!("[engine] Error initializing logger from config: {}", _e);
-            
-            // Fall back to console logging by calling init_logger again
-            // The plugin_core init_logger will handle fallback internally
-            if let Err(e) = plugin_core::init_logger("engine") {
-                eprintln!("[engine] Fatal error: Failed to initialize logger: {}", e);
-            }
-            println!("[engine] Failed to initialize file logger, falling back to console");
-        }
-    }
-
+    // The logger is already initialized in the on_load() ctor function,
+    // so we just need to print some test messages here
+    
     // Print a clear marker to see if logger is working
     log_info!("======== ENGINE LOGGER INITIALIZED ========");
     log_debug!("Debug logging is enabled");
