@@ -694,6 +694,28 @@ pub async fn start_server_async() {
     let token_cache: SharedTokenCache = Arc::new(Mutex::new(HashMap::new()));
     log_debug!("JWT Auth: Token cache created successfully");
     
+    // Initialize the plugin_core JWT auth system with our token cache
+    // This needs to happen BEFORE we create the auth router to ensure they share the same cache
+    match plugin_core::jwt_auth::init_token_cache(token_cache.clone()) {
+        Ok(_) => {
+            log_debug!("JWT Auth: Token cache shared with plugin_core successfully");
+        }
+        Err(e) => {
+            log_error!(format!("JWT Auth: Failed to initialize token cache: {}", e).as_str());
+            log_error!("Authentication will not work correctly without a properly initialized token cache");
+        }
+    }
+    
+    // Optional diagnostic tracking of the token cache instance
+    log_debug!(format!("JWT Auth: Token cache instance address: {:p}", Arc::as_ptr(&token_cache)).as_str());
+    
+    // Verify the token cache was properly initialized in plugin_core
+    if let Some(plugin_cache) = plugin_core::jwt_auth::get_shared_token_cache() {
+        log_debug!(format!("JWT Auth: Plugin core token cache address: {:p}", Arc::as_ptr(&plugin_cache)).as_str());
+    } else {
+        log_error!("JWT Auth: Plugin core token cache was not initialized correctly");
+    }
+    
     // Step 1: Create the base router that will hold everything
     log_debug!("Creating base router...");
     let mut base_router = Router::new();

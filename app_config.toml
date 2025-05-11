@@ -1,5 +1,5 @@
 [logging]
-type = "console"
+type = "file"
 threshold = "debug"        
 file_path = "workflow.log" 
 log_folder = "logs"        
