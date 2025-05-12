@@ -15,6 +15,27 @@ use tokio::sync::mpsc::{ self, UnboundedSender };
 pub type Topic = String;
 pub type Subscribers = Arc<Mutex<HashMap<Topic, Vec<UnboundedSender<String>>>>>;
 
+/// TODO: Write another handle_socket_with_jwt function
+/// Add a 4th parameter to the function that will be a JWT token
+/// Validate the token with libws::validate_jwt then call the handle_socket function
+/// From lib.rs in engine, when you load the ws server call a wrapper function that will 
+/// call the handle_socket_with_jwt function
+//  .route(
+//            "/ws",
+//            get(handle_socket_adapter),
+//        )
+// 
+/// Adapter function to bridge between server and library
+/// async fn handle_socket_adapter(
+///    ws: WebSocketUpgrade,
+///    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+///    State(subscribers): State<Subscribers>,
+///    query_params: Option<Query<WebSocketParams>>,  // Add query parameters
+/// ) -> impl IntoResponse {
+///    // Call the libws handler with query parameters
+///    libws::handle_socket(ws, ConnectInfo(addr), query_params, subscribers).await
+/// }
+
 /// Handles the WebSocket upgrade and initializes the connection.
 pub async fn handle_socket(
     ws: WebSocketUpgrade,
