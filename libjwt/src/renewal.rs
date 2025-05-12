@@ -25,7 +25,7 @@ pub async fn start_renewal_task(token_cache: SharedTokenCache) {
 
 /// Check and renew tokens that are about to expire
 async fn renew_expiring_tokens(token_cache: &SharedTokenCache) {
-    let mut cache = token_cache.lock().unwrap();
+    let mut cache = token_cache.memory_cache.lock().await;
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
@@ -34,7 +34,7 @@ async fn renew_expiring_tokens(token_cache: &SharedTokenCache) {
     let current_instant = Instant::now();
     
     // For each token in the cache, check if it needs renewal
-    for (_cache_key, entry) in cache.iter_mut() {
+    for (cache_key, entry) in cache.iter_mut() {
         // Check if more than half the token lifetime has elapsed
         if current_instant.duration_since(entry.last_renewed).as_secs() > TOKEN_EXPIRY_SECONDS / 2 {
             // Generate a fresh token with the same session ID
@@ -46,8 +46,15 @@ async fn renew_expiring_tokens(token_cache: &SharedTokenCache) {
             ) {
                 Ok(new_token) => {
                     // Update the token and renewal timestamp
-                    entry.token = new_token;
+                    entry.token = new_token.clone();
                     entry.last_renewed = Instant::now();
+
+                    // If SQLite storage is enabled, update there as well
+                    if let Some(sqlite) = &token_cache.sqlite_storage {
+                        if let Err(e) = sqlite.update_session_token(cache_key, &new_token).await {
+                            eprintln!("Error updating token in SQLite during renewal: {}", e);
+                        }
+                    }
                 }
                 Err(e) => {
                     eprintln!("Failed to renew token: {}", e);

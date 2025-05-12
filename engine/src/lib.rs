@@ -1,51 +1,9 @@
-//! # Engine Core Library
-//!
-//! This crate is the main entry point for the plugin-based OOBE (Out-Of-Box Experience) engine.
-//! It provides the runtime and infrastructure for loading plugins, managing routes, handling WebSocket
-//! and REST API communication, and serving static files for the web UI.
-//!
-//! ## Features
-//! - **Plugin loading and lifecycle management:** Dynamically loads plugins and manages their state.
-//! - **Dynamic route registration:** Allows plugins to register and remove HTTP routes at runtime.
-//! - **WebSocket server and client setup:** Enables real-time communication between engine, plugins, and web UI.
-//! - **REST API request routing:** Handles API requests and dispatches them to plugins.
-//! - **Static file serving:** Serves the web application and plugin static assets.
-//!
-//! ## Architecture
-//! - **Router Manager:** Handles dynamic route registration/removal.
-//! - **Plugin Registry:** Manages loaded plugins and their metadata.
-//! - **WebSocket System:** Enables real-time communication for status and control messages.
-//! - **Execution Plan:** Controls plugin loading sequence and configuration.
-//!
-//! ## Entry Points
-//! - [`start_oobe_server`] - FFI-safe entry point for non-Rust platforms (spawns a new thread).
-//! - [`start_server_async`] - Main async entry point for Rust applications (starts the engine).
-//!
-//! ## Usage
-//! The engine is typically started via `start_oobe_server()` (for FFI) or `start_server_async().await` (for Rust).
-//! Plugins are loaded according to the execution plan, and the web UI is served at `http://127.0.0.1:8080/`.
-//!
-//! ## Modules
-//! - [`router_manager`] - Dynamic HTTP route management.
-//! - [`plugin_manager`] - Plugin loading and registry.
-//! - [`websocket_manager`] - WebSocket topics and client/server state.
-//!
-//! ## Example
-//! ```no_run
-//! use engine::start_server_async;
-//! #[tokio::main]
-//! async fn main() {
-//!     start_server_async().await;
-//! }
-//! ```
-
 // Standard library imports
 use std::{ net::SocketAddr, sync::{ Arc, Mutex } }; // For network sockets and thread-safe shared state
 use std::fs; // For file system operations
 use std::path::PathBuf; // For path manipulation
 use std::ffi::CString; // For C-compatible strings used in FFI
 use std::time::Duration; // For time-based operations
-use std::collections::HashMap; // For token cache
 
 // Async runtime imports
 use tokio::net::TcpListener; // For asynchronous TCP socket listening
@@ -56,16 +14,18 @@ use axum::routing::{ any, get }; // For route handler definitions
 use axum::response::Response; // For HTTP responses
 use axum::body::Body; // For HTTP body content
 use axum::http::StatusCode; // For HTTP status codes
+use axum::http::{Method, header};
 
 // JWT authentication
-use libjwt::routes::create_auth_router_with_cache;
-use libjwt::SharedTokenCache;
+use libjwt::{JwtManager, create_auth_router_with_cache};
 
 // Import all the required logging components
 use liblogger;
 use plugin_core::{log_debug, log_info, log_warn, log_error}; // Logging utilities
 use liblogger_macros::*; // Logging macro extensions
 use ctor::ctor;
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
 // Initialize logger attributes
 initialize_logger_attributes!();
@@ -84,10 +44,10 @@ fn on_load() {
 // Local module declarations
 mod router_manager;
 mod websocket_manager;
-mod plugin_manager; // Add this line
+mod plugin_manager; 
 
 // Local module imports
-use plugin_manager::PluginManager; // Add this line
+use plugin_manager::PluginManager; 
 use router_manager::RouterManager;
 use websocket_manager::{
     WS_SUBSCRIBERS,
@@ -121,10 +81,6 @@ use plugin_core::{ HttpMethod, ApiRequest }; // Remove PluginContext as it's unu
 use libws::handle_socket;
 use libws::ws_client::WsClient;
 
-// Custom logger initialization to ensure all logs are displayed
-/// Initializes the custom logger for the engine.
-/// Attempts to load configuration from `app_config.toml`, falls back to console logging if unavailable.
-/// Prints test log messages at all levels.
 fn initialize_custom_logger() {
     // The logger is already initialized in the on_load() ctor function,
     // so we just need to print some test messages here
@@ -138,21 +94,6 @@ fn initialize_custom_logger() {
     log_info!("======== ENGINE LOGGER TEST COMPLETE ========");
 }
 
-//
-// WebSocket Client Management
-// -------------------------
-//
-
-/// Asynchronously subscribes to a WebSocket topic and handles incoming messages.
-///
-/// This function encapsulates the common logic for subscribing to a topic, logging the subscription,
-/// and defining the message handling logic.
-///
-/// # Arguments
-///
-/// * `client_arc`: An `Arc<Mutex<WsClient>>` representing the WebSocket client.
-/// * `topic`: A string slice representing the topic to subscribe to.
-/// * `route`: A string slice representing the route to switch to when a message is received.
 async fn subscribe_and_handle(
     client_arc: Arc<Mutex<WsClient>>,
     topic: &'static str,
@@ -177,9 +118,6 @@ async fn subscribe_and_handle(
     }
 }
 
-/// Creates and initializes the WebSocket client for the engine.
-/// Sets up subscriptions for status changes and route switching.
-/// This should be called once at startup.
 pub async fn create_ws_engine_client() {
     log_debug!("Creating ws client for the engine");
     let url = "ws://127.0.0.1:8081/ws";
@@ -292,14 +230,6 @@ pub async fn create_ws_engine_client() {
 
 }
 
-/// Utility function to publish a message to a websocket topic using a client.
-/// Handles locking, timestamp, and logging.
-///
-/// # Arguments
-/// * `client_arc` - Arc-wrapped Mutex of the WebSocket client.
-/// * `client_name` - Name of the client (e.g., "engine").
-/// * `topic_name` - WebSocket topic to publish to.
-/// * `payload` - Message payload (as string).
 pub async fn publish_ws_message(
     client_arc: Arc<Mutex<WsClient>>,
     client_name: &str,
@@ -512,13 +442,6 @@ pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMe
     }
 }
 
-/// Loads a plugin from the given path and registers it with the engine.
-/// Stores the plugin library to prevent premature unloading.
-///
-/// # Arguments
-/// * `path` - Path to the plugin binary.
-/// * `registry` - Shared plugin registry.
-/// * `lib_holder` - Vector holding loaded plugin libraries.
 #[measure_time]
 fn load_and_register(
     path: PathBuf,
@@ -690,39 +613,18 @@ pub async fn start_server_async() {
     // JWT Authentication Setup - START
     log_debug!("********** JWT AUTHENTICATION SETUP - BEGIN **********");
     
-    // Create a shared token cache for JWT authentication
-    let token_cache: SharedTokenCache = Arc::new(Mutex::new(HashMap::new()));
-    log_debug!("JWT Auth: Token cache created successfully");
-    
-    // Initialize the plugin_core JWT auth system with our token cache
-    // This needs to happen BEFORE we create the auth router to ensure they share the same cache
-    match plugin_core::jwt_auth::init_token_cache(token_cache.clone()) {
-        Ok(_) => {
-            log_debug!("JWT Auth: Token cache shared with plugin_core successfully");
-        }
-        Err(e) => {
-            log_error!(format!("JWT Auth: Failed to initialize token cache: {}", e).as_str());
-            log_error!("Authentication will not work correctly without a properly initialized token cache");
-        }
-    }
-    
-    // Optional diagnostic tracking of the token cache instance
-    log_debug!(format!("JWT Auth: Token cache instance address: {:p}", Arc::as_ptr(&token_cache)).as_str());
-    
-    // Verify the token cache was properly initialized in plugin_core
-    if let Some(plugin_cache) = plugin_core::jwt_auth::get_shared_token_cache() {
-        log_debug!(format!("JWT Auth: Plugin core token cache address: {:p}", Arc::as_ptr(&plugin_cache)).as_str());
-    } else {
-        log_error!("JWT Auth: Plugin core token cache was not initialized correctly");
-    }
-    
+    // Initialize JWT manager
+    let jwt_manager = JwtManager::init()
+        .await
+        .expect("Failed to initialize JWT manager");
+        
     // Step 1: Create the base router that will hold everything
     log_debug!("Creating base router...");
     let mut base_router = Router::new();
     
     // Step 2: Create all API-related routers independently first
     log_debug!("Creating authentication router...");
-    let auth_router = create_auth_router_with_cache(token_cache.clone());
+    let auth_router = create_auth_router_with_cache(jwt_manager.token_cache.clone());
     
     log_debug!("Creating plugin API router...");
     let plugin_api_router = Router::new().route(
@@ -781,12 +683,24 @@ pub async fn start_server_async() {
         }
     }
 
+    // Create CORS layer
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::PATCH, Method::DELETE])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+        .allow_origin(Any);
+
     // Get the router for serving
     let app = {
         let router = RouterManager::get_manager().write().unwrap();
         router.clone().fallback(get(fallback_handler))
     };
 
+    // Fix ownership issues by chaining transformations:
+    // Instead of calling app.layer() multiple times, chain them together
+    let app = app
+        .layer(cors)
+        .layer(TraceLayer::new_for_http());
+    
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     log_debug!(format!("Listening at http://{}", addr).as_str());
 

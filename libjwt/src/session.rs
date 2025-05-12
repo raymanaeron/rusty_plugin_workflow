@@ -20,12 +20,8 @@ pub async fn create_session(
     Path(api_key): Path<String>,
     Json(params): Json<TokenRequestParams>,
 ) -> impl IntoResponse {
-    // For this demo app, we accept any API key and secret
-    // In a real application, you would validate these against a database
-    
     let session_id = Uuid::new_v4().to_string();
     
-    // Generate JWT token with session ID included
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
@@ -33,23 +29,25 @@ pub async fn create_session(
     
     match generate_jwt(&api_key, &session_id, now, now + TOKEN_EXPIRY_SECONDS) {
         Ok(token) => {
-            // Store in token cache with TTL
-            let mut cache = token_cache.lock().unwrap();
-            
-            // Cache key is a combination of API key and session ID
             let cache_key = format!("{}:{}", api_key, session_id);
-            
-            cache.insert(
-                cache_key,
-                TokenCacheEntry {
-                    api_key: api_key.clone(),
-                    api_secret: params.api_secret.clone(),
-                    session_id: session_id.clone(),
-                    token: token.clone(),
-                    created_at: Instant::now(),
-                    last_renewed: Instant::now(),
-                },
-            );
+            let entry = TokenCacheEntry {
+                api_key: api_key.clone(),
+                api_secret: params.api_secret.clone(),
+                session_id: session_id.clone(),
+                token: token.clone(),
+                created_at: Instant::now(),
+                last_renewed: Instant::now(),
+            };
+
+            // Store in memory cache
+            token_cache.memory_cache.lock().await.insert(cache_key.clone(), entry.clone());
+
+            // If SQLite storage is enabled, store there as well
+            if let Some(sqlite) = &token_cache.sqlite_storage {
+                if let Err(e) = sqlite.create_session(cache_key, entry).await {
+                    eprintln!("Error storing session in SQLite: {}", e);
+                }
+            }
             
             (
                 StatusCode::CREATED,
@@ -73,19 +71,41 @@ pub async fn get_session_token(
     State(token_cache): State<SharedTokenCache>,
     Path((api_key, session_id)): Path<(String, String)>,
 ) -> impl IntoResponse {
-    let cache = token_cache.lock().unwrap();
     let cache_key = format!("{}:{}", api_key, session_id);
-    
-    match cache.get(&cache_key) {
+    let found_session = token_cache.memory_cache.lock().await.get(&cache_key).cloned();
+
+    let found_session = if found_session.is_none() {
+        if let Some(sqlite) = &token_cache.sqlite_storage {
+            match sqlite.get_session(&cache_key).await {
+                Ok(Some(entry)) => {
+                    token_cache.memory_cache.lock().await.insert(cache_key.clone(), entry.clone());
+                    Some(entry)
+                }
+                _ => None,
+            }
+        } else {
+            None
+        }
+    } else {
+        found_session
+    };
+
+    match found_session {
         Some(_entry) => {
             let now = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs();
                 
-            // Generate a fresh token
             match generate_jwt(&api_key, &session_id, now, now + TOKEN_EXPIRY_SECONDS) {
-                Ok(token) => (StatusCode::OK, Json(TokenResponse { token })).into_response(),
+                Ok(token) => {
+                    if let Some(sqlite) = &token_cache.sqlite_storage {
+                        if let Err(e) = sqlite.update_session_token(&cache_key, &token).await {
+                            eprintln!("Error updating token in SQLite: {}", e);
+                        }
+                    }
+                    (StatusCode::OK, Json(TokenResponse { token })).into_response()
+                }
                 Err(e) => (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(ErrorResponse {
@@ -108,22 +128,42 @@ pub async fn list_sessions(
     State(token_cache): State<SharedTokenCache>,
     Path(api_key): Path<String>,
 ) -> impl IntoResponse {
-    let cache = token_cache.lock().unwrap();
-    
     let mut sessions = Vec::new();
     let now = Instant::now();
-    
-    // Filter sessions by API key and collect session info
-    for (_, entry) in cache.iter() {
-        if entry.api_key == api_key {
-            let created_duration = now.duration_since(entry.created_at);
-            let renewed_duration = now.duration_since(entry.last_renewed);
-            
-            sessions.push(SessionInfo {
-                session_id: entry.session_id.clone(),
-                created_at: format!("{:?} ago", created_duration),
-                last_renewed: format!("{:?} ago", renewed_duration),
-            });
+
+    {
+        let cache = token_cache.memory_cache.lock().await;
+        for (_, entry) in cache.iter() {
+            if entry.api_key == api_key {
+                let created_duration = now.duration_since(entry.created_at);
+                let renewed_duration = now.duration_since(entry.last_renewed);
+                
+                sessions.push(SessionInfo {
+                    session_id: entry.session_id.clone(),
+                    created_at: format!("{:?} ago", created_duration),
+                    last_renewed: format!("{:?} ago", renewed_duration),
+                });
+            }
+        }
+    }
+
+    if let Some(sqlite) = &token_cache.sqlite_storage {
+        match sqlite.list_sessions_by_api_key(&api_key).await {
+            Ok(sqlite_sessions) => {
+                for entry in sqlite_sessions {
+                    if !sessions.iter().any(|s| s.session_id == entry.session_id) {
+                        let created_duration = now.duration_since(entry.created_at);
+                        let renewed_duration = now.duration_since(entry.last_renewed);
+                        
+                        sessions.push(SessionInfo {
+                            session_id: entry.session_id,
+                            created_at: format!("{:?} ago", created_duration),
+                            last_renewed: format!("{:?} ago", renewed_duration),
+                        });
+                    }
+                }
+            }
+            Err(e) => eprintln!("Error retrieving sessions from SQLite: {}", e),
         }
     }
     
@@ -135,10 +175,25 @@ pub async fn revoke_session(
     State(token_cache): State<SharedTokenCache>,
     Path((api_key, session_id)): Path<(String, String)>,
 ) -> impl IntoResponse {
-    let mut cache = token_cache.lock().unwrap();
     let cache_key = format!("{}:{}", api_key, session_id);
-    
-    if cache.remove(&cache_key).is_some() {
+    let mut deleted = false;
+
+    {
+        let mut cache = token_cache.memory_cache.lock().await;
+        if cache.remove(&cache_key).is_some() {
+            deleted = true;
+        }
+    }
+
+    if let Some(sqlite) = &token_cache.sqlite_storage {
+        match sqlite.delete_session(&cache_key).await {
+            Ok(true) => deleted = true,
+            Ok(false) => {}
+            Err(e) => eprintln!("Error deleting session from SQLite: {}", e),
+        }
+    }
+
+    if deleted {
         (
             StatusCode::OK,
             Json(RevokeResponse {
@@ -156,20 +211,20 @@ pub async fn revoke_session(
 }
 
 /// Check if a token is valid and associated with an active session
-pub fn validate_session_token(
+pub async fn validate_session_token(
     token_cache: &SharedTokenCache,
     token: &str,
 ) -> Result<(String, String), String> {
     match validate_jwt(token) {
         Ok(claims) => {
-            let cache = token_cache.lock().unwrap();
             let cache_key = format!("{}:{}", claims.sub, claims.session_id);
+            let found_in_memory = token_cache.memory_cache.lock().await.contains_key(&cache_key);
             
-            if cache.contains_key(&cache_key) {
-                Ok((claims.sub, claims.session_id))
-            } else {
-                Err("Invalid session".to_string())
+            if found_in_memory {
+                return Ok((claims.sub, claims.session_id));
             }
+            
+            Err("Invalid session".to_string())
         }
         Err(e) => Err(format!("Invalid token: {}", e)),
     }

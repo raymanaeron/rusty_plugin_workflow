@@ -15,10 +15,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 // Define the Foo data model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Foo {
-    id: String,
-    name: String,
-    source: String,
-    timestamp: u64,
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub timestamp: u64,
 }
 
 // Error response
@@ -30,22 +30,21 @@ struct ErrorResponse {
 // Success response wrappers
 #[derive(Debug, Serialize)]
 struct FooListResponse {
-    foos: Vec<Foo>,
+    items: Vec<Foo>,
 }
 
 #[derive(Debug, Serialize)]
 struct FooResponse {
-    foo: Foo,
+    item: Foo,
 }
 
 #[derive(Debug, Serialize)]
 struct DeleteResponse {
     message: String,
-    id: String,
 }
 
 // Combined state containing both token cache and foo storage
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct AppState {
     token_cache: SharedTokenCache,
     foo_storage: Arc<Mutex<HashMap<String, Foo>>>,
@@ -67,7 +66,7 @@ async fn get_all_foos(
     let storage = state.foo_storage.lock().unwrap();
     let foos: Vec<Foo> = storage.values().cloned().collect();
     
-    (StatusCode::OK, Json(FooListResponse { foos }))
+    (StatusCode::OK, Json(FooListResponse { items: foos }))
 }
 
 // GET a specific foo by ID
@@ -81,7 +80,7 @@ async fn get_foo(
     
     match storage.get(&id) {
         Some(foo) => {
-            let response = FooResponse { foo: foo.clone() };
+            let response = FooResponse { item: foo.clone() };
             (StatusCode::OK, Json(response)).into_response()
         }
         None => {
@@ -97,12 +96,12 @@ async fn get_foo(
 #[derive(Debug, Deserialize)]
 struct CreateFooRequest {
     name: String,
-    source: String,
+    description: String,
 }
 
 async fn create_foo(
     State(state): State<AppState>,
-    _auth: JwtAuth, // JWT authentication enforced by extractor
+    _auth: JwtAuth,
     Json(payload): Json<CreateFooRequest>,
 ) -> impl IntoResponse {
     // Create new foo with unique ID
@@ -115,7 +114,7 @@ async fn create_foo(
     let new_foo = Foo {
         id: id.clone(),
         name: payload.name,
-        source: payload.source,
+        description: payload.description,
         timestamp,
     };
 
@@ -124,14 +123,14 @@ async fn create_foo(
     storage.insert(id, new_foo.clone());
 
     // Return the created foo
-    (StatusCode::CREATED, Json(FooResponse { foo: new_foo }))
+    (StatusCode::CREATED, Json(FooResponse { item: new_foo }))
 }
 
 // PUT to update a foo by ID
 #[derive(Debug, Deserialize)]
 struct UpdateFooRequest {
     name: String,
-    source: String,
+    description: String,
 }
 
 async fn update_foo(
@@ -158,20 +157,20 @@ async fn update_foo(
     let updated_foo = Foo {
         id: id.clone(),
         name: payload.name,
-        source: payload.source,
+        description: payload.description,
         timestamp,
     };
     
     storage.insert(id, updated_foo.clone());
     
-    (StatusCode::OK, Json(FooResponse { foo: updated_foo })).into_response()
+    (StatusCode::OK, Json(FooResponse { item: updated_foo })).into_response()
 }
 
 // PATCH to partially update a foo by ID
 #[derive(Debug, Deserialize)]
 struct PatchFooRequest {
     name: Option<String>,
-    source: Option<String>,
+    description: Option<String>,
 }
 
 async fn patch_foo(
@@ -201,15 +200,15 @@ async fn patch_foo(
         current_foo.name = name;
     }
     
-    if let Some(source) = payload.source {
-        current_foo.source = source;
+    if let Some(description) = payload.description {
+        current_foo.description = description;
     }
     
     current_foo.timestamp = timestamp;
     
     storage.insert(id, current_foo.clone());
     
-    (StatusCode::OK, Json(FooResponse { foo: current_foo })).into_response()
+    (StatusCode::OK, Json(FooResponse { item: current_foo })).into_response()
 }
 
 // DELETE a foo by ID
@@ -232,7 +231,6 @@ async fn delete_foo(
     
     let response = DeleteResponse {
         message: "Foo deleted successfully".to_string(),
-        id,
     };
     (StatusCode::OK, Json(response)).into_response()
 }

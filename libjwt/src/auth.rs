@@ -31,30 +31,18 @@ pub async fn extract_and_validate_token(
     token_cache: &SharedTokenCache,
     headers: &HeaderMap,
 ) -> Result<(String, String), (StatusCode, Json<AuthErrorResponse>)> {
-    // Extract the Authorization header
-    let auth_header = match headers.get("Authorization") {
-        Some(value) => match value.to_str() {
-            Ok(v) => v,
-            Err(_) => {
-                return Err((
-                    StatusCode::UNAUTHORIZED,
-                    Json(AuthErrorResponse {
-                        message: "Invalid Authorization header format".to_string(),
-                    }),
-                ))
-            }
-        },
-        None => {
-            return Err((
+    let auth_header = headers
+        .get("Authorization")
+        .and_then(|value| value.to_str().ok())
+        .ok_or_else(|| {
+            (
                 StatusCode::UNAUTHORIZED,
                 Json(AuthErrorResponse {
                     message: "Missing Authorization header".to_string(),
                 }),
-            ))
-        }
-    };
+            )
+        })?;
 
-    // Check if it starts with "Bearer " and extract the token
     if !auth_header.starts_with("Bearer ") {
         return Err((
             StatusCode::UNAUTHORIZED,
@@ -67,28 +55,53 @@ pub async fn extract_and_validate_token(
     let token = &auth_header[7..]; // Skip "Bearer "
 
     // Validate the JWT token
-    match validate_jwt(token) {
-        Ok(claims) => {
-            let cache = token_cache.lock().unwrap();
-            let cache_key = format!("{}:{}", claims.sub, claims.session_id);
-
-            if cache.contains_key(&cache_key) {
-                Ok((claims.sub, claims.session_id))
-            } else {
-                Err((
-                    StatusCode::UNAUTHORIZED,
-                    Json(AuthErrorResponse {
-                        message: "Invalid session".to_string(),
-                    }),
-                ))
-            }
-        }
-        Err(e) => Err((
+    let claims = validate_jwt(token).map_err(|e| {
+        (
             StatusCode::UNAUTHORIZED,
             Json(AuthErrorResponse {
-                message: format!("Invalid JWT token: {}", e),
+                message: format!("Invalid token: {}", e),
             }),
-        )),
+        )
+    })?;
+
+    let cache_key = format!("{}:{}", claims.sub, claims.session_id);
+
+    // Try memory cache first
+    {
+        let cache = token_cache.memory_cache.lock().await;
+        if cache.contains_key(&cache_key) {
+            return Ok((claims.sub, claims.session_id));
+        }
+    }
+
+    // If not in memory and SQLite is enabled, try SQLite
+    if let Some(sqlite) = &token_cache.sqlite_storage {
+        match sqlite.get_session(&cache_key).await {
+            Ok(Some(entry)) => {
+                // Cache the entry in memory for future use
+                token_cache.memory_cache.lock().await.insert(cache_key, entry);
+                Ok((claims.sub, claims.session_id))
+            }
+            Ok(None) => Err((
+                StatusCode::UNAUTHORIZED,
+                Json(AuthErrorResponse {
+                    message: "Invalid session".to_string(),
+                }),
+            )),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(AuthErrorResponse {
+                    message: format!("Storage error: {}", e),
+                }),
+            )),
+        }
+    } else {
+        Err((
+            StatusCode::UNAUTHORIZED,
+            Json(AuthErrorResponse {
+                message: "Invalid session".to_string(),
+            }),
+        ))
     }
 }
 
@@ -101,25 +114,12 @@ where
     type Rejection = Response;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        // Get token cache from state
         let token_cache = state.as_ref();
-
-        // Extract authorization header
         let headers = &parts.headers;
 
-        // Validate token using our helper function
         match extract_and_validate_token(token_cache, headers).await {
-            Ok((api_key, session_id)) => {
-                // Return successful authentication
-                Ok(JwtAuth(AuthClaims {
-                    api_key,
-                    session_id,
-                }))
-            }
-            Err((status, json_error)) => {
-                // Return error response
-                Err((status, json_error).into_response())
-            }
+            Ok((api_key, session_id)) => Ok(JwtAuth(AuthClaims { api_key, session_id })),
+            Err(response) => Err(response.into_response()),
         }
     }
 }

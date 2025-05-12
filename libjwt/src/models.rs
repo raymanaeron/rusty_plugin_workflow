@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use std::time::Instant;
 
 /// JWT Claims structure
@@ -62,7 +63,7 @@ pub struct RevokeResponse {
 }
 
 /// Internal entry for the token cache
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TokenCacheEntry {
     pub api_key: String,
     pub api_secret: String,
@@ -72,8 +73,37 @@ pub struct TokenCacheEntry {
     pub last_renewed: Instant,
 }
 
-/// Type alias for the token cache
-pub type TokenCache = HashMap<String, TokenCacheEntry>;
+/// Type alias for the in-memory token cache
+type TokenCache = HashMap<String, TokenCacheEntry>;
 
-/// Type alias for a thread-safe shared token cache
-pub type SharedTokenCache = Arc<Mutex<TokenCache>>;
+/// Thread-safe wrapper for session storage
+#[derive(Clone, Debug)]
+pub struct SharedTokenCache {
+    pub memory_cache: Arc<Mutex<TokenCache>>,
+    pub sqlite_storage: Option<Arc<crate::storage::SqliteSessionStorage>>,
+}
+
+impl SharedTokenCache {
+    /// Create a new in-memory cache
+    pub fn new() -> Self {
+        Self {
+            memory_cache: Arc::new(Mutex::new(HashMap::new())),
+            sqlite_storage: None,
+        }
+    }
+
+    /// Create a new cache with SQLite persistence
+    pub async fn with_sqlite(db_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let sqlite = crate::storage::SqliteSessionStorage::new(db_path).await?;
+        Ok(Self {
+            memory_cache: Arc::new(Mutex::new(HashMap::new())),
+            sqlite_storage: Some(Arc::new(sqlite)),
+        })
+    }
+}
+
+impl Default for SharedTokenCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}

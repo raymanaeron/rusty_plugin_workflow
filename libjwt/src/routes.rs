@@ -4,8 +4,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 /// Create an authentication router with all JWT session management endpoints
 ///
@@ -16,18 +14,17 @@ use std::sync::{Arc, Mutex};
 /// - DELETE /auth/{api_key}/sessions/{session_id} - Revoke a session
 pub fn create_auth_router() -> Router {
     // Create a shared token cache
-    let token_cache: SharedTokenCache = Arc::new(Mutex::new(HashMap::new()));
-    
-    Router::new()
-        .route(
-            "/auth/:api_key/sessions",
-            post(create_session).get(list_sessions),
-        )
-        .route(
-            "/auth/:api_key/sessions/:session_id",
-            get(get_session_token).delete(revoke_session),
-        )
-        .with_state(token_cache)
+    let token_cache: SharedTokenCache = SharedTokenCache::new();
+    create_auth_router_with_cache(token_cache)
+}
+
+/// Create an authentication router with the provided shared token cache and optional SQLite storage
+pub async fn create_auth_router_with_sqlite(
+    db_path: &str,
+) -> Result<Router, Box<dyn std::error::Error>> {
+    // Create a shared token cache with SQLite storage
+    let token_cache = SharedTokenCache::with_sqlite(db_path).await?;
+    Ok(create_auth_router_with_cache(token_cache))
 }
 
 /// Create an authentication router with the provided shared token cache

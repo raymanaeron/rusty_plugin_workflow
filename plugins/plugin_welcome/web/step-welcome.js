@@ -9,7 +9,7 @@ export async function activate(container, appManager, jwtManager) {
     getWelcomeMessage()
 
     const getStartedBtn = container.querySelector('#getStartedBtn');
-    console.log("getStartedBtn:", getStartedBtn); // Add this line
+    console.log("getStartedBtn:", getStartedBtn); 
     if (getStartedBtn) {
         getStartedBtn.addEventListener('click', () => {
             // Publish via connection manager

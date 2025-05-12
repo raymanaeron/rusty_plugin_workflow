@@ -14,3 +14,7 @@ timestamp_format = "%Y-%m-%d %H:%M:%S"
 show_level_prefix = true
 buffer_size = 0
 force_flush = true
+
+[jwt_storage]
+storage_type = "local_db"  # Options: "in_memory" or "local_db" : CAUTION :: in_memory wont work for dynamic plugins
+db_path = "sessions.db"    # Required when storage_type is "local_db"
