@@ -1,5 +1,6 @@
 // src/ws_client.rs
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
+use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, tungstenite::error::ProtocolError};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use futures_util::{SinkExt, StreamExt};
 use tokio::task::JoinHandle;
 use tokio::net::TcpStream;
@@ -25,8 +26,11 @@ impl WsClient {
     pub async fn connect(client_name: &str, ws_url: &str) -> tokio_tungstenite::tungstenite::Result<Self> {
         println!("[connect] client_name={}, ws_url={} -- executing", client_name, ws_url);
 
-        // Establish the WebSocket connection
-        let (stream, _) = connect_async(ws_url).await?;
+        // Create request and add Authorization header if JWT is provided
+        let request = ws_url.into_client_request()?;
+
+        // Establish the WebSocket connection with the request
+        let (stream, _) = connect_async(request).await?;
         let (mut ws_channel, mut ws_receiver): (SplitSink<_, _>, SplitStream<_>) = stream.split();
 
         // Register the client name with the server
@@ -75,6 +79,18 @@ impl WsClient {
             _async_task_handler: task,
             is_connected: Arc::new(Mutex::new(true)),
         })
+    }
+
+    /// Connects to a WebSocket server with JWT authentication and registers the client name.
+    pub async fn connect_with_jwt(client_name: &str, ws_url: &str, jwt_token: &str) -> tokio_tungstenite::tungstenite::Result<Self> {
+        println!("[connect_with_jwt] client_name={}, ws_url={} -- executing", client_name, ws_url);
+
+        match libjwt::validate_jwt(jwt_token) {
+            Ok(_) => Self::connect(client_name, ws_url).await,
+            Err(_e) => Err(tokio_tungstenite::tungstenite::Error::Protocol(
+                ProtocolError::ResetWithoutClosingHandshake
+            ))
+        }
     }
 
     /// Subscribes the client to a specific topic.

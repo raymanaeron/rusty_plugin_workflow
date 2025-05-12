@@ -2168,6 +2168,7 @@ dependencies = [
  "futures-util",
  "generic-array",
  "jsonwebtoken",
+ "libjwt",
  "p256",
  "rand 0.8.5",
  "reqwest",
