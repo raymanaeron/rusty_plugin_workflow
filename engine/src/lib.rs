@@ -475,6 +475,47 @@ pub extern "C" fn start_oobe_server() {
     });
 }
 
+/// Loads and processes plugins from the execution plan
+async fn load_execution_plan_plugins(
+    registry: &Arc<PluginRegistry>,
+    plugin_libraries: &mut Vec<libloading::Library>
+) -> bool {
+    log_debug!("Loading the execution plan");
+
+    let Some((plan_status, plugins)) = run_exection_plan_updater().await else {
+        log_debug!("Execution plan loading failed. Cannot continue.");
+        return false;
+    };
+
+    let allow_write = matches!(plan_status, PlanLoadSource::Remote(_));
+
+    // Modify the error handler for plugin preparation
+    for plugin_meta in plugins {
+        match prepare_plugin_binary(&plugin_meta, allow_write) {
+            Ok(local_path) => load_and_register(local_path, &registry, plugin_libraries),
+            Err(_e) => {
+                let _source = match plan_status {
+                    PlanLoadSource::Remote(_) => "remote plan",
+                    PlanLoadSource::LocalFallback(_) => "local fallback plan",
+                };
+
+                log_debug!(
+                    format!(
+                        "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
+                        plugin_meta.name,
+                        plugin_meta.plugin_location_type,
+                        _source,
+                        _e
+                    ).as_str()
+                );
+            }
+        }
+    }
+
+    log_debug!("Execution plan load completed");
+    true
+}
+
 /// Main async entry point for Rust applications.
 /// Initializes all engine components and starts the server.
 /// This function should be called from a Tokio runtime.
@@ -578,36 +619,9 @@ pub async fn start_server_async() {
     // Move plugin libraries to holder
     plugin_libraries.extend(plugin_manager.get_plugin_libraries().drain(..));
 
-    log_debug!("Loading the execution plan");
-
-    let Some((plan_status, plugins)) = run_exection_plan_updater().await else {
-        log_debug!("Execution plan loading failed. Cannot continue.");
+    // TODO: MOVE IT: Should call after WIFI_COMPLETED
+    if !load_execution_plan_plugins(&registry, &mut plugin_libraries).await {
         return;
-    };
-
-    let allow_write = matches!(plan_status, PlanLoadSource::Remote(_));
-
-    // Modify the error handler for plugin preparation
-    for plugin_meta in plugins {
-        match prepare_plugin_binary(&plugin_meta, allow_write) {
-            Ok(local_path) => load_and_register(local_path, &registry, &mut plugin_libraries),
-            Err(_e) => {
-                let _source = match plan_status {
-                    PlanLoadSource::Remote(_) => "remote plan",
-                    PlanLoadSource::LocalFallback(_) => "local fallback plan",
-                };
-
-                log_debug!(
-                    format!(
-                        "[WARN] Plugin '{}' failed to prepare from '{}' ({}): {}",
-                        plugin_meta.name,
-                        plugin_meta.plugin_location_type,
-                        _source,
-                        _e
-                    ).as_str()
-                );
-            }
-        }
     }
 
     // JWT Authentication Setup - START
