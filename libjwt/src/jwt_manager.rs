@@ -17,12 +17,15 @@ impl JwtManager {
         // Get storage configuration
         let storage_type = config.get_string("jwt_storage.storage_type")
             .expect("Missing jwt_storage.storage_type in config");
+
+        println!("Using storage type: {}", storage_type);
         
         // Create token cache based on configuration
         let token_cache = match storage_type.as_str() {
             "local_db" => {
                 let db_path = config.get_string("jwt_storage.db_path")
                     .expect("Missing jwt_storage.db_path in config");
+                println!("Using SQLite database at: {}", db_path);
                 SharedTokenCache::with_sqlite(&db_path).await?
             }
             "in_memory" | _ => SharedTokenCache::new(),
