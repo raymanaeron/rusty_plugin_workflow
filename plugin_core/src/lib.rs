@@ -8,8 +8,9 @@ pub mod resource;
 pub mod helper_functions;
 pub mod logging;
 
-pub mod response_utils;
 pub mod resource_utils;
+pub mod response_utils;
+pub mod jwt_utils; // Add this line to expose the jwt_utils module
 
 #[macro_use]
 mod plugin_macros;

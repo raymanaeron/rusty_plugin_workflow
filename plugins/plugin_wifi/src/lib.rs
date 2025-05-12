@@ -8,7 +8,7 @@
 extern crate liblogger;
 extern crate plugin_core;
 extern crate liblogger_macros;
-extern crate libjwt;  // Add libjwt import
+extern crate libjwt;
 
 use liblogger_macros::{log_entry_exit, measure_time};
 use once_cell::sync::Lazy;
@@ -20,6 +20,7 @@ use plugin_core::{
 };
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
+use plugin_core::jwt_utils::validate_jwt_token;  // Import the JWT validation function
 
 // Standard library
 use std::ffi::{CString, CStr};
@@ -93,48 +94,9 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
     unsafe {
         let request = &*req;
         
-        // Extract authorization header from request if it exists
-        let auth_header = if !request.headers.is_null() && request.header_count > 0 {
-            let headers = std::slice::from_raw_parts(request.headers, request.header_count as usize);
-            
-            // Search for Authorization header
-            headers.iter().find_map(|header| {
-                let name = CStr::from_ptr(header.key).to_str().ok()?;  // Changed from header.name to header.key
-                if name.eq_ignore_ascii_case("Authorization") {
-                    CStr::from_ptr(header.value).to_str().ok()
-                } else {
-                    None
-                }
-            })
-        } else {
-            None
-        };
-        
-        // Validate JWT token if authorization header exists
-        if let Some(auth) = auth_header {
-            if !auth.starts_with("Bearer ") {
-                log_warn!("Invalid Authorization format, expected Bearer token");
-                return error_response(401, "Invalid Authorization format, expected Bearer token");
-            }
-            
-            let token = &auth[7..]; // Skip "Bearer " prefix
-            
-            match validate_jwt(token) {
-                Ok(_claims) => {
-                    // Token is valid, continue with request processing
-                    log_debug!("JWT token validation successful");
-                    // Print the token and claims for debugging
-                    log_debug!(format!("Token: {}", token).as_str());
-                    log_debug!(format!("Claims: {:?}", _claims).as_str());    
-                }
-                Err(e) => {
-                    log_warn!(format!("JWT validation failed: {}", e).as_str());
-                    return error_response(401, "Invalid or expired token");
-                }
-            }
-        } else {
-            log_warn!("No Authorization header found");
-            return error_response(401, "Authentication required");
+        // Validate JWT token using the shared utility function
+        if let Err(response) = validate_jwt_token(request) {
+            return response;
         }
         
         let path = if request.path.is_null() {
