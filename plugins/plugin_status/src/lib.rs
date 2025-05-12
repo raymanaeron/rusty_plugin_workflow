@@ -8,6 +8,7 @@ use std::sync::Mutex;
 use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
+use plugin_core::jwt_utils::validate_jwt_token;
 
 use once_cell::sync::Lazy;
 
@@ -42,6 +43,12 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
     unsafe {
         let request = &*req;
+
+        // Validate JWT token using the shared utility function
+        if let Err(response) = validate_jwt_token(request) {
+            return response;
+        }
+
         let path = if request.path.is_null() {
             "<null>"
         } else {

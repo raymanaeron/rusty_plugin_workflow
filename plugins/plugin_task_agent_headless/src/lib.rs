@@ -3,6 +3,7 @@ extern crate plugin_core;
 use plugin_core::*;
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
+use plugin_core::jwt_utils::validate_jwt_token;
 
 use std::ffi::{ CString, CStr };
 use std::os::raw::c_char;
@@ -104,6 +105,12 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
     unsafe {
         let request = &*req;
+
+        // Validate JWT token using the shared utility function
+        if let Err(response) = validate_jwt_token(request) {
+            return response;
+        }
+
         let path = if request.path.is_null() {
             "<null>"
         } else {

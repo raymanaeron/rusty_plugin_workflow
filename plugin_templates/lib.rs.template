@@ -115,6 +115,12 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
     unsafe {
         let request = &*req;
+
+        // Validate JWT token using the shared utility function
+        if let Err(response) = validate_jwt_token(request) {
+            return response;
+        }
+        
         let path = if request.path.is_null() {
             "<null>"
         } else {

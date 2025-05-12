@@ -6,6 +6,8 @@ use plugin_core::{
     resource_utils::static_resource,
     cleanup_response,
 };
+use plugin_core::jwt_utils::validate_jwt_token;
+
 use std::sync::{Arc, Mutex};
 use libws::ws_client::WsClient;
 use tokio::runtime::Runtime;
@@ -165,6 +167,12 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
     unsafe {
         let request = &*req;
+
+        // Validate JWT token using the shared utility function
+        if let Err(response) = validate_jwt_token(request) {
+            return response;
+        }
+
         let path = if request.path.is_null() {
             "<null>"
         } else {

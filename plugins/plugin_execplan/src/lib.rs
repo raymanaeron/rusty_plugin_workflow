@@ -1,21 +1,27 @@
 extern crate plugin_core;
 
 use plugin_core::{
-    ApiRequest, ApiResponse, HttpMethod, PluginContext, Resource,
+    ApiRequest,
+    ApiResponse,
+    HttpMethod,
+    PluginContext,
+    Resource,
     declare_plugin,
     error_response,
-    response_utils::{json_response, method_not_allowed_response},
+    response_utils::{ json_response, method_not_allowed_response },
     resource_utils::static_resource,
     cleanup_response,
 };
-use std::sync::{Arc, Mutex};
+use plugin_core::jwt_utils::validate_jwt_token;
+
+use std::sync::{ Arc, Mutex };
 use libws::ws_client::WsClient;
 use tokio::runtime::Runtime;
 use once_cell::sync::Lazy;
 use std::os::raw::c_char;
-use std::ffi::{CString, CStr};
+use std::ffi::{ CString, CStr };
 use std::ptr;
-use serde::{Serialize, Deserialize};
+use serde::{ Serialize, Deserialize };
 
 // Shared Runtime for async operations
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
@@ -32,9 +38,7 @@ struct BluePrint {
 }
 
 // Shared state
-static STATE: Lazy<Mutex<BluePrint>> = Lazy::new(|| {
-    Mutex::new(BluePrint::default())
-});
+static STATE: Lazy<Mutex<BluePrint>> = Lazy::new(|| { Mutex::new(BluePrint::default()) });
 
 #[ctor::ctor]
 fn on_load() {
@@ -75,7 +79,9 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
         HttpMethod::Delete,
     ];
     let slice = static_resource("blueprint", &METHODS);
-    unsafe { *out_len = slice.len(); }
+    unsafe {
+        *out_len = slice.len();
+    }
     slice.as_ptr()
 }
 
@@ -86,6 +92,12 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
     unsafe {
         let request = &*req;
+
+        // Validate JWT token using the shared utility function
+        if let Err(response) = validate_jwt_token(request) {
+            return response;
+        }
+
         let path = if request.path.is_null() {
             "<null>"
         } else {

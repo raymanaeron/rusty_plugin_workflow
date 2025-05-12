@@ -4,23 +4,31 @@ extern crate liblogger_macros;
 
 // Plugin core imports
 use plugin_core::{
-    log_debug, log_info, 
-    declare_plugin, PluginContext, Resource, HttpMethod,
-    ApiRequest, ApiResponse, error_response, cleanup_response,
-    response_utils::{json_response, method_not_allowed_response},
+    log_debug,
+    log_info,
+    declare_plugin,
+    PluginContext,
+    Resource,
+    HttpMethod,
+    ApiRequest,
+    ApiResponse,
+    error_response,
+    cleanup_response,
+    response_utils::{ json_response, method_not_allowed_response },
     resource_utils::static_resource,
 };
+use plugin_core::jwt_utils::validate_jwt_token;
 
 // Standard library
-use std::ffi::{CString, CStr};
+use std::ffi::{ CString, CStr };
 use std::os::raw::c_char;
 use std::ptr;
-use std::sync::{Arc, Mutex};
+use std::sync::{ Arc, Mutex };
 
 // External dependencies
-use liblogger_macros::{log_entry_exit, measure_time, initialize_logger_attributes};
+use liblogger_macros::{ log_entry_exit, measure_time, initialize_logger_attributes };
 use once_cell::sync::Lazy;
-use serde::{Serialize, Deserialize};
+use serde::{ Serialize, Deserialize };
 use tokio::runtime::Runtime;
 use libws::ws_client::WsClient;
 
@@ -54,7 +62,7 @@ fn on_load() {
     if let Err(e) = plugin_core::init_logger("plugin_finish") {
         eprintln!("[plugin_totorial] Failed to initialize logger: {}", e);
     }
-    
+
     log_info!("Plugin Tutorial loaded successfully");
 }
 
@@ -63,12 +71,12 @@ fn on_load() {
 pub async fn create_ws_plugin_client() {
     if let Ok(client) = WsClient::connect("plugin_finish", "ws://127.0.0.1:8081/ws").await {
         let client = Arc::new(Mutex::new(client));
-        
+
         if let Ok(mut ws_client) = client.lock() {
             ws_client.subscribe("plugin_finish", "SummaryUpdated", "").await;
             log_debug!("[plugin_finish] Subscribed to SummaryUpdated");
         }
-        
+
         unsafe {
             PLUGIN_WS_CLIENT = Some(client);
         }
@@ -100,7 +108,9 @@ extern "C" fn get_api_resources(out_len: *mut usize) -> *const Resource {
         HttpMethod::Delete,
     ];
     let slice = static_resource("summary", &METHODS);
-    unsafe { *out_len = slice.len(); }
+    unsafe {
+        *out_len = slice.len();
+    }
     slice.as_ptr()
 }
 
@@ -115,6 +125,12 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
     unsafe {
         let request = &*req;
+
+        // Validate JWT token using the shared utility function
+        if let Err(response) = validate_jwt_token(request) {
+            return response;
+        }
+
         let path = if request.path.is_null() {
             "<null>"
         } else {
@@ -145,7 +161,13 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                 } else {
                     // Return all resources
                     let json = serde_json::to_string(&*state).unwrap();
-                    log_debug!(format!("Returning all resources: {} - Context: {}", json, "plugin_finish").as_str());
+                    log_debug!(
+                        format!(
+                            "Returning all resources: {} - Context: {}",
+                            json,
+                            "plugin_finish"
+                        ).as_str()
+                    );
                     json_response(200, &json)
                 }
             }
@@ -173,7 +195,13 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
                         "message": "Resource created",
                         "id": resource_id
                     });
-                    log_debug!(format!("Saving a resource: {}, Context: {}", response, "plugin_finish").as_str());
+                    log_debug!(
+                        format!(
+                            "Saving a resource: {}, Context: {}",
+                            response,
+                            "plugin_finish"
+                        ).as_str()
+                    );
                     json_response(201, &serde_json::to_string(&response).unwrap())
                 } else {
                     error_response(400, "Invalid data")

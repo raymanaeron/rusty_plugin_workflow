@@ -10,6 +10,7 @@ use plugin_core::{
     response_utils::{json_response, method_not_allowed_response},
     resource_utils::static_resource,
 };
+use plugin_core::jwt_utils::validate_jwt_token;
 
 // Standard library
 use std::ffi::{CString, CStr};
@@ -115,6 +116,12 @@ extern "C" fn handle_request(req: *const ApiRequest) -> *mut ApiResponse {
 
     unsafe {
         let request = &*req;
+
+        // Validate JWT token using the shared utility function
+        if let Err(response) = validate_jwt_token(request) {
+            return response;
+        }
+
         let path = if request.path.is_null() {
             "<null>"
         } else {

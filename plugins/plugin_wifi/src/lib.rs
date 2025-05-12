@@ -20,7 +20,7 @@ use plugin_core::{
 };
 use plugin_core::resource_utils::static_resource;
 use plugin_core::response_utils::*;
-use plugin_core::jwt_utils::validate_jwt_token;  // Import the JWT validation function
+use plugin_core::jwt_utils::validate_jwt_token;
 
 // Standard library
 use std::ffi::{CString, CStr};
