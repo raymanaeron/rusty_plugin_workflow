@@ -36,7 +36,7 @@ export async function activate(container, appManager, jwtManager) {
             
             try {
                 // Call login API
-                const response = await fetch('/api/login/userprofile', {
+                const response = await jwtManager.secure_request('/api/login/userprofile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

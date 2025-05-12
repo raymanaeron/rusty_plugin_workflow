@@ -28,9 +28,6 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
-// Add JWT validation from libjwt
-use libjwt::validate_jwt;
-
 // Internal modules
 mod network_info;
 pub mod wifi_manager_cp;

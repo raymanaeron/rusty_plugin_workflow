@@ -14,7 +14,7 @@ export async function activate(container, appManager, jwtManager) {
     // Returns a promise with the retrieved data or throws an error
     async function getData() {
         try {
-            const response = await fetch('/api/{{plugin_route}}/{{resource_name}}');
+            const response = await jwtManager.secure_request('/api/{{plugin_route}}/{{resource_name}}');
             if (response.ok) {
                 const data = await response.json();
                 console.log('Data loaded:', data);
@@ -34,7 +34,7 @@ export async function activate(container, appManager, jwtManager) {
     // Returns the server's response or throws an error
     async function postData(payload) {
         try {
-            const response = await fetch('/api/{{plugin_route}}/{{resource_name}}', {
+            const response = await jwtManager.secure_request('/api/{{plugin_route}}/{{resource_name}}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -60,7 +60,7 @@ export async function activate(container, appManager, jwtManager) {
     // Returns the server's response or throws an error
     async function putData(id, payload) {
         try {
-            const response = await fetch(`/api/{{plugin_route}}/{{resource_name}}/${id}`, {
+            const response = await jwtManager.secure_request(`/api/{{plugin_route}}/{{resource_name}}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -86,7 +86,7 @@ export async function activate(container, appManager, jwtManager) {
     // Returns the server's response or throws an error
     async function patchData(id, partialPayload) {
         try {
-            const response = await fetch(`/api/{{plugin_route}}/{{resource_name}}/${id}`, {
+            const response = await jwtManager.secure_request(`/api/{{plugin_route}}/{{resource_name}}/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(partialPayload)

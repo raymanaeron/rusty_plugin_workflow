@@ -21,7 +21,7 @@ export async function activate(container, appManager, jwtManager) {
     }
 
     async function getWelcomeMessage() {
-        const res = await fetch("/api/welcome/welcomemessage");
+        const res = await jwtManager.secure_request("/api/welcome/welcomemessage");
         if (!res.ok) throw new Error(`Fetch welcome message failed (${res.status})`);
         const welcomeMsg = await res.json();
 

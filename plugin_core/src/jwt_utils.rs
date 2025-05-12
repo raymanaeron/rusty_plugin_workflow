@@ -3,9 +3,6 @@
 //! This module provides JWT validation utilities for plugin authentication.
 
 use std::ffi::CStr;
-use std::ptr;
-use std::os::raw::c_char;
-
 use crate::{ApiRequest, ApiResponse, error_response};
 use crate::log_debug;
 use crate::log_warn;

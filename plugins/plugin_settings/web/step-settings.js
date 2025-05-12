@@ -51,7 +51,7 @@ export async function activate(container, appManager, jwtManager) {
 
     async function postData(payload) {
         try {
-            const response = await fetch('/api/settings/devicesettings', {
+            const response = await jwtManager.secure_request('/api/settings/devicesettings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
