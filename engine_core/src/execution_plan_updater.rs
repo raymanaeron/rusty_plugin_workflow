@@ -22,6 +22,8 @@ impl ExecutionPlanUpdater {
             &general.product_family,
             &general.execution_plan_version,
         );
+
+        println!("Execution plan general section : {:#?}", general);
     
         match general.update_from.as_str() {
             "s3" => {

@@ -190,6 +190,8 @@ pub async fn create_ws_engine_client() {
     let plugin_libraries = Arc::new(Mutex::new(Vec::new()));
     
     // Fix: Access client_arc from ENGINE_WS_CLIENT
+    // Execution plan plugins are loaded dynamically through the execution plan
+    // We check and download a new execution plan if available right after the network connection is established
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         subscribe_and_handle_with_registry(
             client_arc.clone(),
