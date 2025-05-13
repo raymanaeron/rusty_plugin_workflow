@@ -48,7 +48,7 @@ export async function activate(container, appManager, jwtManager) {
             setTimeout(() => {
                 step++;
                 updateStatus();
-            }, 2000);
+            }, 300);
         }
     }
     updateStatus();

@@ -252,7 +252,7 @@ async fn subscribe_and_handle_with_registry(
 ) {
     // First, set up the message handler directly without holding locks across await points
     {
-        let client_for_message = client_arc.clone();
+        let _client_for_message = client_arc.clone();
         
         // Make sure to lock and subscribe in a contained scope
         {
@@ -745,6 +745,7 @@ pub async fn start_server_async() {
     RouterManager::add_static_route("/", "webapp").await;
 
     // Fallback handler for SPA routing
+    #[allow(dead_code)]
     async fn fallback_handler() -> Response {
         match fs::read_to_string("webapp/index.html") {
             Ok(content) =>
