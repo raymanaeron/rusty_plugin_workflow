@@ -10,24 +10,29 @@ use tokio::net::TcpListener; // For asynchronous TCP socket listening
 
 // Web framework imports
 use axum::Router; // For HTTP routing
-use axum::routing::{ any, get }; // For route handler definitions
+use axum::routing::{ any }; // For route handler definitions
 use axum::response::Response; // For HTTP responses
 use axum::body::Body; // For HTTP body content
 use axum::http::StatusCode; // For HTTP status codes
-use axum::http::{Method, header};
-use axum::http::Request;
-use tower::ServiceExt; 
+use axum::http::{ Method, header };
+use tower_http::cors::{ Any, CorsLayer };
+use tower_http::trace::TraceLayer;
 
 // JWT authentication
-use libjwt::{JwtManager, create_auth_router_with_cache};
+use libjwt::{ JwtManager, create_auth_router_with_cache };
 
 // Import all the required logging components
 use liblogger;
-use plugin_core::{log_debug, log_info, log_warn, log_error}; // Logging utilities
+use plugin_core::{ log_debug, log_info, log_warn, log_error }; // Logging utilities
 use liblogger_macros::*; // Logging macro extensions
 use ctor::ctor;
-use tower_http::cors::{Any, CorsLayer};
-use tower_http::trace::TraceLayer;
+
+use std::sync::atomic::{ AtomicPtr, Ordering };
+
+static REGISTRY_PTR: AtomicPtr<Arc<PluginRegistry>> = AtomicPtr::new(std::ptr::null_mut());
+static PLUGIN_LIBRARIES_PTR: AtomicPtr<Vec<libloading::Library>> = AtomicPtr::new(
+    std::ptr::null_mut()
+);
 
 // Initialize logger attributes
 initialize_logger_attributes!();
@@ -39,17 +44,17 @@ fn on_load() {
     if let Err(e) = plugin_core::init_logger("engine") {
         eprintln!("[engine] Failed to initialize logger: {}", e);
     }
-    
+
     println!("[engine] >>> ENGINE LOADED");
 }
 
 // Local module declarations
 mod router_manager;
 mod websocket_manager;
-mod plugin_manager; 
+mod plugin_manager;
 
 // Local module imports
-use plugin_manager::PluginManager; 
+use plugin_manager::PluginManager;
 use router_manager::RouterManager;
 use websocket_manager::{
     WS_SUBSCRIBERS,
@@ -86,7 +91,7 @@ use libws::ws_client::WsClient;
 fn initialize_custom_logger() {
     // The logger is already initialized in the on_load() ctor function,
     // so we just need to print some test messages here
-    
+
     // Print a clear marker to see if logger is working
     log_info!("======== ENGINE LOGGER INITIALIZED ========");
     log_debug!("Debug logging is enabled");
@@ -120,6 +125,90 @@ async fn subscribe_and_handle(
     }
 }
 
+async fn subscribe_and_handle_with_registry(
+    client_arc: Arc<Mutex<WsClient>>,
+    topic: &'static str,
+    _route: &'static str,
+    registry: Arc<PluginRegistry>,
+    plugin_libraries: Arc<Mutex<Vec<libloading::Library>>>
+) {
+    // First, set up the message handler directly without holding locks across await points
+    {
+        let client_for_message = client_arc.clone();
+        
+        // Make sure to lock and subscribe in a contained scope
+        {
+            let mut client = client_arc.lock().unwrap();
+            client.subscribe("engine", topic, "").await;
+            log_debug!(format!("Engine, subscribed to topic: {}", topic).as_str());
+        }
+        
+        // Create clones of necessary objects before entering the message handler
+        let registry_clone = registry.clone();
+        let plugin_libraries_clone = plugin_libraries.clone();
+        
+        // Set up a separate message handler for WIFI_COMPLETED
+        if topic == WIFI_COMPLETED {
+            // Use a simpler approach that doesn't involve nested threads
+            let msg_client_arc = client_arc.clone();
+            
+            // Acquire the lock inside a scope to set up the message handler
+            if let Ok(mut client) = client_arc.lock() {
+                client.on_message(topic, move |msg| {
+                    log_debug!(format!("[engine] => {}: {}", topic, msg).as_str());
+                    
+                    // Create a dedicated thread for handling this specific message occurrence
+                    // This avoids crossing thread boundaries with mutexes
+                    let registry_for_thread = registry_clone.clone();
+                    let libs_for_thread = plugin_libraries_clone.clone();
+                    let client_for_thread = msg_client_arc.clone();
+                    
+                    // Spawn a standard thread instead of using tokio::spawn
+                    std::thread::spawn(move || {
+                        // Create a new runtime for this thread
+                        let rt = tokio::runtime::Builder::new_current_thread()
+                            .enable_all()
+                            .build()
+                            .expect("Failed to create runtime for plugin loading");
+                        
+                        // Execute the async block in the runtime
+                        rt.block_on(async {
+                            // Create a new Vec to hold the libraries
+                            let mut new_libraries = Vec::new();
+                            
+                            // Load the plugins
+                            if !load_execution_plan_plugins(&registry_for_thread, &mut new_libraries).await {
+                                log_error!("Failed to load plugins from execution plan");
+                                return;
+                            }
+                            
+                            // Update the original vector with the new libraries
+                            if let Ok(mut guard) = libs_for_thread.lock() {
+                                guard.extend(new_libraries.into_iter());
+                            }
+                            
+                            // Send the navigation message
+                            publish_ws_message(
+                                client_for_thread,
+                                "engine",
+                                SWITCH_ROUTE,
+                                "/execution/web"
+                            ).await;
+                        });
+                    });
+                });
+            }
+        } else {
+            // For other topics, just set up a simple message handler
+            if let Ok(mut client) = client_arc.lock() {
+                client.on_message(topic, move |msg| {
+                    log_debug!(format!("[engine] => {}: {}", topic, msg).as_str());
+                });
+            }
+        }
+    }
+}
+
 pub async fn create_ws_engine_client() {
     log_debug!("Creating ws client for the engine");
     let url = "ws://127.0.0.1:8081/ws";
@@ -138,7 +227,14 @@ pub async fn create_ws_engine_client() {
             Err(_err) => {
                 retries += 1;
                 // Actually use the error variable by directly printing it with its display implementation
-                log_debug!(format!("Failed to connect WsClient (attempt {}/{}): {}", retries, MAX_RETRIES, _err).as_str());
+                log_debug!(
+                    format!(
+                        "Failed to connect WsClient (attempt {}/{}): {}",
+                        retries,
+                        MAX_RETRIES,
+                        _err
+                    ).as_str()
+                );
                 if retries < MAX_RETRIES {
                     tokio::time::sleep(Duration::from_millis(500)).await;
                 }
@@ -184,8 +280,19 @@ pub async fn create_ws_engine_client() {
 
     // Subscribe to WIFI_COMPLETED topic
     // Route next to /execution/web
+    // Fix: Initialize registry and plugin_libraries variables before using them
+    let registry = Arc::new(PluginRegistry::new());
+    let plugin_libraries = Arc::new(Mutex::new(Vec::new()));
+    
+    // Fix: Access client_arc from ENGINE_WS_CLIENT
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        subscribe_and_handle(client_arc.clone(), WIFI_COMPLETED, "/execution/web").await;
+        subscribe_and_handle_with_registry(
+            client_arc.clone(),
+            WIFI_COMPLETED,
+            "/execution/web",
+            registry.clone(),
+            plugin_libraries.clone()
+        ).await;
     }
 
     // Subscribe to EXECPLAN_COMPLETED topic
@@ -229,7 +336,6 @@ pub async fn create_ws_engine_client() {
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
         subscribe_and_handle(client_arc.clone(), PROVISION_COMPLETED, "/status/web").await;
     }
-
 }
 
 pub async fn publish_ws_message(
@@ -277,6 +383,7 @@ pub async fn publish_ws_message(
 pub async fn run_exection_plan_updater() -> Option<(PlanLoadSource, Vec<PluginMetadata>)> {
     let local_path = "execution_plan.toml";
 
+    // Move the Error-returning code inside this function to avoid Send issues
     match ExecutionPlanUpdater::fetch_and_prepare_latest(local_path) {
         Ok(plan_status) => {
             let plan_path = match &plan_status {
@@ -456,7 +563,7 @@ fn load_and_register(
             lib_holder.push(lib); // retain library to avoid drop
         }
         Err(_e) => {
-            log_debug!(format!("Failed to load plugin from {}: {}", path.display(), _e).as_str()); 
+            log_debug!(format!("Failed to load plugin from {}: {}", path.display(), _e).as_str());
         }
     }
 }
@@ -553,7 +660,12 @@ pub async fn start_server_async() {
 
     // Plugin Registry Initialization
     let registry = Arc::new(PluginRegistry::new());
-    let mut plugin_libraries = Vec::new();
+    REGISTRY_PTR.store(Box::into_raw(Box::new(registry.clone())), Ordering::Relaxed);
+
+    // Fix: Initialize plugin_libraries as Vec type (not Arc<Mutex<>>)
+    let plugin_libraries = Vec::new();
+    PLUGIN_LIBRARIES_PTR.store(Box::into_raw(Box::new(plugin_libraries)), Ordering::Relaxed);
+
     let mut plugin_manager = PluginManager::new(registry.clone());
 
     // Core Plugin Loading
@@ -619,45 +731,47 @@ pub async fn start_server_async() {
     log_debug!("Core plugins loaded", None);
 
     // Move plugin libraries to holder
-    plugin_libraries.extend(plugin_manager.get_plugin_libraries().drain(..));
+    // Fix: Update how plugin libraries are moved to the holder
+    let mut plugin_libs = plugin_manager.get_plugin_libraries().drain(..).collect::<Vec<_>>();
+    unsafe {
+        if let Some(libs_ptr) = PLUGIN_LIBRARIES_PTR.load(Ordering::Relaxed).as_mut() {
+            libs_ptr.extend(plugin_libs.drain(..));
+        }
+    }
 
     // TODO: MOVE IT: Should call after WIFI_COMPLETED
-    if !load_execution_plan_plugins(&registry, &mut plugin_libraries).await {
-        return;
-    }
+    //if !load_execution_plan_plugins(&registry, &mut plugin_libraries).await {
+    //    return;
+    // }
 
     // JWT Authentication Setup - START
     log_debug!("********** JWT AUTHENTICATION SETUP - BEGIN **********");
-    
+
     // Initialize JWT manager
-    let jwt_manager = JwtManager::init()
-        .await
-        .expect("Failed to initialize JWT manager");
-        
+    let jwt_manager = JwtManager::init().await.expect("Failed to initialize JWT manager");
+
     // Step 1: Create the base router that will hold everything
     log_debug!("Creating base router...");
     let mut base_router = Router::new();
-    
+
     // Step 2: Create all API-related routers independently first
     log_debug!("Creating authentication router...");
     let auth_router = create_auth_router_with_cache(jwt_manager.token_cache.clone());
-    
+
     log_debug!("Creating plugin API router...");
     let plugin_api_router = Router::new().route(
         "/:plugin/:resource",
         any(dispatch_plugin_api).with_state(registry.clone())
     );
-    
+
     // Step 3: Combine all API routers into a single API router
     log_debug!("Combining all API routers...");
-    let api_router = Router::new()
-        .merge(auth_router)
-        .merge(plugin_api_router);
-    
+    let api_router = Router::new().merge(auth_router).merge(plugin_api_router);
+
     // Step 4: Nest the combined API router under /api
     log_debug!("Nesting combined API router under /api path...");
     base_router = base_router.nest("/api", api_router);
-    
+
     log_debug!("********** JWT AUTHENTICATION SETUP - COMPLETE **********");
 
     // Initialize router manager with base routes
@@ -717,13 +831,13 @@ pub async fn start_server_async() {
 
     // Fix ownership issues by chaining transformations:
     // Instead of calling app.layer() multiple times, chain them together
-    let app = app
-        .layer(cors)
-        .layer(TraceLayer::new_for_http());
-    
+    let app = app.layer(cors).layer(TraceLayer::new_for_http());
+
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     log_debug!(format!("Listening at http://{}", addr).as_str());
 
     let listener = TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>()).await.unwrap();
 }
+
+// THIS IS THE LAST LINE
