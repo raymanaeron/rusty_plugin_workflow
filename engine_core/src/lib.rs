@@ -15,6 +15,7 @@ pub mod plugin_metadata;
 pub mod execution_plan_updater;
 pub mod plugin_utils;
 
-
+pub mod jwt_gen_util;
+pub use jwt_gen_util::get_jwt_token;
 
 

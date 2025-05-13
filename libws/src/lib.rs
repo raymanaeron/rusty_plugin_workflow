@@ -11,13 +11,15 @@ use serde_json::{ json, Value };
 use std::{ collections::HashMap, net::SocketAddr, sync::{ Arc, Mutex } };
 use tokio::sync::mpsc::{ self, UnboundedSender };
 
+use libjwt::validate_jwt;
+
 // Type aliases for topic names and subscriber management
 pub type Topic = String;
 pub type Subscribers = Arc<Mutex<HashMap<Topic, Vec<UnboundedSender<String>>>>>;
 
-/// TODO: Write another handle_socket_with_jwt function
-/// Add a 4th parameter to the function that will be a JWT token
-/// Validate the token with libws::validate_jwt then call the handle_socket function
+/// TODO: NOT SURE IF THIS IS STILL CORRECT -- I need to check my original code for libws 
+/// Should the JWT token is passed in the query string of the WebSocket connection request?
+/// 
 /// From lib.rs in engine, when you load the ws server call a wrapper function that will 
 /// call the handle_socket_with_jwt function
 //  .route(
@@ -35,6 +37,28 @@ pub type Subscribers = Arc<Mutex<HashMap<Topic, Vec<UnboundedSender<String>>>>>;
 ///    // Call the libws handler with query parameters
 ///    libws::handle_socket(ws, ConnectInfo(addr), query_params, subscribers).await
 /// }
+
+/// Handles the WebSocket upgrade and initializes the connection with JWT validation.
+pub async fn handle_socket_with_jwt(
+    ws: WebSocketUpgrade,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    subscribers: Subscribers,
+    token: String,
+) -> impl IntoResponse {
+    println!("[handle_socket_with_jwt] WS connection from {}", addr);
+
+    // Convert both branches to Response<Body> using into_response()
+    if validate_jwt(&token).is_ok() {
+        println!("[handle_socket_with_jwt] JWT token is valid");
+        handle_socket(ws, ConnectInfo(addr), subscribers).await.into_response()
+    } else {
+        println!("[handle_socket_with_jwt] JWT token is invalid");
+        ws.on_upgrade(|socket| async move {
+            let _ = socket.close().await;
+            println!("[handle_socket_with_jwt] Connection closed due to invalid JWT");
+        }).into_response()
+    }
+}
 
 /// Handles the WebSocket upgrade and initializes the connection.
 pub async fn handle_socket(

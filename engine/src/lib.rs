@@ -52,6 +52,7 @@ use websocket_manager::{
 };
 
 // ===== Engine core functionality =====
+// jwt_gen_util::get_jwt_token,
 use engine_core::{
     plugin_loader::load_plugin,
     plugin_registry::PluginRegistry,
@@ -63,7 +64,7 @@ use engine_core::{
 };
 
 // ===== Plugin core types =====
-use plugin_core::{ HttpMethod, ApiRequest }; 
+use plugin_core::{ HttpMethod, ApiRequest };
 
 // ===== WebSocket functionality =====
 use libws::handle_socket;
@@ -188,7 +189,7 @@ pub async fn create_ws_engine_client() {
     // Fix: Initialize registry and plugin_libraries variables before using them
     let registry = Arc::new(PluginRegistry::new());
     let plugin_libraries = Arc::new(Mutex::new(Vec::new()));
-    
+
     // Fix: Access client_arc from ENGINE_WS_CLIENT
     // Execution plan plugins are loaded dynamically through the execution plan
     // We check and download a new execution plan if available right after the network connection is established
@@ -253,58 +254,64 @@ async fn subscribe_and_handle_with_registry(
     // First, set up the message handler directly without holding locks across await points
     {
         let _client_for_message = client_arc.clone();
-        
+
         // Make sure to lock and subscribe in a contained scope
         {
             let mut client = client_arc.lock().unwrap();
             client.subscribe("engine", topic, "").await;
             log_debug!(format!("Engine, subscribed to topic: {}", topic).as_str());
         }
-        
+
         // Create clones of necessary objects before entering the message handler
         let registry_clone = registry.clone();
         let plugin_libraries_clone = plugin_libraries.clone();
-        
+
         // Set up a separate message handler for WIFI_COMPLETED
         if topic == WIFI_COMPLETED {
             // Use a simpler approach that doesn't involve nested threads
             let msg_client_arc = client_arc.clone();
-            
+
             // Acquire the lock inside a scope to set up the message handler
             if let Ok(mut client) = client_arc.lock() {
                 client.on_message(topic, move |msg| {
                     log_debug!(format!("[engine] => {}: {}", topic, msg).as_str());
-                    
+
                     // Create a dedicated thread for handling this specific message occurrence
                     // This avoids crossing thread boundaries with mutexes
                     let registry_for_thread = registry_clone.clone();
                     let libs_for_thread = plugin_libraries_clone.clone();
                     let client_for_thread = msg_client_arc.clone();
-                    
+
                     // Spawn a standard thread instead of using tokio::spawn
                     std::thread::spawn(move || {
                         // Create a new runtime for this thread
-                        let rt = tokio::runtime::Builder::new_current_thread()
+                        let rt = tokio::runtime::Builder
+                            ::new_current_thread()
                             .enable_all()
                             .build()
                             .expect("Failed to create runtime for plugin loading");
-                        
+
                         // Execute the async block in the runtime
                         rt.block_on(async {
                             // Create a new Vec to hold the libraries
                             let mut new_libraries = Vec::new();
-                            
+
                             // Load the plugins
-                            if !load_execution_plan_plugins(&registry_for_thread, &mut new_libraries).await {
+                            if
+                                !load_execution_plan_plugins(
+                                    &registry_for_thread,
+                                    &mut new_libraries
+                                ).await
+                            {
                                 log_error!("Failed to load plugins from execution plan");
                                 return;
                             }
-                            
+
                             // Update the original vector with the new libraries
                             if let Ok(mut guard) = libs_for_thread.lock() {
                                 guard.extend(new_libraries.into_iter());
                             }
-                            
+
                             // Send the navigation message
                             publish_ws_message(
                                 client_for_thread,
@@ -601,6 +608,12 @@ pub async fn start_server_async() {
         async move {
             use axum::{ Router, routing::get };
             use axum::extract::connect_info::ConnectInfo;
+            
+            // This should not be here
+            /*
+            let token = get_jwt_token().await.expect("Failed to get JWT token");
+            log_debug!(format!("[engine] => JWT token: {}", token).as_str());
+            */
 
             let ws_app = Router::new().route(
                 "/ws",
@@ -693,7 +706,10 @@ pub async fn start_server_async() {
     log_debug!("Core plugins loaded", None);
 
     // Move plugin libraries to holder
-    let mut plugin_libs = plugin_manager.get_plugin_libraries().drain(..).collect::<Vec<_>>();
+    let mut plugin_libs = plugin_manager
+        .get_plugin_libraries()
+        .drain(..)
+        .collect::<Vec<_>>();
     unsafe {
         if let Some(libs_ptr) = PLUGIN_LIBRARIES_PTR.load(Ordering::Relaxed).as_mut() {
             libs_ptr.extend(plugin_libs.drain(..));
