@@ -2,9 +2,7 @@
   <h5 class="plugin-title">plugin_tutorial template ui</h5>
   
   <div>
-    <!-- You tube player html code here-->
-    <div id="player"></div>
-    
+    <div id="player" style="flex-grow: 1; height: calc(100vh - 350px);"></div>
     <div class="controls mt-3">
       <div class="d-flex justify-content-center mb-2" style="gap: 10px;">
         <button onclick="window.tutorialPlayer.togglePlay()" id="playPauseBtn" class="btn btn-sm btn-secondary">▶️ Play</button>
@@ -13,7 +11,7 @@
       </div>
 
       <div class="progress mb-2" id="progressContainer" style="height: 8px; cursor: pointer;">
-        <div class="progress-bar bg-danger" id="progressBar" role="progressbar" style="width: 0%"></div>
+        <div class="progress-bar bg-danger" id="progressBar" role="progressbar" style="width: 100%"></div>
       </div>
 
       <div id="timeDisplay" class="text-center small mb-2">0:00 / 0:00</div>
