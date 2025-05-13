@@ -15,6 +15,8 @@ use axum::response::Response; // For HTTP responses
 use axum::body::Body; // For HTTP body content
 use axum::http::StatusCode; // For HTTP status codes
 use axum::http::{Method, header};
+use axum::http::Request;
+use tower::ServiceExt; 
 
 // JWT authentication
 use libjwt::{JwtManager, create_auth_router_with_cache};
@@ -704,10 +706,14 @@ pub async fn start_server_async() {
         .allow_origin(Any);
 
     // Get the router for serving
+    /*
     let app = {
         let router = RouterManager::get_manager().write().unwrap();
         router.clone().fallback(get(fallback_handler))
     };
+    */
+
+    let app = RouterManager::shared_router_service();
 
     // Fix ownership issues by chaining transformations:
     // Instead of calling app.layer() multiple times, chain them together
