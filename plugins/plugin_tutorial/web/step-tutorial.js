@@ -61,12 +61,41 @@ export async function activate(container, appManager, jwtManager) {
     
     // Update progress bar and time display
     function updateProgress() {
-        if (player && player.getDuration) {
+        try {
+            if (!player) {
+                return;
+            }
+            
+            if (typeof player.getCurrentTime !== 'function' || typeof player.getDuration !== 'function') {
+                return;
+            }
+            
             const currentTime = player.getCurrentTime();
             const duration = player.getDuration();
+            
+            if (isNaN(currentTime) || isNaN(duration) || duration === 0) {
+                return;
+            }
+            
             const percentage = (currentTime / duration) * 100;
-            progressBar.style.width = percentage + "%";
-            timeDisplay.textContent = formatTime(currentTime) + " / " + formatTime(duration);
+            
+            // Direct DOM manipulation to ensure the progress bar updates
+            if (progressBar) {
+                // Set width directly on the element
+                progressBar.style.width = `${percentage}%`;
+                
+                // Force a redraw by accessing offsetWidth
+                const forceRedraw = progressBar.offsetWidth;
+            } else {
+                console.error("Progress bar element not found");
+            }
+            
+            // Update time display
+            if (timeDisplay) {
+                timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+            }
+        } catch (error) {
+            console.error("Error updating progress:", error);
         }
     }
     
@@ -86,6 +115,7 @@ export async function activate(container, appManager, jwtManager) {
     
     // Initialize YouTube Player when API is ready
     window.onYouTubeIframeAPIReady = () => {
+        console.log("YouTube iframe API ready, creating player");
         player = new YT.Player(playerElement, {
             height: '270',
             width: '100%',
@@ -100,8 +130,16 @@ export async function activate(container, appManager, jwtManager) {
                 playsinline: 1
             },
             events: {
-                'onReady': () => {
-                    updateInterval = setInterval(updateProgress, 1000);
+                'onReady': (event) => {
+                    console.log("YouTube player ready");
+                    // Clear any existing interval first to avoid duplicates
+                    if (updateInterval) {
+                        clearInterval(updateInterval);
+                    }
+                    // Update more frequently for smoother progress bar movement
+                    updateInterval = setInterval(updateProgress, 250);
+                    // Initial update to set correct values
+                    updateProgress();
                 },
                 'onStateChange': (event) => {
                     if (event.data == YT.PlayerState.PLAYING) {
@@ -109,6 +147,11 @@ export async function activate(container, appManager, jwtManager) {
                     } else {
                         playPauseBtn.textContent = '▶️ Play';
                     }
+                    // Update progress immediately on state change
+                    updateProgress();
+                },
+                'onError': (event) => {
+                    console.error("YouTube player error:", event.data);
                 }
             }
         });

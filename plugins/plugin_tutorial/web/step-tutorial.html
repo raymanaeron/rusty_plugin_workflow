@@ -10,8 +10,9 @@
         <button onclick="window.tutorialPlayer.forward10()" class="btn btn-sm btn-secondary">⏩ Forward 10s</button>
       </div>
 
-      <div class="progress mb-2" id="progressContainer" style="height: 8px; cursor: pointer;">
-        <div class="progress-bar bg-danger" id="progressBar" role="progressbar" style="width: 100%"></div>
+      <!-- Custom progress bar implementation that's resistant to CSS overrides -->
+      <div id="progressContainer" style="height: 8px; cursor: pointer; background-color: #e9ecef; border-radius: 4px; overflow: hidden; position: relative; margin-bottom: 0.5rem;">
+        <div id="progressBar" style="height: 100%; width: 0%; background-color: #dc3545; position: absolute; left: 0; top: 0; transition: width 0.1s ease;"></div>
       </div>
 
       <div id="timeDisplay" class="text-center small mb-2">0:00 / 0:00</div>
