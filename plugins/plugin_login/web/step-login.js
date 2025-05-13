@@ -46,8 +46,12 @@ export async function activate(container, appManager, jwtManager) {
                     })
                 });
                 
+                console.log("[plugin_login] Login response:", response);
+
                 const data = await response.json();
                 
+                console.log("[plugin_login] JSON response:", data);
+
                 if (response.ok) {
                     // Login successful
                     resultBox.innerHTML = `<div class="alert alert-success">Login successful! Redirecting...</div>`;
