@@ -2,7 +2,22 @@
   <h5 class="plugin-title">plugin_tutorial template ui</h5>
   
   <div>
+    <!-- You tube player html code here-->
+    <div id="player"></div>
     
+    <div class="controls mt-3">
+      <div class="d-flex justify-content-center mb-2" style="gap: 10px;">
+        <button onclick="window.tutorialPlayer.togglePlay()" id="playPauseBtn" class="btn btn-sm btn-secondary">▶️ Play</button>
+        <button onclick="window.tutorialPlayer.rewind10()" class="btn btn-sm btn-secondary">⏪ Rewind 10s</button>
+        <button onclick="window.tutorialPlayer.forward10()" class="btn btn-sm btn-secondary">⏩ Forward 10s</button>
+      </div>
+
+      <div class="progress mb-2" id="progressContainer" style="height: 8px; cursor: pointer;">
+        <div class="progress-bar bg-danger" id="progressBar" role="progressbar" style="width: 0%"></div>
+      </div>
+
+      <div id="timeDisplay" class="text-center small mb-2">0:00 / 0:00</div>
+    </div>
   </div>
   
   <div class="mt-4 d-flex" style="gap: 15px;">
