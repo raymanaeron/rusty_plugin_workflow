@@ -18,7 +18,7 @@ When issues arise during setup, support costs escalate unnecessarily because dia
 
 The current technical landscape further complicates OOBE development:
 
-Product lines across Amazon devices have created 60-100 different OOBE paths, leading to bloated deployment packages where each device ships with the entire collection of potential setup paths regardless of what it actually needs. The necessity to support multiple platforms (FOS, Vega, AOSP) forces teams to maintain parallel implementation efforts for the same functionality. As setup options multiply, flow control logic becomes increasingly complex and difficult to maintain. Rather than leveraging shared components, each product team develops their own connectivity framework, duplicating work and creating inconsistencies. When changes are needed, even minor screen modifications require full firmware releases instead of dynamic updates, severely limiting runtime flexibility.
+Product lines across Amazon devices have created hundreds of different OOBE paths, leading to bloated deployment packages where each device ships with the entire collection of potential setup paths regardless of what it actually needs. The necessity to support multiple platforms (FOS, Vega, AOSP) forces teams to maintain parallel implementation efforts for the same functionality. As setup options multiply, flow control logic becomes increasingly complex and difficult to maintain. Rather than leveraging shared components, each product team develops their own connectivity framework, duplicating work and creating inconsistencies. When changes are needed, even minor screen modifications require full firmware releases instead of dynamic updates, severely limiting runtime flexibility.
 
 ### Update and Maintenance Burden
 
@@ -92,7 +92,7 @@ These architectural components work harmoniously to create a system that is simu
 
 Our plugin architecture fundamentally resolves fragmentation through a comprehensive technical approach:
 
-**Unified Runtime Engine**: We've engineered a high-performance, memory-efficient execution engine that consolidates 60-100 divergent paths into a single runtime with deterministic behavior. This isn't just standardization—it's systematic unification of previously incompatible workflows through a battle-tested plugin orchestration system.
+**Unified Runtime Engine**: We've engineered a high-performance, memory-efficient execution engine that consolidates many divergent paths into a single runtime with deterministic behavior. This isn't just standardization—it's systematic unification of previously incompatible workflows through a battle-tested plugin orchestration system.
 
 **Dynamic Module Loading**: Our architecture implements demand-driven plugin loading with sophisticated dependency resolution. Devices download precisely the compiled native modules needed for their specific configuration, reducing package sizes by up to 80% while enabling targeted updates without firmware modification.
 
