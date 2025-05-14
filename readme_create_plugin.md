@@ -11,11 +11,11 @@ These scripts use a folder named `plugin_templates/` which contains the followin
 
 ```
 plugin_templates/
-├── Cargo_template.toml
-├── lib_template.rs
-├── step_template.html
-├── step_template.js
-├── README_template.md
+├── Cargo.toml.template
+├── lib.rs.template
+├── step.html.template
+├── step.js.template
+└── README.md.template
 ```
 
 ## Plugin Output Structure
@@ -28,8 +28,8 @@ plugins/
     ├── src/
     │   └── lib.rs
     ├── web/
-    │   ├── step-example.html
-    │   └── step-example.js
+    │   ├── index.html
+    │   └── main.js
     ├── Cargo.toml
     └── README.md
 ```
@@ -69,15 +69,20 @@ Same as Windows – it will generate the required structure and templates using 
 | Parameter       | Meaning                                                                             |
 |----------------|--------------------------------------------------------------------------------------|
 | `plugin_wifi`  | Full plugin name. Also becomes the folder and crate name                             |
-| `wifi`         | The route name for the plugin. Example: /wifi/web - refers to html and js location   |
-| `network`      | The resource name. Example: /api/wifi/network - refers to a RESTful resource         |
+| `wifi`         | The plugin route name. Example: /wifi/web - refers to HTML and JS location           |
+| `network`      | The resource name. Used in API endpoints as /api/wifi/network                        |
 
-These names will be inserted into:
+These names will be used in the templates as:
 
-- Rust module name
-- Cargo.toml `[package]`
-- Web assets like `step-wifi.html` and `step-wifi.js`
+- `{{plugin_name}}` - The full plugin name (e.g., plugin_wifi)
+- `{{plugin_route}}` - The route name (e.g., wifi)
+- `{{resource_name}}` - The resource name (e.g., network)
+
+These will be inserted into:
+- Cargo.toml package name
+- lib.rs constants and resource handlers
+- Web assets
 
 ---
 
-Make sure the `plugin_templates/` folder exists and includes the necessary template files.
+Make sure the `plugin_templates/` folder exists and includes all necessary template files before running the scripts.
