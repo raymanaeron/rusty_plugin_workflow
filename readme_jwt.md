@@ -1,6 +1,6 @@
 # JWT Authentication Workflow
 
-This document explains how JWT (JSON Web Token) authentication works in the Rusty Plugin Workflow system, covering both client-side and server-side components.
+This document explains how JWT (JSON Web Token) authentication works in the OOBE Workflow system, covering both client-side and server-side components.
 
 ## Client-Side JWT Management (webapp/jwt_manager.js)
 

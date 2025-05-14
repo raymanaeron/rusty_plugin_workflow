@@ -1,45 +1,6 @@
-# OOBE Plugin Architecture
+# OOBE SDK
 
-## Background and Motivation
-
-The out-of-box experience (OOBE) is a critical first impression in any device lifecycle. Traditionally, OOBE workflows are tightly embedded within the firmware or bundled into application layers as part of the production system image. This gives product teams full control, but at a cost. Even minor changes—like tweaking a screen, fixing a logic bug, or adding a new step—require a full firmware rebuild. Coordination across teams becomes unavoidable, and timing has to align with broader product release schedules.
-
-The rigidity of this model becomes even more evident post-deployment. Devices already in warehouses or customer hands carry whatever onboarding logic they were manufactured with. There is no practical path to patch, fix, or improve setup flows without shipping firmware updates—a non-trivial and often unrealistic undertaking for many hardware programs.
-
-Over time, these constraints extend to the full lifecycle of the product. Setup flows are often treated as one-time-only journeys. Once the device is configured, there is no clean mechanism for surfacing new features, engaging users contextually, or updating onboarding logic based on evolving product needs. What starts as a one-time interaction becomes a lost opportunity to deliver long-term value.
-
-### Why This Matters
-
-These limitations have tangible downstream impacts:
-
-- **Innovation slows down.** Teams cannot iterate quickly on improvements, and user pain points linger in the field.
-- **Field devices become stale.** There is no mechanism to add new post-setup capabilities, even when customers would benefit.
-- **Maintenance becomes a burden.** A fix that should take an hour can stretch across multiple teams, QA cycles, and firmware releases.
-- **Observability is limited.** When setup goes wrong, teams have little insight into the customer journey.
-- **User journeys remain static.** There is no room for context-aware or personalized experiences.
-
-## Introducing a Plugin-Based OOBE Engine
-
-To break these limitations, we reimagined the OOBE architecture around a plugin-based execution engine. Rather than shipping setup logic as static binaries inside the firmware, we now externalize onboarding into modular, dynamically loadable plugins. These plugins are discovered and executed at runtime by a lightweight engine that reads from a declarative execution plan.
-
-This changes the game in several fundamental ways:
-
-- **Execution is decoupled.** OOBE logic is delivered in independently versioned plugins, which can be updated or replaced without touching the base firmware. 
-- **Workflows are declarative.** The engine composes and sequences plugins based on external JSON plans, making it easy to modify setup flows without any code changes.
-- **Lifecycle support is extended.** Beyond just first-boot configuration, we can now support pre-setup provisioning, post-setup engagement (SCOOBE), and ongoing feature discovery.
-
-## Architectural Advantages
-
-This plugin-driven model unlocks a new level of agility and resilience:
-
-- **Rapid Iteration:** Teams can build, test, and deploy onboarding changes without waiting on firmware cycles. 
-- **Dynamic Execution:** Plugins are loaded and invoked on demand. The system can adapt flows based on runtime context, device capabilities, or user behavior.
-- **Improved Observability:** Because the engine is runtime-aware, it can emit metrics, collect diagnostics, and provide visibility into the setup journey—without requiring firmware logging hooks.
-- **Sustained Engagement:** Setup no longer ends after first boot. The plugin engine can resurface contextual features, deliver personalized content, and evolve with the user over time.
-
-## Next Steps
-
-The following sections will walk through the core components of this architecture, including the plugin interfaces, runtime behaviors, and how execution plans govern the user journey. We will explore how plugins are registered, invoked, and how they communicate with each other and with the UI layer. Together, these pieces form the foundation of a scalable, extensible, and future-proof OOBE platform.
+The following sections will walk through the core components of our OOBE architecture, including the plugin interfaces, runtime behaviors, and how execution plans govern the user journey. We will explore how plugins are registered, invoked, and how they communicate with each other and with the UI layer. Together, these pieces form the foundation of a scalable, extensible, and future-proof OOBE platform.
 
 ## Plugin Model and Interface
 
@@ -61,7 +22,17 @@ pub struct Plugin {
 }
 ```
 
-This ABI enables the engine to load plugins without relying on Rust-specific constructs like traits or vtables, preserving platform independence and safety across FFI boundaries.
+This ABI enables the engine to load plugins without relying on Rust-specific constructs like traits or vtables, preserving platform independence and safety across FFI boundaries. Each function in the interface serves a specific purpose:
+
+- `name` and `plugin_route`: Provide identity and routing information
+- `run`: Initializes the plugin with configuration parameters
+- `get_static_content_path`: Returns the path to the plugin's web assets
+- `get_api_resources`: Defines the REST API endpoints exposed by the plugin
+- `handle_request`: Processes incoming API requests
+- `cleanup`: Responsible for deallocating memory allocated by the plugin
+- `run_workflow`, `on_progress`, `on_complete`: Optional callbacks for long-running tasks
+
+Plugins implement this interface through the `plugin_core` crate, which provides macros that hide much of the FFI complexity from plugin developers.
 
 ## Engine Initialization and Plugin Lifecycle
 
@@ -523,10 +494,156 @@ POST /api/wifi/network
 
 The generated plugin is immediately usable in either manual or execution-plan-based loading.
 
-## Conclusion
+## Diagrams
 
-This architecture cleanly separates orchestration from execution. Each plugin encapsulates a feature, exposes a REST interface and optional UI, and operates in isolation. The engine acts as a thin orchestrator—loading plugins, executing plans, routing requests, and coordinating flow.
+### Plugin class diagram
 
-By moving onboarding logic out of firmware and into runtime-executed plugins, the system gains agility, modularity, and real-time introspection. Updates are faster, plugins are reusable, and setup flows can adapt dynamically based on device, customer, or context.
+```mermaid
+classDiagram
+    class Engine {
+        +load_execution_plan()
+        +advance_execution_plan()
+    }
+    class PluginLoader {
+        +load_plugins()
+        +register_plugin()
+    }
+    class PluginRegistry {
+        +create_plugin()
+        +run_plugin()
+        +register_routes()
+    }
+    class Plugin {
+        +handle_request()
+        +run(ctx)
+    }
+    class WebServer {
+        +serve_static()
+        +dispatch_api()
+    }
+    class AppManager {
+        +registerPlugin()
+        +publish()
+        +unregisterPlugin()
+    }
+    class JSController {
+        +fetch_api()
+        +publish_event()
+    }
 
-With full support for static content, REST APIs, progress polling, chained workflows, and HTTP-based logging, this architecture lays a resilient and extensible foundation for onboarding across diverse devices and product lines.
+    Engine --> PluginLoader
+    PluginLoader --> PluginRegistry
+    PluginRegistry --> Plugin
+    PluginRegistry --> WebServer
+    WebServer --> JSController
+    JSController --> AppManager
+    AppManager --> Engine
+```
+
+### Plugin activity diagram
+
+```mermaid
+flowchart TD
+    A[Engine starts] --> B[Load execution plan]
+    B --> C[For each plugin, load .dll or .so]
+    C --> D[Call create_plugin FFI]
+    D --> E[Initialize plugin run]
+    E --> F[Register REST routes and static content]
+
+    F --> G[User navigates to /wifi/web]
+    G --> H[Serve step-wifi.html]
+    H --> I[Load step-wifi.js]
+    I --> J[JS registers plugin with AppManager]
+
+    J --> K[JS makes REST API call]
+    K --> L[WebServer dispatches to plugin handle_request]
+    L --> M[Plugin returns ApiResponse]
+    M --> N[WebServer responds to JS]
+
+    N --> O[User completes step]
+    O --> P[JS publishes WifiCompleted event]
+    P --> Q[AppManager sends event to Engine]
+    Q --> R[Engine advances execution plan]
+
+    R --> S[JS unregisters plugin for cleanup]
+```
+
+### Plugin component diagram
+
+```mermaid
+flowchart TD
+    subgraph Engine
+        PL[PluginLoader]
+        PR[PluginRegistry]
+        EP[ExecutionPlan]
+    end
+
+    subgraph Plugin
+        P1[plugin_wifi]
+        P2[plugin_other]
+    end
+
+    subgraph WebApp
+        JS[JSController]
+        AM[AppManager]
+        HTML[PluginHTML]
+    end
+
+    WS[WebServer]
+
+    Engine --> WS
+    PL --> PR
+    PR --> P1
+    PR --> P2
+    WS --> P1
+    WS --> P2
+    WS --> JS
+    JS --> AM
+    JS --> HTML
+    AM --> Engine
+```
+
+### Plugin lifecycle sequence diagram
+
+```mermaid
+sequenceDiagram
+    participant Engine
+    participant PluginLoader
+    participant PluginRegistry
+    participant Plugin_Rust
+    participant WebServer
+    participant Browser
+    participant JSController
+    participant AppManager
+    participant PluginHTML
+
+    %% --- Engine Startup ---
+    Engine->>PluginLoader: Load execution plan (execution_plan.rs)
+    PluginLoader->>PluginRegistry: For each plugin in plan, load .dll/.so (plugin_loader.rs)
+    PluginRegistry->>Plugin_Rust: Call create_plugin() (plugin.rs ABI)
+    Plugin_Rust->>PluginRegistry: Return Plugin struct (with FFI fn pointers)
+    PluginRegistry->>Plugin_Rust: Call run(ctx) to initialize
+    PluginRegistry->>WebServer: Register REST routes and static content
+
+    %% --- Web UI Routing ---
+    Browser->>WebServer: GET /wifi/web (user navigates)
+    WebServer->>Browser: Serve step-wifi.html
+    Browser->>PluginHTML: Render HTML shell
+    PluginHTML->>Browser: <script type="module" src="./step-wifi.js">
+    Browser->>JSController: Load and execute step-wifi.js
+
+    %% --- JS Activation and API Calls ---
+    JSController->>AppManager: registerPlugin('plugin_wifi')
+    JSController->>WebServer: (via fetch) REST API call, e.g. GET /api/wifi/network
+    WebServer->>Plugin_Rust: Dispatch to handle_request() (via FFI)
+    Plugin_Rust->>WebServer: Return ApiResponse (JSON)
+    WebServer->>JSController: Respond with JSON data
+
+    %% --- User Completes Step ---
+    JSController->>AppManager: publish('plugin_wifi', 'WifiCompleted', {status: 'completed'})
+    AppManager->>Engine: (via WebSocket) Send WifiCompleted event
+    Engine->>PluginLoader: Advance execution plan, load next plugin
+
+    %% --- Cleanup ---
+    JSController->>AppManager: unregisterPlugin('plugin_wifi') (on cleanup)
+```
