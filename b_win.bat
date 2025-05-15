@@ -228,5 +228,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
+echo Copying the external execution_plan.toml file to the engine output directory...
+
+if not exist "%TARGET%\ext_plan" mkdir "%TARGET%\ext_plan"
+if not exist "%TARGET%\ext_plan\Echo" mkdir "%TARGET%\ext_plan\Echo"
+if not exist "%TARGET%\ext_plan\Echo\1.3" mkdir "%TARGET%\ext_plan\Echo\1.3"
+
+copy /Y ".\ext_plan\Echo\1.3\execution_plan.toml" "%TARGET%\ext_plan\Echo\1.3\execution_plan.toml"
+if errorlevel 1 (
+    echo Failed to copy  external execution_plan.toml.
+    exit /b 1
+)
+
 echo All builds successful.
 endlocal

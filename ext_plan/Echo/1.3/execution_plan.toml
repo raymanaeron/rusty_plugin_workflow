@@ -1,0 +1,38 @@
+[general]
+product_family = "Echo"
+execution_plan_version = "1.3"
+update_from = "s3"
+update_path_root = "s3://my-bucket/execution_plans/"
+
+[[plugins]]
+name = "plugin_settings"
+plugin_description = "Collect device specific user settings"
+plugin_route = "settings"
+version = "1.1"
+plugin_location_type = "local"
+plugin_base_path = "./"
+team_name = "Echo Product Team"
+engineering_contact_email = "echo-settings-eng@example.com"
+operation_contact_email = "echo-settings-ops@example.com"
+run_async = false
+visible_in_ui = true
+run_after_event_name = "LoginCompleted"
+completed_event_name = "SettingsCompleted"
+
+[[plugins]]
+name = "plugin_howto"
+plugin_description = "plugin_howto description"
+plugin_route = "howto"
+version = "4.1"
+plugin_location_type = "local"
+plugin_base_path = "./"
+team_name = "PluginHowto Product Team"
+engineering_contact_email = "plugin_howto-eng@example.com"
+operation_contact_email = "plugin_howto-ops@example.com"
+run_async = true
+visible_in_ui = true                                        # Headless or UI?
+run_after_event_name = "SettingsCompleted"         # This is your entry point
+completed_event_name = "HowtoCompleted"          # Raise this event when you are done
+
+[handoffs]
+handoff_events = ["HowtoCompleted", "HowtoCompleted"]

@@ -117,4 +117,11 @@ cp app_config.toml "$TARGET/app_config.toml"
 echo "Copying the execution_plan.toml file to the engine output directory..."
 cp execution_plan.toml "$TARGET/execution_plan.toml"
 
+echo "Copying the external execution_plan.toml file to the engine output directory..."
+mkdir -p "$TARGET/ext_plan"
+mkdir -p "$TARGET/ext_plan/Echo"
+mkdir -p "$TARGET/ext_plan/Echo/1.3"
+
+cp ./ext_plan/Echo/1.3/execution_plan.toml "$TARGET/ext_plan/Echo/1.3/execution_plan.toml"
+
 echo "All builds successful."
