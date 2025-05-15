@@ -54,7 +54,7 @@ The foundation of our architecture rests upon seven meticulously designed subsys
 
 **Secure Communication Channel**: Our REST API layer incorporates JWT Authentication with message level encryption with circuit breaking, request throttling, and graceful degradation policies. All network operations support both synchronous and asynchronous patterns with continuations for handling long-running operations while maintaining UI responsiveness.
 
-**Comprehensive Observability Infrastructure**: Beyond simple logging, our observability stack provides structured event telemetry with automatic contextual correlation. The system implements distributed tracing with OpenTelemetry compatibility, automated anomaly detection through statistical profiling, and high-cardinality indexing for real-time debugging of production issues. Our solution automatically captures conditional debug information when errors occur, preserving stack traces and critical state information without manual instrumentation.
+**Observability Infrastructure**: Our system goes beyond basic logging by capturing detailed information about what the software is doing. It records events in a structured format and connects related events automatically, so it is easier to understand what happened during a specific operation. It tracks activity across different parts of the system, even when they run on separate machines, and works with standard tools. When something goes wrong, the system collects useful debug details—like error messages and the state of the program—without needing extra code. It also helps find unusual behavior automatically and makes it easier to investigate issues while the system is still running.
 
 ### How This Architecture Solves Key Challenges
 
