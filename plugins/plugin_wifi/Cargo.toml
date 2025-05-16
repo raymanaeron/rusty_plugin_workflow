@@ -13,13 +13,22 @@ tower = "0.4"
 async-trait = "0.1"
 ctor = "0.1"
 once_cell = "1.19"
-wifi-rs = "0.2.4"
-tokio-wifiscanner = "0.2.1"
+anyhow = "1.0"
 plugin_core = { path = "../../plugin_core", features = ["logging"] }
 libjwt = { path = "../../libjwt"}
 libws = { path = "../../libws" }
 liblogger = { path = "../../liblogger" }
 liblogger_macros = { path = "../../liblogger_macros" }
+
+[features]
+default = []
+# Only enable wifi-support on supported platforms
+wifi-support = []
+
+# Target-specific dependencies
+[target.'cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))'.dependencies]
+wifi-rs = { version = "0.2.4" }
+tokio-wifiscanner = { version = "0.2.1" }
 
 [lib]
 crate-type = ["cdylib", "staticlib", "rlib"]

@@ -5,21 +5,32 @@
 //! - wifi-rs for WiFi connections
 //! 
 //! Supports Windows, macOS, and Linux platforms through unified APIs
+//! For iOS, provides mock implementations
 
 use std::ffi::{CString, c_char, CStr};
-use std::ptr;
-use std::thread;
-use std::time::Duration;
-
-// For WiFi scanning
-use tokio_wifiscanner::{self, Wifi};
-
-// For WiFi connections
-use wifi_rs;
-use wifi_rs::prelude::*; // Import all traits including Connectivity
 
 use crate::network_info::NetworkInfo;
 
+// Only include these imports when needed for supported platforms
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+use std::ptr;
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+use std::thread;
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+use std::time::Duration;
+
+// Conditionally import WiFi libraries based on platform
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+mod wifi_support {
+    pub use tokio_wifiscanner::{self, Wifi};
+    pub use wifi_rs;
+    pub use wifi_rs::prelude::*; // Import all traits including Connectivity
+}
+
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+use wifi_support::*;
+
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
 // Simplified runtime wrapper that handles async correctly
 fn run_scan() -> Result<Vec<Wifi>, Box<dyn std::error::Error>> {
     let rt = tokio::runtime::Runtime::new()?;
@@ -29,6 +40,24 @@ fn run_scan() -> Result<Vec<Wifi>, Box<dyn std::error::Error>> {
             Err(e) => Err(Box::<dyn std::error::Error>::from(e))
         }
     })
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+// Mock implementation for unsupported platforms (like iOS)
+fn run_scan() -> Result<Vec<Wifi>, Box<dyn std::error::Error>> {
+    // Return an empty list on unsupported platforms
+    Ok(Vec::new())
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+// Mock WiFi struct for unsupported platforms
+pub struct Wifi {
+    pub ssid: String,
+    pub security: String,
+    pub signal: i32,
+    pub mac: String,
+    pub channel: String,
+    pub signal_level: String,  // Added this to match the field used in process_scan_results
 }
 
 /// Converts a WiFi security type to a string representation
@@ -101,6 +130,7 @@ fn frequency_to_channel(freq: u32) -> u32 {
     }
 }
 
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
 /// Scans for available WiFi networks using tokio-wifiscanner
 pub fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     println!("[plugin_wifi] Starting WiFi scan with tokio-wifiscanner");
@@ -158,6 +188,34 @@ pub fn scan(out_count: *mut usize) -> *mut NetworkInfo {
     ptr::null_mut()
 }
 
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+/// Mock implementation of WiFi scanning for unsupported platforms (like iOS)
+pub fn scan(out_count: *mut usize) -> *mut NetworkInfo {
+    println!("[plugin_wifi] WiFi scanning not supported on this platform");
+    println!("[plugin_wifi] Returning mock data");
+    
+    // Create a mock network for demo purposes
+    let mut mock_networks = Vec::new();
+    let ssid = CString::new("MockNetwork").unwrap();
+    let bssid = CString::new("00:11:22:33:44:55").unwrap();
+    let security = CString::new("WPA2 Personal").unwrap();
+    
+    mock_networks.push(NetworkInfo {
+        ssid: ssid.into_raw(),
+        bssid: bssid.into_raw(),
+        security: security.into_raw(),
+        channel: 6,
+        frequency: 2437.0,  // Channel 6 frequency
+        signal: -65,
+    });
+    
+    let boxed_results = mock_networks.into_boxed_slice();
+    unsafe {
+        *out_count = boxed_results.len();
+    }
+    Box::into_raw(boxed_results) as *mut NetworkInfo
+}
+
 /// Processes scan results from tokio-wifiscanner into NetworkInfo structures
 fn process_scan_results(networks: Vec<Wifi>) -> Vec<NetworkInfo> {
     // Track networks by SSID to handle duplicates
@@ -178,8 +236,12 @@ fn process_scan_results(networks: Vec<Wifi>) -> Vec<NetworkInfo> {
             if let Some(pos) = results.iter().position(|n| {
                 let existing_ssid = unsafe { CStr::from_ptr(n.ssid) }.to_string_lossy();
                 
-                // Try to parse signal level from string
+                // Get signal from the network (works with both structs)
+                #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
                 let signal_strength = parse_signal_level(&network.signal_level);
+                
+                #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+                let signal_strength = network.signal;
                 
                 existing_ssid == ssid_string && n.signal < signal_strength
             }) {
@@ -198,24 +260,36 @@ fn process_scan_results(networks: Vec<Wifi>) -> Vec<NetworkInfo> {
         }
         seen_ssids.insert(ssid_string.clone());
         
-        // Create BSSID string - it's just a string, not an Option
+        // Create BSSID string
+        #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
         let bssid_string = if network.mac.is_empty() {
             format!("Unknown-{}", i+1)
         } else {
             network.mac.clone()
         };
         
+        #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+        let bssid_string = network.mac.clone();
+        
         // Map security type (this is a string field)
         let security_string = security_type_to_string(&network.security);
         
-        // Get channel by parsing the string
+        // Get channel and convert to numeric
+        #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
         let channel = parse_channel(&network.channel);
+        
+        #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+        let channel = network.channel.parse::<u32>().unwrap_or(0);
         
         // Calculate frequency from channel
         let frequency = channel_to_frequency(channel);
         
-        // Parse signal level from string
+        // Get signal level
+        #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
         let signal = parse_signal_level(&network.signal_level);
+        
+        #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+        let signal = network.signal;
         
         // Log the network details
         println!(
@@ -254,6 +328,7 @@ fn parse_signal_level(signal_str: &str) -> i32 {
     signal_str.parse::<i32>().unwrap_or(0)
 }
 
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
 /// Connects to a WiFi network using the wifi-rs crate
 pub fn connect_wifi(ssid: &str, password: &str) -> bool {
     println!("[plugin_wifi] Attempting to connect to {} using wifi-rs", ssid);
@@ -287,6 +362,15 @@ pub fn connect_wifi(ssid: &str, password: &str) -> bool {
     }
     
     println!("[plugin_wifi] All connection attempts failed");
+    false
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+/// Mock implementation for unsupported platforms (like iOS)
+pub fn connect_wifi(ssid: &str, password: &str) -> bool {
+    println!("[plugin_wifi] WiFi connections not supported on this platform");
+    println!("[plugin_wifi] Mock connection to {} would use password {}", ssid, 
+             if password.is_empty() { "none" } else { "provided" });
     false
 }
 

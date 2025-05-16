@@ -173,12 +173,14 @@ lipo -create \
 echo "Using device library: $DEVICE_PATH"
 cp "$DEVICE_PATH" "$TARGET_DIR/ios/libengine_device.a"
 
-# Create a combined library for the Xcode project
-echo "Creating universal library for rusty_plugin..."
-lipo -create \
-    "$TARGET_DIR/ios/libengine_simulator.a" \
-    "$TARGET_DIR/ios/libengine_device.a" \
-    -output "engine_ios_ui/build/librusty_plugin.a"
+# Copy libraries to the Xcode project location instead of creating a universal library
+# This avoids the "same architectures" conflict between simulator and device libraries
+echo "Copying libraries for Xcode project..."
+mkdir -p "engine_ios_ui/build/simulator"
+mkdir -p "engine_ios_ui/build/device"
+cp "$TARGET_DIR/ios/libengine_simulator.a" "engine_ios_ui/build/simulator/librusty_plugin.a"
+cp "$TARGET_DIR/ios/libengine_device.a" "engine_ios_ui/build/device/librusty_plugin.a"
+echo "Note: Not creating a combined fat binary due to architecture overlap. Use separate libraries in Xcode."
 
 # === Copy headers ===
 echo "Copying headers..."
@@ -239,10 +241,14 @@ echo ""
 echo "Libraries are available at:"
 echo "  - $TARGET_DIR/ios/libengine_simulator.a (for simulator)"
 echo "  - $TARGET_DIR/ios/libengine_device.a (for device)"
-echo "  - engine_ios_ui/build/librusty_plugin.a (universal library)"
+echo "  - engine_ios_ui/build/simulator/librusty_plugin.a (for simulator)"
+echo "  - engine_ios_ui/build/device/librusty_plugin.a (for device)"
 echo ""
 echo "To use in your Xcode project:"
-echo "1. Add the libraries to your project"
+echo "1. Add both libraries to your project (with appropriate build phase conditions)"
 echo "2. Add '-lc++' to 'Other Linker Flags'"
-echo "3. Add path to libraries in 'Library Search Paths'"
+echo "3. Add conditional paths to libraries in 'Library Search Paths':"
+echo "   - For simulator: \$(PROJECT_DIR)/build/simulator"
+echo "   - For device: \$(PROJECT_DIR)/build/device"
 echo "4. Add path to header files in 'Header Search Paths'"
+echo "5. Configure your build settings to use the appropriate library based on the target (simulator or device)"
