@@ -1,3 +1,39 @@
+# Rust build artifacts
 /target
+/target/**/*
+target/
+
+# Build folders
+**/build/**/*.a
+**/build/**/*.o
+**/build/**/*.so
+**/build/**/*.dylib
+**/build/**/*.dll
+**/build/**/*.lib
+
+# macOS system files
 .DS_Store
-/.DS_Store
+**/.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+log/
+logs/
+
+# Local configuration
+.env
+.env.local
+*.local.toml
+
+# Cross-platform builds
+*.exe
+*.dll
+*.so
+*.dylib
