@@ -1,4 +1,39 @@
+# Build artifacts
 /build
+/build/**/*
+build/
+build/**/*
+
+# But keep directory structure with .gitkeep files
+!build/
+!build/device/
+!build/simulator/
+!build/include/
+!build/device/.gitkeep
+!build/simulator/.gitkeep
+!build/include/.gitkeep
+
+# Targets
 /target
+target/
+
+# macOS system files
 .DS_Store
 /.DS_Store
+**/.DS_Store
+
+# Xcode user-specific files
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+
+# User settings
+xcuserdata/
+
+# Obj-C/Swift specific
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
