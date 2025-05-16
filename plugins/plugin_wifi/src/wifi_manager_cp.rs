@@ -31,6 +31,7 @@ mod wifi_support {
 use wifi_support::*;
 
 #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+#[allow(dead_code)]
 // Simplified runtime wrapper that handles async correctly
 fn run_scan() -> Result<Vec<Wifi>, Box<dyn std::error::Error>> {
     let rt = tokio::runtime::Runtime::new()?;
@@ -43,6 +44,7 @@ fn run_scan() -> Result<Vec<Wifi>, Box<dyn std::error::Error>> {
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+#[allow(dead_code)]
 // Mock implementation for unsupported platforms (like iOS)
 fn run_scan() -> Result<Vec<Wifi>, Box<dyn std::error::Error>> {
     // Return an empty list on unsupported platforms
@@ -60,6 +62,7 @@ pub struct Wifi {
     pub signal_level: String,  // Added this to match the field used in process_scan_results
 }
 
+#[allow(dead_code)]
 /// Converts a WiFi security type to a string representation
 fn security_type_to_string(security: &str) -> String {
     if security.contains("WPA2") && security.contains("Enterprise") {
@@ -79,6 +82,7 @@ fn security_type_to_string(security: &str) -> String {
     }
 }
 
+#[allow(dead_code)]
 /// Calculates a frequency from a channel number
 fn channel_to_frequency(channel: u32) -> f32 {
     if channel >= 1 && channel <= 14 {
@@ -217,6 +221,7 @@ pub fn scan(out_count: *mut usize) -> *mut NetworkInfo {
 }
 
 /// Processes scan results from tokio-wifiscanner into NetworkInfo structures
+#[allow(dead_code)]
 fn process_scan_results(networks: Vec<Wifi>) -> Vec<NetworkInfo> {
     // Track networks by SSID to handle duplicates
     let mut results: Vec<NetworkInfo> = Vec::with_capacity(networks.len());
@@ -319,11 +324,13 @@ fn process_scan_results(networks: Vec<Wifi>) -> Vec<NetworkInfo> {
 }
 
 /// Parse channel from string
+#[allow(dead_code)]
 fn parse_channel(channel_str: &str) -> u32 {
     channel_str.parse::<u32>().unwrap_or(0)
 }
 
 /// Parse signal level from string
+#[allow(dead_code)]
 fn parse_signal_level(signal_str: &str) -> i32 {
     signal_str.parse::<i32>().unwrap_or(0)
 }
