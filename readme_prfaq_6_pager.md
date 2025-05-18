@@ -78,6 +78,32 @@ Our SDK solves two key development challenges through its architecture:
 - **System-level operations** - Standardized under the Device Software Services team, preventing dangerous implementations for tasks like file operations and service management
 - **Legal compliance screens** - Governed by the Legal team rather than being hardcoded by individual product groups, eliminating compliance risk from inconsistent implementations
 
+### What is your Minimal Loveable Product (MLP)?
+
+Our Minimal Loveable Product focuses on delivering a solid foundation for plugin-based OOBE architecture that enables early adopters to realize immediate value while setting the stage for future expansion:
+
+* **Core Workflow Engine with Dynamic Plugin Architecture** - A lightweight, high-performance runtime engine with minimal memory footprint for resource-constrained devices. The platform-agnostic binary interface ensures cross-platform compatibility across FOS, Vega, and AOSP with consistent plugin behavior regardless of the underlying operating system.
+
+* **Execution Plan System with Remote Update Capability** - A declarative execution plan format that defines which plugins to load and their execution sequence. The engine checks for updated plans upon network connectivity and can dynamically download the latest version without firmware updates. A robust fallback mechanism ensures setup can continue even if download attempts fail.
+
+* **Event-Driven Plugin Communication Framework** - A WebSocket-based communication system that enables plugins to publish events and subscribe to notifications, creating a loosely coupled architecture. This allows plugins to be developed independently while still coordinating effectively during the setup flow.
+
+* **Advanced Security and Authentication** - JWT authentication with message-level encryption to secure all communication between components. This system includes token validation on every request, automatic token refresh, and a capability-based security model limiting plugin permissions.
+
+* **Comprehensive Instrumentation and Logging** - Built-in telemetry framework with automatic instrumentation of core OOBE metrics. Plugins can leverage aspect-oriented logging macros that add minimal overhead while providing thorough diagnostics data for debugging and optimization.
+
+* **Plugin Development Toolkit** - Command-line tools to generate plugin scaffolding, templates, and boilerplate code. These accelerate development while ensuring consistency and best practices across the plugin ecosystem.
+
+* **Plugin Repository and Catalog System** - A central repository where plugins can be versioned, stored and discovered by product teams. The catalog includes metadata on ownership, dependencies, and compatibility, making it easy for teams to find existing components rather than building redundant implementations.
+
+* **Reference Implementation with Core Plugins** - A set of essential plugins covering common OOBE tasks such as Wi-Fi setup, account linking, login, and device provisioning. These serve both as functional components and implementation examples for developers building custom plugins.
+
+* **Detailed Documentation and Samples** - Comprehensive technical documentation including architecture diagrams, API references, and tutorials. Sample implementations demonstrate best practices and integration patterns for various use cases.
+
+* **Testing Environment for Plugin Development** - A sandbox environment where developers can test their plugins in isolation or as part of more complex workflows without requiring access to physical devices or complete product builds.
+
+This foundation provides immediate value through reduced development effort, standardized patterns, and enhanced flexibility, while positioning us for future enhancements like the SCOOBE framework, machine learning-driven optimizations, and integration with companion mobile applications.
+
 ### How does the SDK enable updatable OOBE experiences?
 
 **Enabling updatable OOBE through dynamic execution plans:** Our dynamic execution plan system completely transforms how setup experiences evolve after shipping. OOBE launches with a default plan and immediately after network connectivity is established, checks for an updated execution plan from the cloud that's specific to the product, version, region, device type, and user segment. It then downloads any necessary plugins and executes the latest flow, ensuring even devices manufactured months ago receive the most current experience. This solves the "frozen OOBE" problem without requiring firmware updates.
@@ -175,9 +201,8 @@ Our architecture was designed from the ground up for massive scale. The DS2 team
 
 For each SDK release, we will validate the system through rigorous simulation testing with models representing 10x our current device activation peaks, ensuring the architecture continues to scale elastically as demand grows.
 
-### How will this evolve over time?
+### How will your SDK evolve over time?
 
 In the near term, our focus for the next year includes expanding the plugin library to cover all common setup tasks. We aim to create advanced targeting capabilities based on user context and build developer tools to simplify plugin creation and testing. Additionally, we plan to implement automated quality assurance for contributed plugins.
 Looking ahead to the mid-term, over the next two to three years, we intend to extend our capabilities to companion apps for mobile and web setup experiences. We will create machine learning systems to dynamically optimize flow sequences and build personalized setup experiences based on customer history. Furthermore, we aim to establish an open plugin marketplace for third-party developers.
 Our long-term vision is to evolve from device setup to whole-home ecosystem management. We aspire to create predictive setup that anticipates customer needs and enable zero-UI setup through ambient intelligence.
-
