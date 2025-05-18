@@ -54,6 +54,16 @@ Our OOBE SDK provides a unified architecture that addresses the fragmentation pr
 
 **Supporting multiple operating systems:** Through our platform-agnostic binary interface with cross-language ABI compatibility, we enable identical business logic to run across all platforms without recompilation or platform-specific code paths. This eliminates the need for teams to maintain parallel implementations of the same functionality for different operating systems. The interface provides guaranteed compatibility across FOS, Vega, and AOSP through a well-defined type system and shadow-versioning techniques.
 
+### How does the architecture work?
+
+At its core, our architecture uses a "plugins and engine" approach similar to how web browsers work with extensions. When a device starts setup, a small core engine initializes and connects to the network. Once connected, it checks a cloud service for the latest "execution plan" – essentially a recipe that describes which setup components (plugins) are needed for this specific device and in what order they should run.
+
+The engine then dynamically downloads just the plugins needed for this device's particular setup flow. Each plugin is a self-contained module responsible for one specific task – like WiFi connection, account login, or device registration. As the customer completes each step, the engine seamlessly transitions to the next plugin in the sequence, creating a fluid experience despite the modular architecture underneath.
+
+What makes this approach powerful is that plugins communicate through standardized events rather than direct dependencies. When the WiFi plugin successfully connects to a network, it simply announces "WiFi setup complete" – and the engine knows which plugin to load next. This event-driven approach means plugins can be updated, reordered or replaced without breaking the entire flow. Better yet, specialized teams across the company own the plugins in their domain of expertise, ensuring each component represents the best implementation of that particular feature.
+
+The architecture extends beyond the initial setup through our Second Chance OOBE (SCOOBE) framework, which remains active after setup is complete. This allows for intelligently timed interactions after the customer has been using their device – like introducing advanced features when they're most relevant, or presenting subscription opportunities during detected idle periods – all without interrupting the critical first-use experience.
+
 ### How does the SDK handle product variation and common tasks?
 
 Our SDK solves two key development challenges through its architecture:
@@ -99,15 +109,10 @@ The SDK brings two key capabilities to improve measurement and testing:
 
 ### Why is your team best positioned to build this SDK?
 
-Our team uniquely combines the expertise needed to deliver this transformative architecture:
-
-- **Cross-platform experience** - Team members have deep expertise across FOS, Vega, and AOSP platforms
-- **Setup domain knowledge** - Collectively, we have worked on OOBE for over 12 different Amazon devices
-- **Performance engineering** - Our core engineers specialize in high-performance systems with strict resource constraints
-- **Analytics background** - We have built multiple instrumentation frameworks currently used across Amazon
-- **Cross-organizational relationships** - We have established partnerships with all key stakeholder teams (Identity, Device Management, Frustration-Free Setup, Legal)
-
-Most importantly, we sit at the organizational intersection that allows us to see the inefficiencies and duplication happening across product teams. While individual product teams recognize the problems in their specific domain, only a central team with our cross-cutting visibility can build a solution that works for the entire portfolio.
+We believe our team brings together a unique combination of skills and perspectives needed for this challenge. Our experience spans across all major Operating Systems (FOS, Vega, and AOSP), providing us with insights into the technical nuances of each system. Having collectively worked on Frustration Free Setup and a few OOBE implementations for certain Amazon devices, we've gained first-hand understanding of the pain points both developers and customers face during setup.
+Our engineering team includes specialists in resource-constrained environments who understand how to build lightweight, efficient systems that perform well even on entry-level devices. We've also had the opportunity to develop several instrumentation frameworks currently used within Amazon, which has deepened our appreciation for consistent, meaningful analytics.
+Perhaps most importantly, our position as a horizontal platform team has allowed us to build relationships across organizational boundaries. We've established working partnerships with most product lines and platform teams across amazon. These connections have helped us understand the challenges from multiple perspectives and identify common patterns that might not be visible from within a single product team.
+While we don't claim to have all the answers, we believe our cross-cutting visibility puts us in a good position to create a solution that addresses the needs of all stakeholders. As a team chartered with building horizontal platform capabilities, we're committed to creating tools that empower our partner teams to deliver exceptional customer experiences.
 
 ### Who would be very happy about this SDK?
 
@@ -131,7 +136,7 @@ Some groups may have initial reservations:
 - **Teams with Existing OOBE Investments** - Could be concerned about sunk costs in their current solutions
 - **Security Teams** - May initially be concerned about the dynamic download and execution model
 
-We've proactively addressed many of these concerns in our design. For example, the SDK provides extensive customization points while still maintaining core consistency, and our security model includes rigorous signing and verification protocols.
+We've proactively addressed many of these concerns in our design. For example, the SDK provides extensive customization points while still maintaining core consistency, and our security model includes rigorous signing, verification, and encryption protocols.
 
 ### What happens if we don't do anything and maintain the status quo?
 
@@ -151,83 +156,28 @@ Current alternatives either continue this fragmented per-product approach or off
 
 ### What roadblocks could you anticipate in adopting this SDK?
 
-We expect several implementation challenges:
+We anticipate several implementation challenges as we move forward with our project. One of the primary concerns is the complexity of platform integration. Ensuring that the core engine works consistently across all operating systems is a significant task. Additionally, we need to determine a strategy for backward compatibility to support legacy devices already in production.
+Another challenge is the transfer of knowledge to product teams. Educating these teams on the new development paradigm is crucial for successful implementation. Ownership transitions also pose a challenge, as we need to move components from product teams to domain expert teams. This shift requires careful planning and coordination.
+Change management is another critical aspect. Shifting organizational practices from siloed development to shared components will require a phased approach. Our rollout strategy addresses these concerns by beginning with select product lines and gradually expanding based on learnings from each implementation.
 
-- **Platform Integration Complexity** - Ensuring the core engine works consistently across all operating systems
-- **Legacy Device Support** - Determining the backward compatibility strategy for devices already in production
-- **Team Knowledge Transfer** - Educating product teams on the new development paradigm
-- **Ownership Transitions** - Moving components from product teams to domain expert teams
-- **Change Management** - Shifting organizational practices from siloed development to shared components
 
 Our rollout strategy addresses these concerns through a phased approach, beginning with select product lines and gradually expanding based on learnings from each implementation.
 
-### What are the key risks and how will we mitigate them?
+### What are the key risks and how will you mitigate them?
 
-**Technical Risks:**
-- **Performance Overhead** - Mitigated through our zero-copy, memory-mapped execution environment and comprehensive performance testing
-- **Network Dependency** - Addressed by bundling fallback plugins for critical setup components
-- **Plugin Compatibility** - Managed through our versioned interface with shadow-versioning for backward compatibility
-- **Security Vulnerabilities** - Minimized through signed plugins, capability-based security model, and sandbox execution
-
-**Organizational Risks:**
-- **Adoption Resistance** - Mitigated by demonstrating clear ROI and involving key stakeholders early in the design process
-- **Skill Set Gaps** - Addressed through comprehensive documentation and training programs
-- **Governance Challenges** - Managed through clear ownership boundaries and an established plugin review process
-
-**Customer Experience Risks:**
-- **Update Failures** - Prevented through gradual rollout with automated rollback capabilities
-- **Inconsistent Implementation** - Addressed through comprehensive guidelines and review processes
-- **Setup Delays** - Mitigated by optimizing plugin sizes and implementing parallel download strategies
+We have identified several technical, organizational, and customer experience risks associated with our project. To mitigate performance overhead, we have implemented a zero-copy, memory-mapped execution environment and comprehensive performance testing. Network dependency is addressed by bundling fallback plugins for critical setup components. Plugin compatibility is managed through our versioned interface with shadow-versioning for backward compatibility. Security vulnerabilities are minimized through signed plugins, a capability-based security model, and sandbox execution.
+On the organizational front, adoption resistance is mitigated by demonstrating clear ROI and involving key stakeholders early in the design process. Skill set gaps are addressed through comprehensive documentation and training programs. Governance challenges are managed through clear ownership boundaries and an established plugin review process.
+For customer experience risks, update failures are prevented through gradual rollout with automated rollback capabilities. Inconsistent implementation is addressed through comprehensive guidelines and review processes. Setup delays are mitigated by optimizing plugin sizes and implementing parallel download strategies.
 
 ### Can this scale to millions of customers/devices?
 
-Our architecture was designed from the ground up for massive scale:
-
-- **Content Delivery** - The DS2 team will create a dedicated infrastructure for plugin distribution, providing global edge caching with high availability
-- **Dynamic Targeting** - Our execution plan service will use a high-throughput system with auto-scaling capabilities designed to handle millions of requests per minute during peak periods
-- **Minimal Network Footprint** - Binary plugins use differential updates to minimize bandwidth consumption
-- **Optimized Resource Usage** - The runtime engine requires <5MB of resident memory regardless of setup complexity
-- **Traffic Management** - Intelligent rate limiting and backoff strategies prevent thundering herd problems during mass device activations
+Our architecture was designed from the ground up for massive scale. The DS2 team will create a dedicated infrastructure for plugin distribution, providing global edge caching with high availability. Our execution plan service will use a high-throughput system with auto-scaling capabilities designed to handle millions of requests per minute during peak periods. Binary plugins use differential updates to minimize bandwidth consumption, ensuring a minimal network footprint. The runtime engine requires less than 5MB of resident memory regardless of setup complexity, optimizing resource usage. Intelligent rate limiting and backoff strategies prevent thundering herd problems during mass device activations. For each SDK release, we will validate the system through rigorous simulation testing with models representing ten times our current device activation peaks, ensuring the architecture continues to scale elastically as demand grows.
 
 For each SDK release, we will validate the system through rigorous simulation testing with models representing 10x our current device activation peaks, ensuring the architecture continues to scale elastically as demand grows.
 
 ### How will this evolve over time?
 
-The architecture is designed for continuous evolution:
+In the near term, our focus for the next year includes expanding the plugin library to cover all common setup tasks. We aim to create advanced targeting capabilities based on user context and build developer tools to simplify plugin creation and testing. Additionally, we plan to implement automated quality assurance for contributed plugins.
+Looking ahead to the mid-term, over the next two to three years, we intend to extend our capabilities to companion apps for mobile and web setup experiences. We will create machine learning systems to dynamically optimize flow sequences and build personalized setup experiences based on customer history. Furthermore, we aim to establish an open plugin marketplace for third-party developers.
+Our long-term vision is to evolve from device setup to whole-home ecosystem management. We aspire to create predictive setup that anticipates customer needs and enable zero-UI setup through ambient intelligence.
 
-**Near-term (1 year):**
-- Expanding the plugin library to cover all common setup tasks
-- Creating advanced targeting capabilities based on user context
-- Building developer tools to simplify plugin creation and testing
-- Implementing automated quality assurance for contributed plugins
-
-**Mid-term (2-3 years):**
-- Extending to companion apps for mobile and web setup experiences
-- Creating machine learning systems to optimize flow sequences dynamically
-- Building personalized setup experiences based on customer history
-- Establishing an open plugin marketplace for third-party developers
-
-**Long-term vision:**
-- Evolving from device setup to whole-home ecosystem management
-- Creating predictive setup that anticipates customer needs
-- Enabling zero-UI setup through ambient intelligence
-- Establishing cross-device orchestration for seamless multi-device experiences
-
-### What does success look like in 1 year and in 3 years?
-
-**1 Year Success Metrics:**
-- 50% of new device models using the SDK for their OOBE
-- 30% reduction in setup-related customer support contacts
-- 25% decrease in setup abandonment rates across adopting devices
-- 40% reduction in OOBE-related engineering hours for adopting teams
-- Standardized metrics collection across 80% of the device portfolio
-
-**3 Year Success Metrics:**
-- 95% of device portfolio using the SDK for setup experiences
-- 75% reduction in setup time compared to pre-SDK baseline
-- 60% improvement in cross-device setup completion rates
-- 50% increase in feature discovery through post-setup engagement
-- 80% reduction in time-to-market for new setup features
-- Demonstrable competitive advantage in user satisfaction metrics
-
-Beyond metrics, true success means transforming how Amazon approaches device setup—from a one-time obstacle to overcome into a strategic advantage that strengthens customer relationships and creates ongoing engagement opportunities throughout the device lifecycle.
