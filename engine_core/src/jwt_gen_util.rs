@@ -17,6 +17,7 @@ fn generate_random_string(len: usize) -> String {
 
 // Response structure for the session creation
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 struct SessionResponse {
     session_id: String,
     token: String,

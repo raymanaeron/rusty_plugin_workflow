@@ -2,6 +2,8 @@
 /target
 /target/**/*
 target/
+/sdk
+sdk/
 
 # Build folders
 **/build/**/*.a
