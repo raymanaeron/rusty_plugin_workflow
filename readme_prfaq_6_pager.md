@@ -80,29 +80,29 @@ Our SDK solves two key development challenges through its architecture:
 
 ### What is your Minimal Loveable Product (MLP)?
 
-Our Minimal Loveable Product focuses on delivering a solid foundation for plugin-based OOBE architecture that enables early adopters to realize immediate value while setting the stage for future expansion:
+Our MLP focuses on delivering a solid foundation for plugin-based OOBE architecture that enables early adopters to realize immediate value while setting the stage for future expansion:
 
-* **Core Workflow Engine with Dynamic Plugin Architecture** - A lightweight, high-performance runtime engine with minimal memory footprint for resource-constrained devices. The platform-agnostic binary interface ensures cross-platform compatibility across FOS, Vega, and AOSP with consistent plugin behavior regardless of the underlying operating system.
+**Core Workflow Engine with Dynamic Plugin Architecture** - A lightweight, high-performance runtime engine written in native language (rust) with minimal memory footprint for resource-constrained devices. The platform-agnostic binary interface ensures cross-platform compatibility across FOS, Vega, AOSP etc. with consistent plugin behavior regardless of the underlying operating system.
 
-* **Execution Plan System with Remote Update Capability** - A declarative execution plan format that defines which plugins to load and their execution sequence. The engine checks for updated plans upon network connectivity and can dynamically download the latest version without firmware updates. A robust fallback mechanism ensures setup can continue even if download attempts fail.
+**Execution Plan System with Remote Update Capability** - A declarative execution plan format that defines which plugins to load and their execution sequence. The engine checks for updated plans upon network connectivity and can dynamically download the latest version without firmware updates. A fallback mechanism ensures setup can continue even if download attempts fail.
 
-* **Event-Driven Plugin Communication Framework** - A WebSocket-based communication system that enables plugins to publish events and subscribe to notifications, creating a loosely coupled architecture. This allows plugins to be developed independently while still coordinating effectively during the setup flow.
+**Event-Driven Plugin Communication Framework** - A disconnected intra-process communication system that enables plugins to publish events and subscribe to the events and receive payloads, creating a loosely coupled architecture. This allows plugins to be developed independently while still coordinating effectively during the setup flow.
 
-* **Advanced Security and Authentication** - JWT authentication with message-level encryption to secure all communication between components. This system includes token validation on every request, automatic token refresh, and a capability-based security model limiting plugin permissions.
+**Advanced Security and Authentication** - JWT authentication with message-level encryption to secure all communication between components that cross memory boundaries. This system includes token validation on every request, automatic token refresh security model limiting plugin permissions.
+Comprehensive Instrumentation and Logging - Built-in telemetry framework with automatic instrumentation of core OOBE metrics. Plugins can leverage aspect-oriented logging macros that add minimal overhead while providing thorough diagnostics data for debugging and optimization.
 
-* **Comprehensive Instrumentation and Logging** - Built-in telemetry framework with automatic instrumentation of core OOBE metrics. Plugins can leverage aspect-oriented logging macros that add minimal overhead while providing thorough diagnostics data for debugging and optimization.
+**Plugin Development Helpers** - Command-line tools to generate plugin scaffolding, templates, and boilerplate code. These accelerate development while ensuring consistency and best practices across the plugin ecosystem.
 
-* **Plugin Development Toolkit** - Command-line tools to generate plugin scaffolding, templates, and boilerplate code. These accelerate development while ensuring consistency and best practices across the plugin ecosystem.
+**Plugin Repository and Catalog System** - A central repository where plugins can be versioned, stored and discovered by product teams. The catalog includes metadata on ownership, dependencies, and compatibility, making it easy for teams to find existing components rather than building redundant implementations.
 
-* **Plugin Repository and Catalog System** - A central repository where plugins can be versioned, stored and discovered by product teams. The catalog includes metadata on ownership, dependencies, and compatibility, making it easy for teams to find existing components rather than building redundant implementations.
+**Reference Implementation with Core Plugins** - A set of essential plugins covering common OOBE tasks such as Wi-Fi setup, account linking, login, and device provisioning. These serve both as functional components and implementation examples for developers building custom plugins.
 
-* **Reference Implementation with Core Plugins** - A set of essential plugins covering common OOBE tasks such as Wi-Fi setup, account linking, login, and device provisioning. These serve both as functional components and implementation examples for developers building custom plugins.
+**Detailed Documentation and Samples** - Comprehensive technical documentation including architecture diagrams, API references, and tutorials. Sample implementations demonstrate best practices and integration patterns for various use cases.
 
-* **Detailed Documentation and Samples** - Comprehensive technical documentation including architecture diagrams, API references, and tutorials. Sample implementations demonstrate best practices and integration patterns for various use cases.
-
-* **Testing Environment for Plugin Development** - A sandbox environment where developers can test their plugins in isolation or as part of more complex workflows without requiring access to physical devices or complete product builds.
+**Testing Environment for Plugin Development** - A sandbox environment where developers can test their plugins in isolation or as part of more complex workflows without requiring access to complete product builds.
 
 This foundation provides immediate value through reduced development effort, standardized patterns, and enhanced flexibility, while positioning us for future enhancements like the SCOOBE framework, machine learning-driven optimizations, and integration with companion mobile applications.
+
 
 ### How does the SDK enable updatable OOBE experiences?
 
