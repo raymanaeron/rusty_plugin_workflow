@@ -18,8 +18,8 @@ echo "[BUILD] Output path: $TARGET"
 echo "Building plugin_welcome..."
 cargo build --manifest-path plugins/plugin_welcome/Cargo.toml $CARGO_FLAG
 
-echo "Building plugin_wifi..."
-cargo build --manifest-path plugins/plugin_wifi/Cargo.toml $CARGO_FLAG
+echo "Building plugin_mockwifi..."
+cargo build --manifest-path plugins/plugin_mockwifi/Cargo.toml $CARGO_FLAG
 
 echo "Building plugin_execution..."
 cargo build --manifest-path plugins/plugin_execplan/Cargo.toml $CARGO_FLAG
@@ -63,7 +63,7 @@ ls -ld "$TARGET"
 # === Create destination folders before rsync/cp ===
 echo "Creating plugin destination folders..."
 mkdir -p "$TARGET/welcome/web"
-mkdir -p "$TARGET/wifi/web"
+mkdir -p "$TARGET/mwifi/web"
 mkdir -p "$TARGET/execution/web"
 mkdir -p "$TARGET/login/web"
 mkdir -p "$TARGET/provision/web"
@@ -82,7 +82,7 @@ rsync -a webapp/ "$TARGET/webapp/"
 
 echo "Copying plugins web folder to engine output directory..."
 rsync -a plugins/plugin_welcome/web/ "$TARGET/welcome/web/"
-rsync -a plugins/plugin_wifi/web/ "$TARGET/wifi/web/"
+rsync -a plugins/plugin_mockwifi/web/ "$TARGET/mwifi/web/"
 rsync -a plugins/plugin_execplan/web/ "$TARGET/execution/web/"
 rsync -a plugins/plugin_login/web/ "$TARGET/login/web/"
 rsync -a plugins/plugin_provisioning/web/ "$TARGET/provision/web/"
@@ -98,7 +98,7 @@ rsync -a plugins/plugin_task_agent_headless/web/ "$TARGET/taskagent/web/"
 # === Copy plugin dylibs to output folder (macOS only) ===
 echo "Copying plugin shared libraries to engine output directory..."
 cp "$TARGET/libplugin_welcome.dylib" "$TARGET/plugin_welcome.dylib"
-cp "$TARGET/libplugin_wifi.dylib" "$TARGET/plugin_wifi.dylib"
+cp "$TARGET/libplugin_mockwifi.dylib" "$TARGET/plugin_mockwifi.dylib"
 cp "$TARGET/libplugin_execplan.dylib" "$TARGET/plugin_execplan.dylib"
 cp "$TARGET/libplugin_login.dylib" "$TARGET/plugin_login.dylib"
 cp "$TARGET/libplugin_provisioning.dylib" "$TARGET/plugin_provisioning.dylib"

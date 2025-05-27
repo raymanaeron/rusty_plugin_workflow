@@ -1,0 +1,14 @@
+[[plugins]]
+name = "plugin_mockwifi"
+plugin_description = "plugin_mockwifi description"
+plugin_route = "mwifi"
+version = "0.1.0"
+plugin_location_type = "s3"
+plugin_base_path = "https://echo-oobe-bucket.s3.amazonaws.com/echo-show/v4.1/plugins"
+team_name = "PluginMockwifi Product Team"
+engineering_contact_email = "plugin_mockwifi-eng@example.com"
+operation_contact_email = "plugin_mockwifi-ops@example.com"
+run_async = true
+visible_in_ui = true                                        # Headless or UI?
+run_after_event_name = "NetworkConnectionCompleted"         # This is your entry point
+completed_event_name = "WifiCompleted"          # Raise this event when you are done

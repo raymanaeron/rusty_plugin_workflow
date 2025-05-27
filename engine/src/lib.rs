@@ -181,7 +181,8 @@ pub async fn create_ws_engine_client() {
     // Subscribe to WELCOME_COMPLETED topic
     // Route next to /wifi/web
     if let Some(client_arc) = ENGINE_WS_CLIENT.get() {
-        subscribe_and_handle(client_arc.clone(), WELCOME_COMPLETED, "/wifi/web").await;
+        // subscribe_and_handle(client_arc.clone(), WELCOME_COMPLETED, "/wifi/web").await;
+        subscribe_and_handle(client_arc.clone(), WELCOME_COMPLETED, "/mwifi/web").await;
     }
 
     // Subscribe to WIFI_COMPLETED topic
@@ -648,7 +649,7 @@ pub async fn start_server_async() {
     // Core Plugin Loading
     let plugins_to_load = [
         ("plugin_welcome", "continue=false"),
-        ("plugin_wifi", "connected=false"),
+        ("plugin_mockwifi", "connected=false"),
         ("plugin_execplan", "hasupdate=true"),
         ("plugin_login", "isloggedin=false"),
         ("plugin_provisioning", "isprovisioned=false"),

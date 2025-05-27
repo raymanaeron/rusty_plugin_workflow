@@ -9,6 +9,7 @@ use plugin_core::{
     ApiRequest, ApiResponse, error_response, cleanup_response,
     response_utils::{json_response, method_not_allowed_response},
     resource_utils::static_resource,
+    jwt_utils::validate_jwt_token,
 };
 
 // Standard library

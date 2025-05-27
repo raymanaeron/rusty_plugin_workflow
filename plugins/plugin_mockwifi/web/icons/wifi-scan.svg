@@ -1,0 +1,13 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- WiFi arcs -->
+  <path d="M4 16C9.333 11.333 22.667 11.333 28 16" stroke="#007bff" stroke-width="2" fill="none"/>
+  <path d="M8 20C12 16.667 20 16.667 24 20" stroke="#007bff" stroke-width="2" fill="none"/>
+  <path d="M12 24C14.667 22 17.333 22 20 24" stroke="#007bff" stroke-width="2" fill="none"/>
+  <!-- Scan circle (pulsing/radar effect) -->
+  <circle cx="16" cy="28" r="2.5" fill="#007bff"/>
+  <circle cx="16" cy="28" r="6" stroke="#007bff" stroke-width="1.5" fill="none" opacity="0.5"/>
+  <!-- Scan "rays" -->
+  <line x1="16" y1="4" x2="16" y2="8" stroke="#007bff" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="6" y1="10" x2="9" y2="13" stroke="#007bff" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <line x1="26" y1="10" x2="23" y2="13" stroke="#007bff" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+</svg>

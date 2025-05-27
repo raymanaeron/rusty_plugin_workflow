@@ -29,11 +29,11 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM === Build plugin_wifi ===
-echo Building plugin_wifi...
-cargo build --manifest-path plugins\plugin_wifi\Cargo.toml %CARGO_FLAG%
+REM === Build plugin_mockwifi ===
+echo Building plugin_mockwifi...
+cargo build --manifest-path plugins\plugin_mockwifi\Cargo.toml %CARGO_FLAG%
 if errorlevel 1 (
-    echo Failed to build plugin_wifi.
+    echo Failed to build plugin_mockwifi.
     exit /b 1
 )
 
@@ -143,9 +143,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-xcopy /E /I /Y plugins\plugin_wifi\web %TARGET%\wifi\web
+xcopy /E /I /Y plugins\plugin_mockwifi\web %TARGET%\mwifi\web
 if errorlevel 1 (
-    echo Failed to copy plugin_wifi web folder.
+    echo Failed to copy plugin_mockwifi web folder.
     exit /b 1
 )
 
